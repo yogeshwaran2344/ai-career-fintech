@@ -1,0 +1,26 @@
+# Node dependencies
+node_modules/
+frontend/node_modules/
+
+# Build artifacts
+dist/
+frontend/dist/
+
+# Python cache & virtual environments
+__pycache__/
+backend/__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Database files
+*.db-journal
+*.sqlite3-journal
+
+# Environment & local files
+.env
+.env.local
+.DS_Store
+Thumbs.db

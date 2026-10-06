@@ -1,5 +1,7 @@
 // API Client with Auth and Advanced Simulation Engines
-const API_BASE = '/api';
+const rawApiBase = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = rawApiBase ? (rawApiBase.endsWith('/api') ? rawApiBase : `${rawApiBase.replace(/\/$/, '')}/api`) : '/api';
+
 
 export const authState = {
   getToken: () => localStorage.getItem('advisor_auth_token') || '',

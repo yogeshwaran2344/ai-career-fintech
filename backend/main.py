@@ -1,8 +1,11 @@
 from fastapi import FastAPI, HTTPException, Header, Depends, Query, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import uuid
+import os
 
 from models import (
     StudentProfile, SkillItem, SkillGapItem, CareerMatch,
@@ -423,13 +426,37 @@ class ChatRequest(BaseModel):
 async def chat_with_copilot(req: ChatRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return await LLMService.chat_copilot(current_user, req.message)
 
+@app.get("/api/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "AI Career + Finance Copilot",
+        "version": "2.1.0"
+    }
+
+# ==================== STATIC FRONTEND SERVING (UNIFIED RENDER DEPLOYMENT) ====================
+frontend_dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+if not os.path.exists(frontend_dist_dir):
+    # Try alternative path if running inside backend folder
+    frontend_dist_dir = os.path.abspath(os.path.join(os.getcwd(), "frontend", "dist"))
+
+if os.path.exists(frontend_dist_dir):
+    assets_dir = os.path.join(frontend_dist_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        file_path = os.path.join(frontend_dist_dir, full_path)
+        if full_path and os.path.exists(file_path) and not os.path.isdir(file_path):
+            return FileResponse(file_path)
+        index_file = os.path.join(frontend_dist_dir, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        return {"status": "Frontend not built yet. Run `npm run build` in frontend directory."}
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
-from fastapi import FastAPI
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
 
-app = FastAPI()
-
-@app.get("/")
-def root():
-    return {"message": "Hello from AI-Career-Fintech"}
