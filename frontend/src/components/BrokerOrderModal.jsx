@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 
-export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrderExecuted, brokerStatus }) {
+export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrderExecuted, brokerStatus, executionEnvironment = 'PAPER' }) {
   const [transactionType, setTransactionType] = useState(orderParams?.type || 'BUY');
   const [orderType, setOrderType] = useState('MARKET'); // 'MARKET' or 'LIMIT'
   const [product, setProduct] = useState('CNC'); // 'CNC' (Delivery) or 'MIS' (Intraday)
@@ -21,18 +21,26 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
   const [orderResult, setOrderResult] = useState(null);
   const [error, setError] = useState('');
 
+  const [step, setStep] = useState('TICKET'); // 'TICKET', 'CONFIRM', 'RESULT'
+
   if (!isOpen || !orderParams) return null;
 
   const currentPrice = orderParams.price || 1000;
   const executionPrice = orderType === 'LIMIT' ? limitPrice : currentPrice;
   const estimatedTotal = roundTwo(quantity * executionPrice);
+  const estimatedCharges = roundTwo(Math.max(1.5, estimatedTotal * (product === 'CNC' ? 0.0012 : 0.0003)));
 
   function roundTwo(num) {
     return Math.round((num + Number.EPSILON) * 100) / 100;
   }
 
-  const handlePlaceOrder = async (e) => {
+  const handleProceedToConfirm = (e) => {
     e.preventDefault();
+    setError('');
+    setStep('CONFIRM');
+  };
+
+  const handlePlaceOrder = async () => {
     setError('');
     try {
       setLoading(true);
@@ -43,12 +51,15 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
         order_type: orderType,
         product: product,
         quantity: parseInt(quantity, 10),
-        price: orderType === 'LIMIT' ? parseFloat(limitPrice) : null
+        price: orderType === 'LIMIT' ? parseFloat(limitPrice) : null,
+        execution_mode: executionEnvironment
       });
       setOrderResult(res);
+      setStep('RESULT');
       if (onOrderExecuted) onOrderExecuted();
     } catch (err) {
       setError(err.message || 'Order execution failed.');
+      setStep('TICKET');
     } finally {
       setLoading(false);
     }
@@ -56,6 +67,7 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
 
   const handleClose = () => {
     setOrderResult(null);
+    setStep('TICKET');
     setError('');
     onClose();
   };
@@ -73,12 +85,12 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
           </button>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/80">
             <Building className="w-4 h-4" />
-            <span>Broker OMS • NSE Execution</span>
+            <span>Broker OMS • NSE Execution • {step === 'CONFIRM' ? 'Step 2/2 Review' : 'Step 1/2 Ticket'}</span>
           </div>
           <div className="flex items-baseline justify-between mt-2">
             <div>
               <h3 className="text-2xl font-black">{orderParams.symbol}</h3>
-              <span className="text-xs text-white/80 font-semibold">NSE Equity</span>
+              <span className="text-xs text-white/80 font-semibold">{orderParams.company || 'NSE Equity'}</span>
             </div>
             <div className="text-right">
               <span className="text-2xl font-black">₹{currentPrice.toFixed(2)}</span>
@@ -96,7 +108,7 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
             </div>
           )}
 
-          {orderResult ? (
+          {step === 'RESULT' && orderResult ? (
             <div className="text-center py-4 space-y-3">
               <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-xl font-bold">
                 <CheckCircle2 className="w-6 h-6" />
@@ -119,8 +131,12 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
                   <span className="font-bold text-stone-800">₹{orderResult.price.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-stone-400">Estimated Charges:</span>
+                  <span className="font-bold text-stone-800">₹{(orderResult.estimated_charges || estimatedCharges).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-stone-400">Status:</span>
-                  <span className="font-bold text-emerald-600">{orderResult.status}</span>
+                  <span className="font-bold text-emerald-600">{orderResult.status} ({orderResult.execution_mode || 'LIVE'})</span>
                 </div>
               </div>
               <button
@@ -130,8 +146,90 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
                 Done
               </button>
             </div>
+          ) : step === 'CONFIRM' ? (
+            /* STEP 2: MANDATORY CONFIRMATION SCREEN */
+            <div className="space-y-4">
+              <div className={`p-4 rounded-2xl border space-y-2 ${
+                executionEnvironment === 'LIVE'
+                  ? 'bg-rose-50/80 border-rose-300 text-rose-950'
+                  : 'bg-amber-50/80 border-amber-300 text-amber-950'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider block">
+                    ⚠️ Pre-Execution Order Confirmation
+                  </span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+                    executionEnvironment === 'LIVE' ? 'bg-rose-600 text-white' : 'bg-amber-400 text-stone-900'
+                  }`}>
+                    {executionEnvironment === 'LIVE' ? '🔴 LIVE REAL-MONEY TRADE' : '📄 PAPER SIMULATION TRADE'}
+                  </span>
+                </div>
+                <p className="text-xs leading-relaxed font-medium">
+                  {executionEnvironment === 'LIVE'
+                    ? 'This order will be dispatched to your connected SEBI regulated broker OMS for actual market execution.'
+                    : 'This order will be matched in risk-free paper simulation. No real money or margin will be deducted.'}
+                </p>
+              </div>
+
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-stone-200">
+                  <span className="text-stone-500 font-bold">Action & Security</span>
+                  <span className="font-black text-stone-900">{transactionType} {orderParams.symbol}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-stone-200">
+                  <span className="text-stone-500 font-bold">Quantity & Product</span>
+                  <span className="font-black text-stone-900">{quantity} Shares • {product === 'CNC' ? 'CNC (Delivery)' : 'MIS (Intraday)'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-stone-200">
+                  <span className="text-stone-500 font-bold">Order Type</span>
+                  <span className="font-black text-stone-900">{orderType} {orderType === 'LIMIT' ? `@ ₹${parseFloat(limitPrice).toFixed(2)}` : '(Market LTP)'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-stone-200">
+                  <span className="text-stone-500 font-bold">Estimated Order Value</span>
+                  <span className="font-black text-stone-900">₹{estimatedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-stone-200">
+                  <span className="text-stone-500 font-bold">Estimated Charges (STT + SEBI)</span>
+                  <span className="font-bold text-stone-700">~₹{estimatedCharges.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-1 text-sm font-black text-stone-900">
+                  <span>Total Capital Required</span>
+                  <span className="text-emerald-700">₹{(estimatedTotal + estimatedCharges).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-stone-100 rounded-xl text-[11px] text-stone-600 space-y-1 font-sans">
+                <p>• <strong>Custody Account:</strong> {brokerStatus?.broker_name || 'SEBI Sandbox Demat'} ({brokerStatus?.account_id || 'DEMO-GUEST'})</p>
+                <p>• <strong>Market Warning:</strong> Market prices can fluctuate dynamically before exchange matching.</p>
+                <p>• <strong>Zero Silent Trades:</strong> CareerWealth requires your explicit authorization before routing any trade.</p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep('TICKET')}
+                  disabled={loading}
+                  className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  ← Edit Ticket
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePlaceOrder}
+                  disabled={loading}
+                  className={`flex-1 py-2.5 text-white rounded-xl text-xs font-black shadow-md transition flex items-center justify-center gap-2 cursor-pointer ${
+                    transactionType === 'BUY'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
+                      : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/25'
+                  }`}
+                >
+                  {loading ? 'Routing to Broker OMS...' : `Confirm & Execute ${transactionType}`}
+                </button>
+              </div>
+            </div>
           ) : (
-            <form onSubmit={handlePlaceOrder} className="space-y-4">
+            /* STEP 1: CONFIGURE TICKET */
+            <form onSubmit={handleProceedToConfirm} className="space-y-4">
               {/* Buy / Sell Toggle */}
               <div className="grid grid-cols-2 gap-2 p-1 bg-stone-100 rounded-2xl">
                 <button
@@ -249,8 +347,8 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
                   <span className="text-lg font-black text-stone-900">₹{estimatedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="text-right text-[10px] text-stone-500 font-semibold">
-                  <div>Brokerage: ₹0 (Free Delivery)</div>
-                  <div>STT + Exchange: ~₹{(estimatedTotal * 0.001).toFixed(2)}</div>
+                  <div>Brokerage: ₹0 (Delivery)</div>
+                  <div>Estimated Taxes: ~₹{estimatedCharges.toFixed(2)}</div>
                 </div>
               </div>
 
@@ -272,14 +370,13 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
                   className={`flex-1 py-2.5 text-white rounded-xl text-xs font-black shadow-md transition flex items-center justify-center gap-2 cursor-pointer ${
                     transactionType === 'BUY'
                       ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
                       : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/25'
                   }`}
                 >
-                  {loading ? 'Submitting to OMS...' : `Confirm ${transactionType} (${quantity} Qty)`}
+                  <span>Review Order →</span>
                 </button>
               </div>
             </form>

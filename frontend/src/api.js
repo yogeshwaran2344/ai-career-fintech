@@ -359,6 +359,40 @@ export const api = {
   // REAL AI WEALTH COPILOT AUDIT
   getRealAiWealthAudit: async () => {
     return authFetch(`${API_BASE}/wealth/ai-audit`);
+  },
+
+  // ORDER LIFECYCLE & CATEGORIZED SUMMARY
+  getBrokerOrdersSummary: async () => {
+    return authFetch(`${API_BASE}/broker/orders/summary`);
+  },
+
+  // FLAGSHIP CAREER ROI VS INVESTMENT ROI COMPARISON
+  compareCareerVsInvestment: async (capitalAmount = 10000, certName = 'AWS Solutions Architect / Deep Learning Spec', certCost = 10000) => {
+    return authFetch(`${API_BASE}/career/career-vs-investment`, {
+      method: 'POST',
+      body: JSON.stringify({
+        capital_amount: capitalAmount,
+        certification_or_course_name: certName,
+        certification_cost: certCost
+      }),
+    });
+  },
+
+  // FINANCIAL SAFETY RESILIENCE CENTER
+  getFinancialSafety: async () => {
+    return authFetch(`${API_BASE}/wealth/financial-safety`);
+  },
+
+  // SESSION & DEVICE MANAGEMENT
+  logout: async () => {
+    return authFetch(`${API_BASE}/auth/logout`, { method: 'POST' });
+  },
+  logoutAll: async () => {
+    return authFetch(`${API_BASE}/auth/logout-all`, { method: 'POST' });
+  },
+  getSessions: async () => {
+    return authFetch(`${API_BASE}/auth/sessions`);
   }
 };
+
 

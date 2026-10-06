@@ -59,6 +59,9 @@ import BrokerConnectModal from './BrokerConnectModal';
 import BrokerOrderModal from './BrokerOrderModal';
 import SafeUpiMandateModal from './SafeUpiMandateModal';
 import RealAiWealthAuditTab from './RealAiWealthAuditTab';
+import OrdersLedgerTab from './OrdersLedgerTab';
+import CareerVsInvestmentTab from './CareerVsInvestmentTab';
+import FinancialSafetyTab from './FinancialSafetyTab';
 
 const TrendingUpIcon = TrendingUp;
 const WalletIcon = Wallet;
@@ -78,7 +81,8 @@ const InfoIcon = Info;
 const LayersIcon = Layers;
 
 export default function InvestmentView({ profile }) {
-  const [activeSubTab, setActiveSubTab] = useState('livemarket'); // 'livemarket', 'broker', 'portfolio', 'realai', 'invest', 'goals', 'rules', 'safety', 'digitaltwin', 'scam', 'guide'
+  const [activeSubTab, setActiveSubTab] = useState('livemarket'); // 'livemarket', 'broker', 'portfolio', 'realai', 'invest', 'goals', 'rules', 'safety', 'digitaltwin', 'scam', 'guide', 'orders', 'careervsinvest'
+  const [executionEnvironment, setExecutionEnvironment] = useState('PAPER'); // 'PAPER' | 'LIVE'
   const [investMode, setInvestMode] = useState('individual'); // 'individual' (Mode 1) or 'baskets' (Mode 2)
   const [individualFilter, setIndividualFilter] = useState('ALL');
   const [assetAmounts, setAssetAmounts] = useState({});
@@ -414,10 +418,10 @@ export default function InvestmentView({ profile }) {
         
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="bg-white/20 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-xs flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
-                <span>Live NSE/BSE Telemetry & Broker OMS</span>
+                <span>Live NSE/BSE Telemetry</span>
               </span>
               <button 
                 onClick={() => setIsBrokerModalOpen(true)}
@@ -425,13 +429,42 @@ export default function InvestmentView({ profile }) {
               >
                 {brokerStatus?.connected ? `🟢 Connected: ${brokerStatus.broker_name}` : '⚡ Connect Broker / Demat'}
               </button>
+              
+              {/* PAPER vs LIVE Execution Mode Toggle Pill */}
+              <div className="flex items-center bg-black/30 p-0.5 rounded-full border border-white/25">
+                <button
+                  type="button"
+                  onClick={() => setExecutionEnvironment('PAPER')}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold transition cursor-pointer ${
+                    executionEnvironment === 'PAPER'
+                      ? 'bg-amber-400 text-stone-900 shadow-sm'
+                      : 'text-stone-200 hover:text-white'
+                  }`}
+                  title="Virtual Paper Trading (Risk-free simulation)"
+                >
+                  📄 PAPER SIMULATION
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExecutionEnvironment('LIVE')}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold transition cursor-pointer flex items-center gap-1 ${
+                    executionEnvironment === 'LIVE'
+                      ? 'bg-rose-500 text-white shadow-sm'
+                      : 'text-stone-200 hover:text-white'
+                  }`}
+                  title="Live Order Execution via Connected Broker OMS"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                  🔴 LIVE BROKER OMS
+                </button>
+              </div>
             </div>
             <h1 className="text-2xl md:text-3xl font-black text-white mt-1.5 flex items-center gap-2">
               <span>Live Indian Markets & Regulated Wealth Execution</span>
               <SparklesIcon className="w-6 h-6 text-amber-300" />
             </h1>
             <p className="text-xs text-emerald-100 mt-1 max-w-2xl leading-relaxed">
-              Real-time NSE/BSE ticks, pluggable broker custody (Zerodha, Upstox, Angel One), safe NPCI UPI mandates, and live portfolio AI audit.
+              Real-time NSE/BSE ticks, pluggable broker custody (Zerodha, Upstox, Angel One), safe NPCI UPI mandates, statutory tax breakdown, and AI Career vs Investment comparator.
             </p>
           </div>
 
@@ -463,11 +496,13 @@ export default function InvestmentView({ profile }) {
           { id: 'livemarket', label: '📊 Live Markets (NSE/BSE)', icon: BarChart3 },
           { id: 'broker', label: '🏦 Connect Demat & Broker', icon: BuildingIcon },
           { id: 'portfolio', label: '💼 Live Broker Portfolio', icon: WalletIcon },
+          { id: 'orders', label: '📋 Order History & Taxes', icon: Clock },
+          { id: 'careervsinvest', label: '⚖️ Career ROI vs Investment', icon: SparklesIcon },
+          { id: 'safety', label: '🛡️ Financial Safety Center', icon: ShieldCheckIcon },
           { id: 'realai', label: '🧠 Real AI Wealth Audit', icon: SparklesIcon },
           { id: 'invest', label: '🚀 Curated Baskets & SIPs', icon: SparklesIcon },
           { id: 'goals', label: '🎯 Smart Savings Goals', icon: PiggyBankIcon },
           { id: 'rules', label: '⚡ Auto-Saving Rules', icon: ZapIcon },
-          { id: 'safety', label: '🛡️ Safety Gate', icon: ShieldCheckIcon },
           { id: 'digitaltwin', label: '🔮 Career Digital Twin', icon: LayersIcon },
           { id: 'scam', label: '🚨 AI Scam Detector', icon: AlertTriangleIcon },
           { id: 'guide', label: '📖 Student Demat Guide', icon: InfoIcon },
@@ -1606,72 +1641,29 @@ export default function InvestmentView({ profile }) {
       )}
 
       {/* ======================================================== */}
-      {/* SUB-TAB 5: SAFETY GATE & INVEST VS LEARN */}
+      {/* SUB-TAB: ORDERS & REGULATORY CHARGES LEDGER */}
+      {/* ======================================================== */}
+      {activeSubTab === 'orders' && (
+        <OrdersLedgerTab
+          onNewOrder={() => {
+            setOrderModalParams({ symbol: 'RELIANCE', price: 2950, type: 'BUY' });
+            setIsOrderModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* ======================================================== */}
+      {/* SUB-TAB: CAREER ROI VS INVESTMENT COMPARATOR */}
+      {/* ======================================================== */}
+      {activeSubTab === 'careervsinvest' && (
+        <CareerVsInvestmentTab />
+      )}
+
+      {/* ======================================================== */}
+      {/* SUB-TAB: FINANCIAL SAFETY CENTER & 5-GATE PREREQUISITES */}
       {/* ======================================================== */}
       {activeSubTab === 'safety' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="advisor-card p-6 border-l-4 border-l-emerald-500 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-black text-stone-900">Student Investment Safety Gate</h3>
-                <p className="text-xs text-stone-500">SEBI-aligned prerequisite checklist before exposing capital to market risks</p>
-              </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-black ${
-                readiness?.safety_gate_passed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-              }`}>
-                {readiness?.safety_gate_passed ? '🟢 Safety Gate Cleared' : '🟡 Caution Advised'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-              {readiness?.safety_checks?.map((sc, idx) => (
-                <div key={idx} className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5 text-xs">
-                  <span className="mt-0.5">{sc.passed ? '✅' : '⚠️'}</span>
-                  <div>
-                    <span className="font-bold text-stone-900 block">{sc.check_name}</span>
-                    <span className="text-stone-500 text-[11px]">{sc.details}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Invest vs Learn vs Save Evaluator */}
-          {oppResult && (
-            <div className="advisor-card p-6 space-y-5">
-              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-                <div>
-                  <h3 className="text-base font-black text-stone-900">"What Should I Do With My Next ₹{oppResult.amount_inr}?"</h3>
-                  <p className="text-xs text-stone-500">Dynamic comparative evaluation across Career, Emergency Safety, and Market SIP</p>
-                </div>
-              </div>
-
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
-                <span className="text-[10px] font-black uppercase text-emerald-900 tracking-wider">AI Copilot Strategic Winner:</span>
-                <h4 className="text-base font-black text-emerald-950">{oppResult.verdict_headline}</h4>
-                <p className="text-xs text-stone-700 leading-relaxed font-sans">{oppResult.ai_strategic_guidance}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {oppResult.options.map(opt => (
-                  <div key={opt.option_id} className={`advisor-card p-4 space-y-2.5 border ${
-                    opt.option_id === oppResult.primary_winner_id ? 'border-2 border-emerald-600 bg-emerald-50/20' : 'border-stone-200'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-stone-900">{opt.title}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-stone-100 text-stone-700">{opt.recommendation_badge}</span>
-                    </div>
-                    <div className="text-[11px] text-stone-600 space-y-1 bg-white p-2.5 rounded-xl border border-stone-200">
-                      <div><strong>Career Impact:</strong> {opt.immediate_career_impact}</div>
-                      <div><strong>Financial Risk:</strong> {opt.financial_risk}</div>
-                    </div>
-                    <p className="text-[11px] text-stone-600 leading-relaxed">{opt.rationale}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <FinancialSafetyTab />
       )}
 
       {/* ======================================================== */}
@@ -2409,6 +2401,7 @@ export default function InvestmentView({ profile }) {
         }}
         orderParams={orderModalParams}
         brokerStatus={brokerStatus}
+        executionEnvironment={executionEnvironment}
         onOrderExecuted={() => {
           fetchBrokerDetails();
           fetchHubData();

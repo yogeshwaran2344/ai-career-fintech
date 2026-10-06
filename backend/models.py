@@ -1150,6 +1150,7 @@ class PlaceBrokerOrderRequest(BaseModel):
     product: str = "CNC"  # "CNC" (Cash & Carry Delivery), "MIS" (Intraday)
     quantity: int
     price: Optional[float] = None
+    execution_mode: Optional[str] = "PAPER"
 
 class BrokerOrderResult(BaseModel):
     order_id: str
@@ -1162,7 +1163,9 @@ class BrokerOrderResult(BaseModel):
     product: str
     quantity: int
     price: float
+    estimated_charges: float = 0.0
     status: str  # "EXECUTED", "REJECTED", "SUBMITTED"
+    execution_mode: str = "LIVE"  # "LIVE" or "PAPER"
     rejection_reason: Optional[str] = None
     message: str
     timestamp: str
@@ -1189,6 +1192,82 @@ class RealAiWealthAuditResponse(BaseModel):
     top_holding_risk: str
     student_cash_flow_advice: str
     sebi_educational_disclaimer: str
+
+class BrokerOrderItem(BaseModel):
+    id: str
+    broker_order_id: Optional[str] = None
+    broker_name: str
+    symbol: str
+    exchange: str = "NSE"
+    transaction_type: str  # "BUY" or "SELL"
+    order_type: str = "MARKET"
+    product: str = "CNC"
+    quantity: int
+    requested_price: Optional[float] = None
+    executed_price: Optional[float] = None
+    estimated_charges: float = 0.0
+    status: str  # "EXECUTED", "PENDING", "REJECTED", "CANCELLED", "FAILED"
+    execution_mode: str = "LIVE"  # "LIVE" or "PAPER"
+    failure_reason: Optional[str] = None
+    created_at: str
+
+class OrdersSummaryResponse(BaseModel):
+    all_orders: List[BrokerOrderItem]
+    pending_orders: List[BrokerOrderItem]
+    executed_orders: List[BrokerOrderItem]
+    rejected_orders: List[BrokerOrderItem]
+    cancelled_orders: List[BrokerOrderItem]
+    total_orders_count: int
+    active_environment: str  # "LIVE" or "PAPER"
+
+class CareerVsInvestmentDecisionRequest(BaseModel):
+    capital_amount: float = 10000.0
+    certification_or_course_name: str = "AWS Solutions Architect / Deep Learning Specialization"
+    certification_cost: float = 10000.0
+    career_goal: Optional[str] = None
+
+class CareerOptionProjection(BaseModel):
+    option_title: str
+    cost_inr: float
+    expected_skill_boost_pct: float
+    career_readiness_lift_pct: float
+    estimated_annual_salary_impact_inr: float
+    payback_period_months: float
+    verdict_badge: str
+    disclaimer: str
+
+class InvestmentOptionProjection(BaseModel):
+    option_title: str
+    principal_amount_inr: float
+    expected_3y_cagr_estimate_pct: float
+    projected_corpus_3y_inr: float
+    risk_level: str
+    liquidity_rating: str
+    disclaimer: str
+
+class CareerVsInvestmentDecisionResponse(BaseModel):
+    capital_amount: float
+    career_option: CareerOptionProjection
+    investment_option: InvestmentOptionProjection
+    ai_verdict: str  # "CERTIFICATION_RECOMMENDED", "INVESTMENT_RECOMMENDED", "BALANCED_SPLIT"
+    strategic_rationale: str
+    attribution_factors: List[Dict[str, str]]
+    confidence_score: int
+    sebi_scenario_disclaimer: str
+
+class FinancialSafetyCheckResponse(BaseModel):
+    emergency_fund_target_inr: float
+    emergency_fund_current_inr: float
+    emergency_fund_pct: int
+    runway_months: float
+    debt_level: str
+    monthly_disposable_cash_flow_inr: float
+    investment_risk_profile: str
+    insurance_health_status: str
+    readiness_for_equity_investing: bool
+    safety_gates: List[Dict[str, Any]]
+    actionable_remedy: str
+
 
 
 

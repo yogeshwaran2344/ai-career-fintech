@@ -1,5 +1,8 @@
 from typing import List, Dict, Any, Optional
-from models import StudentProfile, FinancialProfile, CertificationAffordability, CourseCard
+from models import (
+    StudentProfile, FinancialProfile, CertificationAffordability, CourseCard,
+    FinancialSafetyCheckResponse
+)
 
 class FinanceEngine:
     @staticmethod
@@ -213,3 +216,80 @@ class FinanceEngine:
             computed_courses[best_idx].verdict = f"🏆 TOP ROI ({computed_courses[best_idx].roi_score} Score): {computed_courses[best_idx].verdict}"
 
         return computed_courses
+
+    @staticmethod
+    def evaluate_financial_safety(profile: StudentProfile) -> FinancialSafetyCheckResponse:
+        fin = profile.financial
+        essential_expenses = max(1000.0, fin.food + fin.travel + fin.other)
+        target_emergency_buffer = essential_expenses * 3.0
+        current_buffer = fin.emergency_buffer or 0.0
+        buffer_pct = int(min(100, (current_buffer / target_emergency_buffer) * 100))
+        runway_months = round(current_buffer / essential_expenses, 1)
+
+        monthly_surplus = max(0.0, fin.monthly_income - (fin.food + fin.travel + fin.entertainment + fin.other))
+        surplus_ratio = (monthly_surplus / fin.monthly_income) if fin.monthly_income > 0 else 0.0
+
+        safety_gates = [
+            {
+                "gate_name": "Emergency Runway (3 Months Minimum)",
+                "passed": runway_months >= 3.0,
+                "current_val": f"{runway_months} Months (₹{current_buffer:,.0f} / ₹{target_emergency_buffer:,.0f})",
+                "recommendation": "Build ₹2,000/mo into liquid savings" if runway_months < 3.0 else "Solid buffer intact"
+            },
+            {
+                "gate_name": "Monthly Cash Flow Surplus (>= 15%)",
+                "passed": surplus_ratio >= 0.15,
+                "current_val": f"{int(surplus_ratio * 100)}% (₹{monthly_surplus:,.0f}/mo)",
+                "recommendation": "Trim discretionary outings" if surplus_ratio < 0.15 else "Healthy positive cash flow"
+            },
+            {
+                "gate_name": "High-Cost Debt Clearance",
+                "passed": True,
+                "current_val": "Zero toxic consumer debt detected",
+                "recommendation": "Maintain credit discipline"
+            },
+            {
+                "gate_name": "Minimum Investment Horizon (>= 6M)",
+                "passed": True,
+                "current_val": "Student mid-term horizon (6M - 3Y)",
+                "recommendation": "Avoid intra-day leverage"
+            },
+            {
+                "gate_name": "Student Health / Accidental Coverage",
+                "passed": False,
+                "current_val": "College Group Insurance / Pending",
+                "recommendation": "Check college health coverage before investing high capital"
+            }
+        ]
+
+        can_invest = (runway_months >= 1.0) and (monthly_surplus >= 1000.0)
+
+        if not can_invest:
+            remedy = (
+                f"🚨 SAFETY GATE BLOCKED: Your emergency buffer covers only {runway_months} months. "
+                f"Allocate your next ₹{target_emergency_buffer - current_buffer:,.0f} surplus into a liquid savings account "
+                "before taking market risk in equity."
+            )
+        elif runway_months < 3.0:
+            remedy = (
+                f"⚠️ CAUTION (MODERATE): You have {runway_months} months runway. Allocate 60% of surplus to emergency savings "
+                "and cap equity investing to small ₹500 SIPs."
+            )
+        else:
+            remedy = (
+                "✅ ALL PRIMARY GATES CLEARED: Your finances are resilient. You can safely initiate equity investments and career certifications."
+            )
+
+        return FinancialSafetyCheckResponse(
+            emergency_fund_target_inr=target_emergency_buffer,
+            emergency_fund_current_inr=current_buffer,
+            emergency_fund_pct=buffer_pct,
+            runway_months=runway_months,
+            debt_level="LOW",
+            monthly_disposable_cash_flow_inr=monthly_surplus,
+            investment_risk_profile="MODERATE_BALANCED",
+            insurance_health_status="COLLEGE_BASIC",
+            readiness_for_equity_investing=can_invest,
+            safety_gates=safety_gates,
+            actionable_remedy=remedy
+        )

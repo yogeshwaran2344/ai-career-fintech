@@ -437,6 +437,64 @@ def run_tests():
         f"Buffer: {audit_data.get('emergency_buffer_status')} Sectors: {list(audit_data.get('sector_concentration', {}).keys())} Advice: {audit_data.get('student_cash_flow_advice')[:50]}..."
     )
 
+    # 12. Broker Orders Summary with Statutory Charges
+    res_orders_summary = requests.get(f"{BASE_URL}/api/broker/orders/summary", headers=headers)
+    orders_summary_data = res_orders_summary.json()
+    assert_test(
+        res_orders_summary.status_code == 200 and "all_orders" in orders_summary_data,
+        "Broker Orders Summary & Statutory Charges Ledger",
+        f"Total Orders: {orders_summary_data.get('total_orders_count')} Mode: {orders_summary_data.get('active_environment')}"
+    )
+
+    # 13. Career ROI vs Investment ROI Comparator
+    career_inv_payload = {
+        "capital_amount": 10000.0,
+        "certification_or_course_name": "AWS Certified Solutions Architect & LangChain",
+        "certification_cost": 10000.0,
+        "career_goal": "AI Engineer"
+    }
+    res_career_inv = requests.post(f"{BASE_URL}/api/career/career-vs-investment", json=career_inv_payload, headers=headers)
+    career_inv_data = res_career_inv.json()
+    assert_test(
+        res_career_inv.status_code == 200 and "career_option" in career_inv_data and "investment_option" in career_inv_data,
+        "Career ROI vs Investment ROI Comparative Engine",
+        f"Verdict: {career_inv_data.get('ai_verdict')} Payback: {career_inv_data.get('career_option', {}).get('payback_period_months')} mo"
+    )
+
+    # 14. Financial Safety Center (5-Gate Prerequisite Evaluation)
+    res_safety = requests.get(f"{BASE_URL}/api/wealth/financial-safety", headers=headers)
+    safety_data = res_safety.json()
+    assert_test(
+        res_safety.status_code == 200 and len(safety_data.get("safety_gates", [])) == 5,
+        "Financial Safety Center 5-Gate Prerequisite Checklist",
+        f"Passed: {safety_data.get('readiness_for_equity_investing')} Runway: {safety_data.get('runway_months')} months"
+    )
+
+    # 15. Active Session & Device Management
+    res_sessions = requests.get(f"{BASE_URL}/api/auth/sessions", headers=headers)
+    sessions_data = res_sessions.json()
+    assert_test(
+        res_sessions.status_code == 200 and len(sessions_data.get("active_sessions", [])) >= 1,
+        "Active Session & Device Audit Trail",
+        f"Active Sessions: {len(sessions_data.get('active_sessions', []))}"
+    )
+
+    # 16. Session Revocation (Logout)
+    res_logout = requests.post(f"{BASE_URL}/api/auth/logout", headers=headers)
+    assert_test(
+        res_logout.status_code == 200 and res_logout.json().get("logged_out") is True,
+        "Session Revocation & Secure Token Invalidation",
+        f"Logout Response: {res_logout.json()}"
+    )
+
+    # 17. Verify revoked token is now rejected
+    res_post_logout = requests.get(f"{BASE_URL}/api/career/readiness", headers=headers)
+    assert_test(
+        res_post_logout.status_code == 401,
+        "Revoked Token Rejected with 401 Unauthorized",
+        f"Status: {res_post_logout.status_code}"
+    )
+
     print("\n==================================================================")
     print(f"🎯 TEST SUMMARY: {passed} / {total} Passed ({int(passed/total*100)}%)")
     print("==================================================================")

@@ -5,19 +5,46 @@ import os
 import uuid
 import datetime
 from typing import Dict, Any, Optional, List, Tuple
+import bcrypt
 from models import StudentProfile, AcademicProfile, SkillItem, FinancialProfile, PreferencesProfile
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "advisor.db")
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+IS_POSTGRES = DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA busy_timeout=30000;")
-    return conn
+    if IS_POSTGRES:
+        import psycopg2
+        import psycopg2.extras
+        url = DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
+        return conn
+    else:
+        conn = sqlite3.connect(DB_PATH, timeout=30.0)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout=30000;")
+        return conn
 
-def hash_password(password: str, salt: str = "advisor_secure_salt_2026") -> str:
-    return hashlib.sha256(f"{password}:{salt}".encode("utf-8")).hexdigest()
+def hash_password(password: str) -> str:
+    """Hash password using bcrypt with an individual unique 12-round salt."""
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password with bcrypt, falling back to legacy SHA-256 for backward compatibility."""
+    if not plain_password or not hashed_password:
+        return False
+    try:
+        if hashed_password.startswith("$2b$") or hashed_password.startswith("$2a$"):
+            return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+        # Legacy fallback
+        legacy_hash = hashlib.sha256(f"{plain_password}:advisor_secure_salt_2026".encode("utf-8")).hexdigest()
+        return legacy_hash == hashed_password
+    except Exception:
+        return False
 
 def init_database():
     conn = get_db_connection()
@@ -45,15 +72,33 @@ def init_database():
         )
     """)
 
-    # 3. Active Sessions Table
+    # 3. Active Sessions Table (with Expiry, Revocation, and Device Tracking)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             token TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
+            device_info TEXT DEFAULT 'Desktop Browser',
+            ip_address TEXT DEFAULT '127.0.0.1',
+            is_revoked INTEGER DEFAULT 0,
+            expires_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_active_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
+
+    # Auto-migrate existing sessions table if needed
+    for col_def in [
+        "device_info TEXT DEFAULT 'Desktop Browser'",
+        "ip_address TEXT DEFAULT '127.0.0.1'",
+        "is_revoked INTEGER DEFAULT 0",
+        "expires_at TIMESTAMP",
+        "last_active_at TIMESTAMP"
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE sessions ADD COLUMN {col_def}")
+        except Exception:
+            pass
 
     # 4. Date-Aware Daily Tasks Table
     cursor.execute("""
@@ -270,12 +315,32 @@ class DatabaseManager:
     def get_user_by_token(token: str) -> Optional[StudentProfile]:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT user_id FROM sessions WHERE token = ?", (token,))
+        cursor.execute("SELECT user_id, is_revoked, expires_at FROM sessions WHERE token = ?", (token,))
         row = cursor.fetchone()
         if not row:
             conn.close()
             return None
+        
+        # Check revocation
+        if row["is_revoked"] == 1:
+            conn.close()
+            return None
+
+        # Check expiration
+        expires_at_val = row["expires_at"]
+        if expires_at_val:
+            try:
+                exp_dt = datetime.datetime.fromisoformat(expires_at_val.replace("Z", ""))
+                if datetime.datetime.utcnow() > exp_dt:
+                    conn.close()
+                    return None
+            except Exception:
+                pass
+        
         user_id = row["user_id"]
+        cursor.execute("UPDATE sessions SET last_active_at = CURRENT_TIMESTAMP WHERE token = ?", (token,))
+        conn.commit()
+
         cursor.execute("SELECT profile_json FROM profiles WHERE user_id = ?", (user_id,))
         p_row = cursor.fetchone()
         conn.close()
@@ -319,6 +384,7 @@ class DatabaseManager:
         profile.avatar = avatar
         pass_hash = hash_password(password_plain)
         token = f"token-{uuid.uuid4().hex}"
+        expires_at = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -331,22 +397,54 @@ class DatabaseManager:
             (user_id, profile.model_dump_json())
         )
         cursor.execute(
-            "INSERT INTO sessions (token, user_id) VALUES (?, ?)",
-            (token, user_id)
+            "INSERT INTO sessions (token, user_id, device_info, ip_address, is_revoked, expires_at) VALUES (?, ?, 'Desktop Browser', '127.0.0.1', 0, ?)",
+            (token, user_id, expires_at)
         )
         conn.commit()
         conn.close()
         return user_id, token
 
     @staticmethod
-    def create_session(user_id: str) -> str:
+    def create_session(user_id: str, device_info: str = "Desktop Browser", ip_address: str = "127.0.0.1", duration_days: int = 7) -> str:
         token = f"token-{uuid.uuid4().hex}"
+        expires_at = (datetime.datetime.utcnow() + datetime.timedelta(days=duration_days)).isoformat()
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user_id))
+        cursor.execute(
+            "INSERT INTO sessions (token, user_id, device_info, ip_address, is_revoked, expires_at) VALUES (?, ?, ?, ?, 0, ?)",
+            (token, user_id, device_info, ip_address, expires_at)
+        )
         conn.commit()
         conn.close()
         return token
+
+    @staticmethod
+    def revoke_session(token: str):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE sessions SET is_revoked = 1 WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def revoke_all_user_sessions(user_id: str):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE sessions SET is_revoked = 1 WHERE user_id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get_active_sessions(user_id: str) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT token, device_info, ip_address, created_at, expires_at, last_active_at FROM sessions WHERE user_id = ? AND is_revoked = 0 ORDER BY last_active_at DESC",
+            (user_id,)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
 
     @staticmethod
     def delete_session(token: str):

@@ -38,8 +38,11 @@ from models import (
     LiveMarketQuote, MarketOverviewResponse, MarketChartResponse,
     BrokerConnectRequest, BrokerStatusResponse, BrokerPortfolioResponse,
     PlaceBrokerOrderRequest, BrokerOrderResult,
-    CreateUpiMandateRequest, UpiMandateResponse, RealAiWealthAuditResponse
+    CreateUpiMandateRequest, UpiMandateResponse, RealAiWealthAuditResponse,
+    OrdersSummaryResponse, CareerVsInvestmentDecisionRequest, CareerVsInvestmentDecisionResponse,
+    FinancialSafetyCheckResponse
 )
+from engines.career_comparator import CareerComparatorEngine
 from engines.career_engine import CareerEngine
 from engines.finance_engine import FinanceEngine
 from engines.investment_engine import InvestmentEngine
@@ -62,7 +65,7 @@ from engines.real_portfolio_engine import RealPortfolioEngine
 from engines.order_execution_engine import OrderExecutionEngine
 from engines.real_ai_wealth_copilot import RealAiWealthCopilot
 from database import (
-    DatabaseManager, hash_password
+    DatabaseManager, hash_password, verify_password
 )
 
 app = FastAPI(
@@ -71,12 +74,25 @@ app = FastAPI(
     version="3.0.0"
 )
 
-# Enable CORS for frontend
+# Security: Explicit Allowed Origins (No allow_origins=["*"] with credentials)
+ALLOWED_ORIGINS_ENV = os.environ.get("ALLOWED_ORIGINS", "")
+if ALLOWED_ORIGINS_ENV:
+    ALLOWED_ORIGINS = [o.strip() for o in ALLOWED_ORIGINS_ENV.split(",") if o.strip()]
+else:
+    ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -193,16 +209,15 @@ def login_user(req: UserLoginRequest):
     if not user_row:
         raise HTTPException(status_code=401, detail="Invalid email or password.")
         
-    expected_hash = hash_password(req.password)
-    if user_row["password_hash"] != expected_hash:
-        raise HTTPException(status_code=401, detail="Invalid password.")
+    if not verify_password(req.password, user_row["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
         
     uid = user_row["id"]
     profile = DatabaseManager.get_profile_by_user_id(uid)
     if not profile:
         raise HTTPException(status_code=404, detail="Student profile not found.")
         
-    token = DatabaseManager.create_session(uid)
+    token = DatabaseManager.create_session(uid, device_info="Web App / Desktop", duration_days=7)
     
     return AuthResponse(
         token=token,
@@ -219,9 +234,21 @@ def get_current_user_profile(current_user: StudentProfile = Depends(get_user_fro
 @app.post("/api/auth/logout")
 def logout_user(authorization: Optional[str] = Header(None)):
     if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        DatabaseManager.delete_session(token)
-    return {"message": "Session terminated successfully."}
+        token = authorization.split(" ")[1].strip()
+        DatabaseManager.revoke_session(token)
+    return {"message": "Session revoked successfully.", "logged_out": True}
+
+@app.post("/api/auth/logout-all")
+def logout_all_devices(current_user: StudentProfile = Depends(get_user_from_auth)):
+    DatabaseManager.revoke_all_user_sessions(current_user.id)
+    return {"message": "All active device sessions have been revoked."}
+
+@app.get("/api/auth/sessions")
+def get_user_sessions(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return {
+        "user_id": current_user.id,
+        "active_sessions": DatabaseManager.get_active_sessions(current_user.id)
+    }
 
 # ==================== PROFILE MANAGEMENT ====================
 
@@ -620,6 +647,18 @@ def place_broker_order(req: PlaceBrokerOrderRequest, current_user: StudentProfil
 @app.get("/api/broker/orders")
 def get_broker_order_history(current_user: StudentProfile = Depends(get_user_from_auth)):
     return DatabaseManager.get_user_broker_orders(current_user.id)
+
+@app.get("/api/broker/orders/summary", response_model=OrdersSummaryResponse)
+def get_broker_orders_summary(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return OrderExecutionEngine.get_orders_summary(current_user.id)
+
+@app.post("/api/career/career-vs-investment", response_model=CareerVsInvestmentDecisionResponse)
+def compare_career_vs_investment(req: CareerVsInvestmentDecisionRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerComparatorEngine.compare_career_vs_investment(current_user, req)
+
+@app.get("/api/wealth/financial-safety", response_model=FinancialSafetyCheckResponse)
+def get_financial_safety_status(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return FinanceEngine.evaluate_financial_safety(current_user)
 
 # ==================== SAFE NPCI UPI MANDATE FLOW (ZERO-PIN) ====================
 

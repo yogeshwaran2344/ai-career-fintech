@@ -1,12 +1,33 @@
 import uuid
 from datetime import datetime
 from typing import Dict, Any, Optional
-from models import PlaceBrokerOrderRequest, BrokerOrderResult, CreateUpiMandateRequest, UpiMandateResponse
+from models import (
+    PlaceBrokerOrderRequest, BrokerOrderResult, CreateUpiMandateRequest,
+    UpiMandateResponse, OrdersSummaryResponse, BrokerOrderItem
+)
 from database import DatabaseManager
 from engines.broker_adapters import BrokerManager, RegulatedSandboxBrokerAdapter
 from engines.market_data_service import MarketDataService
 
 class OrderExecutionEngine:
+    @staticmethod
+    def calculate_statutory_charges(trade_value: float, product: str = "CNC") -> float:
+        """
+        Calculate realistic Indian regulatory & exchange trading charges:
+        STT: 0.1% on delivery (CNC), 0.025% on intraday (MIS)
+        Exchange turnover charge: 0.00345%
+        SEBI turnover charge: 0.0001%
+        Stamp duty: 0.015%
+        GST: 18% on turnover & brokerage charges
+        """
+        stt = trade_value * 0.001 if product == "CNC" else trade_value * 0.00025
+        exchange_charges = trade_value * 0.0000345
+        sebi_charges = trade_value * 0.000001
+        stamp_duty = trade_value * 0.00015
+        gst = (exchange_charges + sebi_charges) * 0.18
+        total_charges = round(stt + exchange_charges + sebi_charges + stamp_duty + gst, 2)
+        return max(total_charges, 1.50)
+
     @staticmethod
     def execute_order(user_id: str, req: PlaceBrokerOrderRequest) -> BrokerOrderResult:
         if req.quantity <= 0:
@@ -14,12 +35,15 @@ class OrderExecutionEngine:
 
         adapter = BrokerManager.get_adapter_for_user(user_id)
         if not adapter:
-            # Use Regulated Sandbox Adapter for seamless demo
+            # Default to Sandbox Adapter for safe demo
             adapter = RegulatedSandboxBrokerAdapter("DEMO-STUDENT", "DEMO-TOKEN", is_sandbox=True)
 
         symbol = req.symbol.upper()
         # Verify symbol quote exists
         quote = MarketDataService.get_quote(symbol)
+
+        is_sandbox_broker = getattr(adapter, 'is_sandbox', True)
+        execution_mode = "PAPER" if is_sandbox_broker or req.execution_mode == "PAPER" else "LIVE"
 
         # Execute on broker OMS
         broker_res = adapter.place_order(
@@ -36,6 +60,8 @@ class OrderExecutionEngine:
         broker_order_id = broker_res["broker_order_id"]
         exec_price = broker_res["price"]
         status = broker_res.get("status", "EXECUTED")
+        trade_val = exec_price * req.quantity
+        estimated_charges = OrderExecutionEngine.calculate_statutory_charges(trade_val, req.product)
 
         # Record in audit database
         DatabaseManager.log_broker_order(
@@ -67,10 +93,59 @@ class OrderExecutionEngine:
             product=req.product,
             quantity=req.quantity,
             price=exec_price,
+            estimated_charges=estimated_charges,
             status=status,
+            execution_mode=execution_mode,
             rejection_reason=None,
-            message=broker_res.get("message", f"Order {req.transaction_type} {req.quantity} {symbol} successfully executed."),
+            message=broker_res.get("message", f"Order {req.transaction_type} {req.quantity} {symbol} successfully executed in {execution_mode} environment."),
             timestamp=ist_now
+        )
+
+    @staticmethod
+    def get_orders_summary(user_id: str) -> OrdersSummaryResponse:
+        raw_orders = DatabaseManager.get_user_broker_orders(user_id)
+        adapter = BrokerManager.get_adapter_for_user(user_id)
+        active_env = "PAPER" if (not adapter or getattr(adapter, 'is_sandbox', True)) else "LIVE"
+
+        all_items: list[BrokerOrderItem] = []
+        for r in raw_orders:
+            charges = OrderExecutionEngine.calculate_statutory_charges(
+                (r.get("price") or 1000.0) * r.get("quantity", 1),
+                r.get("product", "CNC")
+            )
+            item = BrokerOrderItem(
+                id=r.get("id", ""),
+                broker_order_id=r.get("broker_order_id"),
+                broker_name=r.get("broker_name", "SEBI Sandbox"),
+                symbol=r.get("symbol", ""),
+                exchange=r.get("exchange", "NSE"),
+                transaction_type=r.get("transaction_type", "BUY"),
+                order_type=r.get("order_type", "MARKET"),
+                product=r.get("product", "CNC"),
+                quantity=r.get("quantity", 1),
+                requested_price=r.get("price"),
+                executed_price=r.get("price"),
+                estimated_charges=charges,
+                status=r.get("status", "EXECUTED"),
+                execution_mode="PAPER" if "sandbox" in r.get("broker_name", "").lower() else "LIVE",
+                failure_reason=r.get("rejection_reason"),
+                created_at=r.get("created_at", "")
+            )
+            all_items.append(item)
+
+        pending = [o for o in all_items if o.status in ["PENDING", "SUBMITTED"]]
+        executed = [o for o in all_items if o.status == "EXECUTED"]
+        rejected = [o for o in all_items if o.status == "REJECTED"]
+        cancelled = [o for o in all_items if o.status in ["CANCELLED", "FAILED"]]
+
+        return OrdersSummaryResponse(
+            all_orders=all_items,
+            pending_orders=pending,
+            executed_orders=executed,
+            rejected_orders=rejected,
+            cancelled_orders=cancelled,
+            total_orders_count=len(all_items),
+            active_environment=active_env
         )
 
     @staticmethod

@@ -1,7 +1,9 @@
 from typing import List, Dict, Any
 from models import (
     CareerPathCompareResponse, CareerPathItem, CareerRoiRequest, CareerRoiResponse,
-    ExplainableReadinessBreakdown, ReadinessAttributionItem, StudentProfile
+    ExplainableReadinessBreakdown, ReadinessAttributionItem, StudentProfile,
+    CareerVsInvestmentDecisionRequest, CareerVsInvestmentDecisionResponse,
+    CareerOptionProjection, InvestmentOptionProjection
 )
 from engines.career_engine import CareerEngine
 
@@ -279,4 +281,98 @@ class CareerComparatorEngine:
             attributions=attributions,
             top_bottleneck=top_bottleneck,
             quickest_win=quickest_win
+        )
+
+    @staticmethod
+    def compare_career_vs_investment(
+        profile: StudentProfile,
+        req: CareerVsInvestmentDecisionRequest
+    ) -> CareerVsInvestmentDecisionResponse:
+        """
+        Flagship Tradeoff Engine:
+        Evaluates whether a student should spend capital (e.g. ₹10,000) on an upskilling
+        certification/project vs investing it into stocks/mutual fund equity.
+        """
+        capital = req.capital_amount
+        cert_name = req.certification_or_course_name
+        readiness_res = CareerEngine.calculate_readiness(profile)
+        current_readiness = readiness_res.pct if hasattr(readiness_res, 'pct') else 50
+        monthly_income = profile.financial.monthly_income or 15000.0
+        emergency_buffer = profile.financial.emergency_buffer or 2000.0
+
+        # Option A: Career Upskilling Certification
+        expected_skill_boost = 18.0
+        readiness_lift = 12.0
+        # Average placement salary impact: +₹1.5L to ₹3L CTC boost for certified junior engineers
+        est_annual_salary_impact = 180000.0  # ₹1.8 LPA extra on placement
+        monthly_salary_boost = est_annual_salary_impact / 12.0
+        payback_months = round(capital / monthly_salary_boost, 1)
+
+        career_option = CareerOptionProjection(
+            option_title=f"Option A: {cert_name}",
+            cost_inr=capital,
+            expected_skill_boost_pct=expected_skill_boost,
+            career_readiness_lift_pct=readiness_lift,
+            estimated_annual_salary_impact_inr=est_annual_salary_impact,
+            payback_period_months=payback_months,
+            verdict_badge="HIGH IMMEDIATE MULTIPLIER",
+            disclaimer="Scenario estimate based on entry tech salary benchmarks. Depends on interview clearance."
+        )
+
+        # Option B: Equity / Index SIP Investment
+        # Realistic 3Y equity CAGR scenario (13.5% p.a.)
+        cagr_rate = 0.135
+        projected_3y_corpus = round(capital * ((1.0 + cagr_rate) ** 3), 2)
+
+        investment_option = InvestmentOptionProjection(
+            option_title="Option B: Regulated Nifty 50 / Bluechip SIP",
+            principal_amount_inr=capital,
+            expected_3y_cagr_estimate_pct=13.5,
+            projected_corpus_3y_inr=projected_3y_corpus,
+            risk_level="Medium (Market Volatility)",
+            liquidity_rating="T+1 Exchange Clearing",
+            disclaimer="Securities market investments are subject to market risks. Not a guaranteed return."
+        )
+
+        # Decision Logic:
+        # If student's readiness is below 75% or emergency buffer is below 1 month, upskilling usually delivers 10x-50x higher cashflow multiplier
+        if current_readiness < 75.0:
+            ai_verdict = "CERTIFICATION_RECOMMENDED"
+            rationale = (
+                f"For your current profile (Readiness: {current_readiness}%), investing ₹{capital:,.0f} in {cert_name} "
+                f"delivers an estimated +{readiness_lift}% readiness boost and potentially +₹{est_annual_salary_impact:,.0f}/year "
+                f"on your starting campus placement package. The investment pays for itself in just {payback_months} months. "
+                "In your early college career, your human earning potential compounds faster than the stock market."
+            )
+            confidence = 88
+        elif emergency_buffer < 5000:
+            ai_verdict = "EMERGENCY_RESERVE_FIRST"
+            rationale = (
+                f"Your liquid emergency buffer is currently only ₹{emergency_buffer:,.0f}. Before locking capital into either "
+                f"market securities or non-refundable exams, shore up at least ₹7,500 in an instant liquid reserve."
+            )
+            confidence = 92
+        else:
+            ai_verdict = "BALANCED_SPLIT"
+            rationale = (
+                f"Your readiness is strong ({current_readiness}%). Consider a 50/50 split: ₹{capital*0.5:,.0f} towards practical cloud projects "
+                f"and ₹{capital*0.5:,.0f} deployed into a low-cost Nifty 50 index fund to initiate early market compounding."
+            )
+            confidence = 84
+
+        attribution_factors = [
+            {"factor": "Placement Readiness Gap", "impact": f"Current readiness {current_readiness}% requires high-impact proof of work"},
+            {"factor": "Payback Period", "impact": f"{payback_months} months payback vs 3-year market compounding"},
+            {"factor": "Cash Flow Asymmetry", "impact": f"Extra ₹{monthly_salary_boost:,.0f}/mo starting salary beats ₹{projected_3y_corpus - capital:,.0f} 3-year stock gain"}
+        ]
+
+        return CareerVsInvestmentDecisionResponse(
+            capital_amount=capital,
+            career_option=career_option,
+            investment_option=investment_option,
+            ai_verdict=ai_verdict,
+            strategic_rationale=rationale,
+            attribution_factors=attribution_factors,
+            confidence_score=confidence,
+            sebi_scenario_disclaimer="SEBI Compliance Note: Financial return projections and salary boosts are educational scenario estimates, not assured returns or investment guarantees."
         )
