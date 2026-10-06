@@ -588,3 +588,5 @@ class AdvancedSimulationEngine:
             ai_counselor_narrative=narrative,
             next_week_directives=directives
         )
+
+    simulate_scenario = simulate_what_if

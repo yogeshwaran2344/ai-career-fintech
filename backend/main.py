@@ -368,7 +368,7 @@ def get_project_blueprint(project_title: str, current_user: StudentProfile = Dep
 
 @app.post("/api/career/simulate", response_model=SimulationResponse)
 def simulate_career_path(req: SimulationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return AdvancedSimulationEngine.simulate_scenario(current_user, req)
+    return AdvancedSimulationEngine.simulate_what_if(current_user, req)
 
 @app.post("/api/career/compare-paths", response_model=CareerPathCompareResponse)
 def compare_career_paths(req: CareerPathCompareRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
@@ -381,6 +381,36 @@ def get_skill_graph(current_user: StudentProfile = Depends(get_user_from_auth)):
 @app.get("/api/career/job-market", response_model=JobMarketData)
 def get_job_market(current_user: StudentProfile = Depends(get_user_from_auth)):
     return CareerEngine.get_job_market_intel(current_user)
+
+# ==================== SIMULATION COMPATIBILITY ALIASES ====================
+
+@app.post("/api/simulation/what-if", response_model=SimulationResponse)
+def simulate_career_path_alias(req: SimulationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return AdvancedSimulationEngine.simulate_what_if(current_user, req)
+
+@app.get("/api/simulation/skill-graph", response_model=SkillGraphData)
+def get_skill_graph_alias(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.get_skill_graph_data(current_user)
+
+@app.get("/api/simulation/job-market", response_model=JobMarketData)
+def get_job_market_alias(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.get_job_market_intel(current_user)
+
+@app.post("/api/simulation/resume-analyzer", response_model=ResumeAnalysisResponse)
+def analyze_resume_alias(req: ResumeAnalyzeRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    try:
+        return ResumeParserEngine.analyze_resume_text(req.resume_text, req.target_role or current_user.career_goal)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/simulation/placement-breakdown", response_model=PlacementReadinessBreakdown)
+def get_placement_breakdown_alias(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.get_placement_breakdown(current_user)
+
+@app.get("/api/simulation/project-blueprints")
+def get_project_blueprints_alias(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.recommend_projects(current_user)
+
 
 # ==================== AI MOCK INTERVIEW ENGINE ====================
 
@@ -429,7 +459,10 @@ def analyze_github_profile(req: GitHubAnalysisRequest, current_user: StudentProf
 
 @app.post("/api/resume/analyze", response_model=ResumeAnalysisResponse)
 def analyze_resume(req: ResumeAnalyzeRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return ResumeParserEngine.analyze_resume_text(req.resume_text, req.target_role or current_user.career_goal)
+    try:
+        return ResumeParserEngine.analyze_resume_text(req.resume_text, req.target_role or current_user.career_goal)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/resume/upload-pdf")
 async def upload_pdf_resume(file: UploadFile = File(...), current_user: StudentProfile = Depends(get_user_from_auth)):

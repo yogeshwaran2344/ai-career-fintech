@@ -11,6 +11,7 @@ import InvestmentView from './components/InvestmentView';
 import DecisionCopilotView from './components/DecisionCopilotView';
 import TodayPlanView from './components/TodayPlanView';
 import ProfileView from './components/ProfileView';
+import ApplicationTrackerView from './components/ApplicationTrackerView';
 import AuthModal from './components/AuthModal';
 import PlacementScoreModal from './components/PlacementScoreModal';
 import WeeklyReviewModal from './components/WeeklyReviewModal';
@@ -77,6 +78,17 @@ export default function App() {
 
   useEffect(() => {
     initAuthAndData();
+
+    const handleAuthExpired = () => {
+      setProfile(null);
+      setIsAuthOpen(true);
+      showNotification('Your session has expired or was revoked. Please sign in again.', 'Session Expired');
+    };
+
+    window.addEventListener('auth:expired', handleAuthExpired);
+    return () => {
+      window.removeEventListener('auth:expired', handleAuthExpired);
+    };
   }, []);
 
   const initAuthAndData = async () => {
@@ -363,6 +375,12 @@ export default function App() {
 
           {currentTab === 'resume' && (
             <ResumeAnalyzerView
+              profile={profile}
+            />
+          )}
+
+          {currentTab === 'applications' && (
+            <ApplicationTrackerView
               profile={profile}
             />
           )}

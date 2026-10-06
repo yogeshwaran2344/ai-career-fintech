@@ -21,14 +21,23 @@ export const authState = {
 const authFetch = async (url, options = {}) => {
   const token = authState.getToken();
   const headers = {
-    'Content-Type': 'application/json',
     ...(options.headers || {}),
   };
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
+    if (res.status === 401) {
+      authState.clearToken();
+      authState.clearUser();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:expired', { detail: { status: 401 } }));
+      }
+    }
     const errorData = await res.json().catch(() => ({ detail: 'Request failed' }));
     throw new Error(errorData.detail || `HTTP Error ${res.status}`);
   }
@@ -376,6 +385,39 @@ export const api = {
         certification_cost: certCost
       }),
     });
+  },
+
+  // RESUME PDF UPLOAD
+  uploadResumePdf: async (formData) => {
+    return authFetch(`${API_BASE}/resume/upload-pdf`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  // JOB APPLICATION FUNNEL PIPELINE
+  getJobApplications: async () => {
+    return authFetch(`${API_BASE}/jobs/applications`);
+  },
+  createJobApplication: async (payload) => {
+    return authFetch(`${API_BASE}/jobs/applications`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateJobApplication: async (appId, payload) => {
+    return authFetch(`${API_BASE}/jobs/applications/${encodeURIComponent(appId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteJobApplication: async (appId) => {
+    return authFetch(`${API_BASE}/jobs/applications/${encodeURIComponent(appId)}`, {
+      method: 'DELETE',
+    });
+  },
+  getJobFunnelAnalytics: async () => {
+    return authFetch(`${API_BASE}/jobs/application-analytics`);
   },
 
   // FINANCIAL SAFETY RESILIENCE CENTER

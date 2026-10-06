@@ -13,9 +13,11 @@ import {
   ChevronRight,
   TrendingUp,
   Cpu,
-  Award
+  Award,
+  Briefcase
 } from 'lucide-react';
 import ProjectBlueprintModal from './ProjectBlueprintModal';
+import ApplicationTrackerView from './ApplicationTrackerView';
 
 export default function CareerView({ 
   profile, 
@@ -68,6 +70,7 @@ export default function CareerView({
             { id: 'gaps', label: 'Skill Gap Matrix', icon: AlertTriangle },
             { id: 'roadmap', label: '6-Month Adaptive Roadmap', icon: Calendar },
             { id: 'projects', label: 'Portfolio Projects', icon: FolderGit2 },
+            { id: 'applications', label: 'Application Tracker', icon: Briefcase },
           ].map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -364,6 +367,11 @@ export default function CareerView({
             ))}
           </div>
         </div>
+      )}
+
+      {/* TAB 5: JOB APPLICATION TRACKER */}
+      {activeTab === 'applications' && (
+        <ApplicationTrackerView profile={profile} />
       )}
 
       {/* 4-Week Project Blueprint Modal */}

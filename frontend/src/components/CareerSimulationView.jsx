@@ -35,6 +35,7 @@ export default function CareerSimulationView({ profile }) {
   // Results
   const [simulationResult, setSimulationResult] = useState(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [simError, setSimError] = useState(null);
 
   // Multi-Scenario comparison store
   const [savedScenarios, setSavedScenarios] = useState([
@@ -61,11 +62,15 @@ export default function CareerSimulationView({ profile }) {
   ]);
 
   useEffect(() => {
-    runSimulation();
+    const timer = setTimeout(() => {
+      runSimulation();
+    }, 350);
+    return () => clearTimeout(timer);
   }, [studyHours, budget, targetRole, includeCourse, courseCost, dsaBoost, mlBoost, pythonBoost]);
 
   const runSimulation = async () => {
     setIsSimulating(true);
+    setSimError(null);
     try {
       const payload = {
         study_hours_per_day: Number(studyHours),
@@ -84,6 +89,7 @@ export default function CareerSimulationView({ profile }) {
       setSimulationResult(data);
     } catch (err) {
       console.error(err);
+      setSimError(err.message || 'Simulation run failed.');
     } finally {
       setIsSimulating(false);
     }
@@ -129,8 +135,16 @@ export default function CareerSimulationView({ profile }) {
 
           <div className="flex items-center gap-3">
             <button
+              onClick={runSimulation}
+              disabled={isSimulating}
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Play className="w-3.5 h-3.5 text-orange-400" />
+              <span>{isSimulating ? 'Simulating...' : 'Run Simulation'}</span>
+            </button>
+            <button
               onClick={handleSaveCurrentScenario}
-              className="px-4 py-2.5 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5"
+              className="px-4 py-2.5 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Zap className="w-3.5 h-3.5" />
               <span>Save for Comparison</span>
@@ -138,6 +152,22 @@ export default function CareerSimulationView({ profile }) {
           </div>
         </div>
       </div>
+
+      {simError && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-rose-800">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            <span>{simError}</span>
+          </div>
+          <button
+            onClick={runSimulation}
+            className="px-3 py-1.5 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700 transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
 
       {/* Grid: 2 Large Columns (Variables on Left, Dynamic Prediction on Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

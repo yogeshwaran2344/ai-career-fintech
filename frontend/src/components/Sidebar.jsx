@@ -47,7 +47,8 @@ export default function Sidebar({
         { id: 'simulation', label: 'What-If Simulator', icon: Sliders, badge: 'Twin' },
         { id: 'skillgraph', label: 'Skill Graph Tree', icon: GitFork },
         { id: 'resume', label: 'Resume & ATS', icon: FileText },
-        { id: 'jobmarket', label: 'Job Market Intel', icon: Briefcase }
+        { id: 'jobmarket', label: 'Job Market Intel', icon: TrendingUp },
+        { id: 'applications', label: 'Application Tracker', icon: Briefcase, badge: 'Funnel' }
       ]
     },
     {

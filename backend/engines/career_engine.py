@@ -628,3 +628,5 @@ class CareerEngine:
                 resume_bullet="Developed responsive real-time web interface with React and FastAPI, visualizing key operational KPIs and telemetry."
             )
         ]
+
+    recommend_projects = get_recommended_projects
