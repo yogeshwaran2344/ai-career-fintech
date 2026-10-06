@@ -296,6 +296,69 @@ export const api = {
   },
   getWealthTransactions: async () => {
     return authFetch(`${API_BASE}/wealth/transactions`);
+  },
+
+  // REAL LIVE MARKET DATA (NSE / BSE)
+  getLiveMarketOverview: async () => {
+    return authFetch(`${API_BASE}/market/overview`);
+  },
+  getLiveMarketQuote: async (symbol) => {
+    return authFetch(`${API_BASE}/market/quote/${encodeURIComponent(symbol)}`);
+  },
+  getLiveMarketChart: async (symbol, interval = '5m') => {
+    return authFetch(`${API_BASE}/market/chart/${encodeURIComponent(symbol)}?interval=${encodeURIComponent(interval)}`);
+  },
+  searchMarketSymbols: async (query) => {
+    return authFetch(`${API_BASE}/market/search?query=${encodeURIComponent(query)}`);
+  },
+
+  // REGULATED BROKER GATEWAY & REAL PORTFOLIO
+  getBrokerStatus: async () => {
+    return authFetch(`${API_BASE}/broker/status`);
+  },
+  connectBroker: async (brokerName, accountId, authToken = null, isSandbox = false) => {
+    return authFetch(`${API_BASE}/broker/connect`, {
+      method: 'POST',
+      body: JSON.stringify({
+        broker_name: brokerName,
+        account_id: accountId,
+        auth_code_or_token: authToken,
+        is_sandbox: isSandbox
+      }),
+    });
+  },
+  disconnectBroker: async () => {
+    return authFetch(`${API_BASE}/broker/disconnect`, { method: 'POST' });
+  },
+  getBrokerPortfolio: async () => {
+    return authFetch(`${API_BASE}/broker/portfolio`);
+  },
+  placeBrokerOrder: async (orderPayload) => {
+    return authFetch(`${API_BASE}/broker/order`, {
+      method: 'POST',
+      body: JSON.stringify(orderPayload),
+    });
+  },
+  getBrokerOrders: async () => {
+    return authFetch(`${API_BASE}/broker/orders`);
+  },
+
+  // SAFE NPCI UPI MANDATE FLOW
+  createUpiMandate: async (amountInr, vpa, purpose = 'BROKER_MARGIN_DEPOSIT') => {
+    return authFetch(`${API_BASE}/payment/upi-mandate/create`, {
+      method: 'POST',
+      body: JSON.stringify({ amount_inr: amountInr, vpa, purpose }),
+    });
+  },
+  approveUpiMandate: async (mandateRef) => {
+    return authFetch(`${API_BASE}/payment/upi-mandate/approve/${encodeURIComponent(mandateRef)}`, {
+      method: 'POST',
+    });
+  },
+
+  // REAL AI WEALTH COPILOT AUDIT
+  getRealAiWealthAudit: async () => {
+    return authFetch(`${API_BASE}/wealth/ai-audit`);
   }
 };
 

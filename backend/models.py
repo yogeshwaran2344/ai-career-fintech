@@ -1051,5 +1051,146 @@ class InteractiveDigitalTwinResponse(BaseModel):
     ai_recommendation: str
 
 
+# =========================================================================
+# REAL MARKET DATA & REGULATED BROKER ARCHITECTURE MODELS
+# =========================================================================
+
+class MarketQuoteDepth(BaseModel):
+    bids: List[Dict[str, Any]] = []
+    asks: List[Dict[str, Any]] = []
+
+class LiveMarketQuote(BaseModel):
+    symbol: str
+    company_name: str
+    exchange: str = "NSE"
+    last_price: float
+    change: float
+    change_pct: float
+    day_high: float
+    day_low: float
+    day_open: float
+    prev_close: float
+    volume: int
+    depth: Optional[MarketQuoteDepth] = None
+    is_market_open: bool = True
+    timestamp: str
+
+class MarketCandle(BaseModel):
+    time: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+
+class MarketChartResponse(BaseModel):
+    symbol: str
+    interval: str
+    candles: List[MarketCandle]
+    last_price: float
+    change: float
+    change_pct: float
+
+class MarketOverviewResponse(BaseModel):
+    indices: List[LiveMarketQuote]
+    top_gainers: List[LiveMarketQuote]
+    top_losers: List[LiveMarketQuote]
+    most_active: List[LiveMarketQuote]
+    market_status: str
+    regulatory_notice: str
+
+class BrokerConnectRequest(BaseModel):
+    broker_name: str = "Zerodha"  # "Zerodha", "Upstox", "Angel One", "Groww"
+    account_id: str
+    auth_code_or_token: Optional[str] = None
+    is_sandbox: bool = False
+
+class BrokerStatusResponse(BaseModel):
+    connected: bool
+    broker_name: Optional[str] = None
+    account_id: Optional[str] = None
+    is_sandbox: bool = False
+    last_synced_at: Optional[str] = None
+    custody_disclaimer: str
+
+class BrokerHoldingItem(BaseModel):
+    symbol: str
+    company_name: str
+    exchange: str = "NSE"
+    quantity: int
+    average_buy_price: float
+    current_price: float
+    invested_value: float
+    current_value: float
+    unrealized_pnl: float
+    pnl_pct: float
+    day_pnl: float
+    day_pnl_pct: float
+
+class BrokerPortfolioResponse(BaseModel):
+    is_broker_connected: bool
+    broker_name: Optional[str] = None
+    account_id: Optional[str] = None
+    total_portfolio_value: float
+    total_invested_value: float
+    total_unrealized_pnl: float
+    total_pnl_pct: float
+    day_pnl: float
+    day_pnl_pct: float
+    cash_margin_available: float
+    holdings: List[BrokerHoldingItem]
+    last_synced_ist: str
+    regulatory_footnote: str
+
+class PlaceBrokerOrderRequest(BaseModel):
+    symbol: str
+    exchange: str = "NSE"
+    transaction_type: str  # "BUY" or "SELL"
+    order_type: str = "MARKET"  # "MARKET", "LIMIT"
+    product: str = "CNC"  # "CNC" (Cash & Carry Delivery), "MIS" (Intraday)
+    quantity: int
+    price: Optional[float] = None
+
+class BrokerOrderResult(BaseModel):
+    order_id: str
+    broker_order_id: str
+    broker_name: str
+    symbol: str
+    exchange: str
+    transaction_type: str
+    order_type: str
+    product: str
+    quantity: int
+    price: float
+    status: str  # "EXECUTED", "REJECTED", "SUBMITTED"
+    rejection_reason: Optional[str] = None
+    message: str
+    timestamp: str
+
+class CreateUpiMandateRequest(BaseModel):
+    amount_inr: float
+    vpa: str  # e.g. student@okhdfcbank
+    purpose: str = "BROKER_MARGIN_DEPOSIT"
+
+class UpiMandateResponse(BaseModel):
+    mandate_ref: str
+    amount_inr: float
+    vpa: str
+    purpose: str
+    status: str
+    user_instruction: str
+    approved: bool = False
+    timestamp: str
+
+class RealAiWealthAuditResponse(BaseModel):
+    emergency_buffer_status: str
+    cash_vs_equity_ratio: str
+    sector_concentration: Dict[str, float]
+    top_holding_risk: str
+    student_cash_flow_advice: str
+    sebi_educational_disclaimer: str
+
+
+
 
 

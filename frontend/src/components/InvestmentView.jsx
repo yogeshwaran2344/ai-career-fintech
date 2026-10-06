@@ -54,6 +54,11 @@ import {
 } from 'recharts';
 import confetti from 'canvas-confetti';
 import { api } from '../api';
+import LiveMarketsTab from './LiveMarketsTab';
+import BrokerConnectModal from './BrokerConnectModal';
+import BrokerOrderModal from './BrokerOrderModal';
+import SafeUpiMandateModal from './SafeUpiMandateModal';
+import RealAiWealthAuditTab from './RealAiWealthAuditTab';
 
 const TrendingUpIcon = TrendingUp;
 const WalletIcon = Wallet;
@@ -73,12 +78,20 @@ const InfoIcon = Info;
 const LayersIcon = Layers;
 
 export default function InvestmentView({ profile }) {
-  const [activeSubTab, setActiveSubTab] = useState('invest'); // 'invest', 'portfolio', 'goals', 'rules', 'safety', 'digitaltwin', 'scam', 'guide'
+  const [activeSubTab, setActiveSubTab] = useState('livemarket'); // 'livemarket', 'broker', 'portfolio', 'realai', 'invest', 'goals', 'rules', 'safety', 'digitaltwin', 'scam', 'guide'
   const [investMode, setInvestMode] = useState('individual'); // 'individual' (Mode 1) or 'baskets' (Mode 2)
   const [individualFilter, setIndividualFilter] = useState('ALL');
   const [assetAmounts, setAssetAmounts] = useState({});
   const [hubData, setHubData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Live Regulated Broker & Market Integration State
+  const [brokerStatus, setBrokerStatus] = useState(null);
+  const [brokerPortfolio, setBrokerPortfolio] = useState(null);
+  const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [orderModalParams, setOrderModalParams] = useState(null);
+  const [isSafeUpiModalOpen, setIsSafeUpiModalOpen] = useState(false);
 
   // Multi-Company Basket Plans State
   const [basketAmount, setBasketAmount] = useState(2000);
@@ -188,9 +201,23 @@ export default function InvestmentView({ profile }) {
     }
   };
 
+  const fetchBrokerDetails = async () => {
+    try {
+      const [status, port] = await Promise.all([
+        api.getBrokerStatus(),
+        api.getBrokerPortfolio()
+      ]);
+      setBrokerStatus(status);
+      setBrokerPortfolio(port);
+    } catch (err) {
+      console.error('Error loading broker data:', err);
+    }
+  };
+
   useEffect(() => {
     fetchHubData();
     fetchBaskets(basketAmount);
+    fetchBrokerDetails();
   }, [profile]);
 
   const fetchHubData = async () => {
@@ -388,27 +415,39 @@ export default function InvestmentView({ profile }) {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-2">
-              <span className="bg-white/20 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-xs">
-                ⚡ GPay & PhonePe UPI Integration Active
+              <span className="bg-white/20 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-xs flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+                <span>Live NSE/BSE Telemetry & Broker OMS</span>
               </span>
-              <span className="text-emerald-100 text-xs font-semibold">SEBI & AMFI Registered Portfolios</span>
+              <button 
+                onClick={() => setIsBrokerModalOpen(true)}
+                className="text-emerald-100 hover:text-white text-xs font-bold underline cursor-pointer"
+              >
+                {brokerStatus?.connected ? `🟢 Connected: ${brokerStatus.broker_name}` : '⚡ Connect Broker / Demat'}
+              </button>
             </div>
             <h1 className="text-2xl md:text-3xl font-black text-white mt-1.5 flex items-center gap-2">
-              <span>Multi-Company AI Investment & Wealth Engine</span>
+              <span>Live Indian Markets & Regulated Wealth Execution</span>
               <SparklesIcon className="w-6 h-6 text-amber-300" />
             </h1>
             <p className="text-xs text-emerald-100 mt-1 max-w-2xl leading-relaxed">
-              Enter your investment amount and let our AI assemble an optimal multi-company basket (TCS, Infosys, Reliance, Tata Motors & Tech ETFs) with instant GPay & PhonePe execution.
+              Real-time NSE/BSE ticks, pluggable broker custody (Zerodha, Upstox, Angel One), safe NPCI UPI mandates, and live portfolio AI audit.
             </p>
           </div>
 
           {/* Quick Metrics Header Card */}
           <div className="flex items-center gap-3 bg-white/15 backdrop-blur-md p-3.5 rounded-2xl border border-white/20">
             <div className="text-right">
-              <span className="text-[10px] text-emerald-200 font-bold uppercase block">Portfolio Value</span>
-              <span className="text-2xl font-black text-white">₹{p ? p.current_portfolio_value_inr.toLocaleString('en-IN') : '0'}</span>
+              <span className="text-[10px] text-emerald-200 font-bold uppercase block">
+                {brokerPortfolio ? 'Live Broker Holdings' : 'Portfolio Value'}
+              </span>
+              <span className="text-2xl font-black text-white">
+                ₹{(brokerPortfolio ? brokerPortfolio.total_portfolio_value : (p ? p.current_portfolio_value_inr : 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </span>
               <span className="text-[10px] font-bold text-emerald-200 block">
-                +₹{p ? p.total_returns_inr.toLocaleString('en-IN') : '0'} (+{p ? p.total_returns_pct : '0'}%)
+                {brokerPortfolio 
+                  ? `${brokerPortfolio.total_unrealized_pnl >= 0 ? '+' : ''}₹${brokerPortfolio.total_unrealized_pnl.toLocaleString('en-IN')} (${brokerPortfolio.total_pnl_pct}%)`
+                  : `+₹${p ? p.total_returns_inr.toLocaleString('en-IN') : '0'} (+${p ? p.total_returns_pct : '0'}%)`}
               </span>
             </div>
             <div className="w-11 h-11 rounded-xl bg-white text-emerald-700 flex items-center justify-center font-bold shadow-md">
@@ -421,12 +460,15 @@ export default function InvestmentView({ profile }) {
       {/* Sub-Tabs Navigation */}
       <div className="flex flex-wrap gap-1.5 p-1.5 bg-stone-100/80 rounded-2xl border border-stone-200 text-xs font-bold">
         {[
-          { id: 'invest', label: '🚀 Invest with UPI (Individual & Baskets)', icon: SparklesIcon },
-          { id: 'portfolio', label: '💼 Live Holdings & Portfolio', icon: WalletIcon },
+          { id: 'livemarket', label: '📊 Live Markets (NSE/BSE)', icon: BarChart3 },
+          { id: 'broker', label: '🏦 Connect Demat & Broker', icon: BuildingIcon },
+          { id: 'portfolio', label: '💼 Live Broker Portfolio', icon: WalletIcon },
+          { id: 'realai', label: '🧠 Real AI Wealth Audit', icon: SparklesIcon },
+          { id: 'invest', label: '🚀 Curated Baskets & SIPs', icon: SparklesIcon },
           { id: 'goals', label: '🎯 Smart Savings Goals', icon: PiggyBankIcon },
           { id: 'rules', label: '⚡ Auto-Saving Rules', icon: ZapIcon },
-          { id: 'safety', label: '🛡️ Safety Gate & Invest vs Learn', icon: ShieldCheckIcon },
-          { id: 'digitaltwin', label: '🔮 5-Year Career Digital Twin', icon: LayersIcon },
+          { id: 'safety', label: '🛡️ Safety Gate', icon: ShieldCheckIcon },
+          { id: 'digitaltwin', label: '🔮 Career Digital Twin', icon: LayersIcon },
           { id: 'scam', label: '🚨 AI Scam Detector', icon: AlertTriangleIcon },
           { id: 'guide', label: '📖 Student Demat Guide', icon: InfoIcon },
         ].map(tab => {
@@ -447,6 +489,77 @@ export default function InvestmentView({ profile }) {
           );
         })}
       </div>
+
+      {/* ======================================================== */}
+      {/* SUB-TAB: LIVE NSE / BSE MARKETS TERMINAL */}
+      {/* ======================================================== */}
+      {activeSubTab === 'livemarket' && (
+        <LiveMarketsTab
+          onOpenOrderModal={(params) => {
+            setOrderModalParams(params);
+            setIsOrderModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* ======================================================== */}
+      {/* SUB-TAB: REGULATED BROKER GATEWAY */}
+      {/* ======================================================== */}
+      {activeSubTab === 'broker' && (
+        <div className="space-y-6 animate-fade-in text-stone-800">
+          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm border-l-4 border-l-blue-600 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <BuildingIcon className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-base font-black text-stone-900">SEBI Regulated Broker & Demat Integration</h3>
+                </div>
+                <p className="text-xs text-stone-500 mt-1 max-w-xl">
+                  Connect your regulated Indian broker account for custodial clearing, live holdings sync, and direct order execution into the NSE orderbook.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsBrokerModalOpen(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md cursor-pointer transition"
+              >
+                {brokerStatus?.connected ? 'Manage / Switch Demat' : '⚡ Connect Demat Account'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200">
+                <span className="text-[10px] text-stone-400 font-bold uppercase block">Broker Name</span>
+                <span className="text-sm font-black text-stone-900 mt-0.5 block">{brokerStatus?.broker_name || 'SEBI Sandbox (Default Demo)'}</span>
+                <span className="text-[10px] text-emerald-600 font-bold">● Active Protocol</span>
+              </div>
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200">
+                <span className="text-[10px] text-stone-400 font-bold uppercase block">Client Account ID</span>
+                <span className="text-sm font-black text-stone-900 mt-0.5 block">{brokerStatus?.account_id || 'DEMO-GUEST'}</span>
+                <span className="text-[10px] text-stone-500">Zero-Credential Tokenized</span>
+              </div>
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200">
+                <span className="text-[10px] text-stone-400 font-bold uppercase block">Execution Mode</span>
+                <span className="text-sm font-black text-stone-900 mt-0.5 block">{brokerStatus?.is_sandbox ? 'Sandbox Paper Trading' : 'Live NSE / BSE OMS'}</span>
+                <span className="text-[10px] text-stone-500">Direct Custody Routing</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 text-xs text-blue-900 space-y-1">
+              <span className="font-bold block">Zero-Credential Security Architecture:</span>
+              <p className="text-[11px] text-blue-800 leading-relaxed">
+                CareerWealth complies strictly with SEBI circulars on third-party trading software. We never request, capture, or store your Demat passwords, MPINs, or bank authorization details. Execution is processed via encrypted broker session tokens.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* SUB-TAB: REAL AI WEALTH COPILOT AUDIT */}
+      {/* ======================================================== */}
+      {activeSubTab === 'realai' && (
+        <RealAiWealthAuditTab profile={profile} />
+      )}
 
       {/* ======================================================== */}
       {/* SUB-TAB 0: SMART INVEST WITH UPI (INDIVIDUAL & BASKETS) */}
@@ -969,101 +1082,260 @@ export default function InvestmentView({ profile }) {
       {activeSubTab === 'portfolio' && (
         <div className="space-y-6 animate-fade-in">
           
-          {/* Conditional Display: If user has real investments/transactions, show full portfolio dashboard; otherwise show motivating quote */}
-          {p?.holdings && p.holdings.length > 0 ? (
+          {/* Regulated Broker Demat Status & Margin Control Bar */}
+          <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                <BuildingIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-stone-900">
+                    {brokerPortfolio?.broker_name || brokerStatus?.broker_name || 'SEBI Regulated Sandbox Demat'}
+                  </span>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Direct Depository Custody</span>
+                  </span>
+                </div>
+                <span className="text-[11px] text-stone-500 block">
+                  Account: <strong className="text-stone-700">{brokerPortfolio?.broker_account_id || brokerStatus?.account_id || 'DEMO-GUEST'}</strong> • Available Cash Margin: <strong className="text-emerald-700 font-black">₹{(brokerPortfolio?.available_cash_balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsSafeUpiModalOpen(true)}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 cursor-pointer transition"
+              >
+                <SmartphoneIcon className="w-3.5 h-3.5" />
+                <span>+ Add Funds via UPI</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fetchBrokerDetails()}
+                className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition"
+                title="Sync live holdings with broker"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Sync</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsBrokerModalOpen(true)}
+                className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold cursor-pointer transition"
+              >
+                Switch Broker
+              </button>
+            </div>
+          </div>
+
+          {/* Conditional Display: If user has broker holdings or simulated investments, show full portfolio dashboard; otherwise show motivating quote */}
+          {(brokerPortfolio?.holdings?.length > 0 || (p?.holdings && p.holdings.length > 0)) ? (
             <>
               {/* Top 4 KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="advisor-card p-5 border-l-4 border-l-emerald-500">
                   <span className="text-[10px] font-bold text-stone-500 uppercase block">Total Portfolio Value</span>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-2xl font-black text-stone-900">₹{p?.current_portfolio_value_inr.toLocaleString('en-IN')}</span>
-                    <span className={`text-xs font-bold ${p?.total_returns_inr >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {p?.total_returns_inr >= 0 ? '▲' : '▼'} {p?.total_returns_pct}%
+                    <span className="text-2xl font-black text-stone-900">
+                      ₹{(brokerPortfolio ? brokerPortfolio.total_portfolio_value : (p?.current_portfolio_value_inr || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className={`text-xs font-bold ${(brokerPortfolio ? brokerPortfolio.total_unrealized_pnl : (p?.total_returns_inr || 0)) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {(brokerPortfolio ? brokerPortfolio.total_unrealized_pnl : (p?.total_returns_inr || 0)) >= 0 ? '▲' : '▼'} {brokerPortfolio ? brokerPortfolio.total_pnl_pct : (p?.total_returns_pct || 0)}%
                     </span>
                   </div>
-                  <span className="text-[11px] text-stone-500 mt-1 block">Live simulated market value</span>
+                  <span className="text-[11px] text-stone-500 mt-1 block">Live NSE / BSE Mark-to-Market</span>
                 </div>
 
                 <div className="advisor-card p-5 border-l-4 border-l-blue-500">
                   <span className="text-[10px] font-bold text-stone-500 uppercase block">Total Invested Capital</span>
-                  <div className="text-2xl font-black text-stone-900 mt-1">₹{p?.total_invested_inr.toLocaleString('en-IN')}</div>
-                  <span className="text-[11px] text-stone-500 mt-1 block">Direct UPI & SIP allocations</span>
+                  <div className="text-2xl font-black text-stone-900 mt-1">
+                    ₹{(brokerPortfolio ? brokerPortfolio.total_invested_capital : (p?.total_invested_inr || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
+                  <span className="text-[11px] text-stone-500 mt-1 block">Depository Cleared Equity</span>
                 </div>
 
                 <div className="advisor-card p-5 border-l-4 border-l-amber-500">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase block">Active Monthly SIPs</span>
-                  <div className="text-2xl font-black text-stone-900 mt-1">{p?.active_sips_count} SIPs</div>
-                  <span className="text-[11px] text-stone-500 mt-1 block">₹{p?.monthly_sip_outflow_inr.toLocaleString('en-IN')}/mo automated</span>
+                  <span className="text-[10px] font-bold text-stone-500 uppercase block">Available Cash Margin</span>
+                  <div className="text-2xl font-black text-stone-900 mt-1">
+                    ₹{(brokerPortfolio ? brokerPortfolio.available_cash_balance : (p?.cash_balance_inr || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
+                  <span className="text-[11px] text-stone-500 mt-1 block">Liquid order buying power</span>
                 </div>
 
                 <div className="advisor-card p-5 border-l-4 border-l-purple-500">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase block">Net Returns (P&L)</span>
-                  <div className={`text-2xl font-black mt-1 ${p?.total_returns_inr >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {p?.total_returns_inr >= 0 ? '+' : ''}₹{p?.total_returns_inr.toLocaleString('en-IN')}
+                  <span className="text-[10px] font-bold text-stone-500 uppercase block">Net Unrealized P&L</span>
+                  <div className={`text-2xl font-black mt-1 ${(brokerPortfolio ? brokerPortfolio.total_unrealized_pnl : (p?.total_returns_inr || 0)) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {(brokerPortfolio ? brokerPortfolio.total_unrealized_pnl : (p?.total_returns_inr || 0)) >= 0 ? '+' : ''}₹{(brokerPortfolio ? brokerPortfolio.total_unrealized_pnl : (p?.total_returns_inr || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </div>
-                  <span className="text-[11px] text-stone-500 mt-1 block">Live absolute capital gain</span>
+                  <span className="text-[11px] text-stone-500 mt-1 block">
+                    {brokerPortfolio?.last_synced_at ? `Synced: ${new Date(brokerPortfolio.last_synced_at).toLocaleTimeString()}` : 'Live MTM P&L'}
+                  </span>
                 </div>
               </div>
 
-              {/* Holdings Table */}
-              <div className="advisor-card p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <WalletIcon className="w-4 h-4 text-emerald-600" />
-                    <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">Your Live Asset Holdings</h3>
+              {/* Live Broker Demat Holdings Table */}
+              {brokerPortfolio?.holdings?.length > 0 && (
+                <div className="advisor-card p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <WalletIcon className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                        Live Broker Equity Holdings ({brokerPortfolio.broker_name})
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setActiveSubTab('livemarket')}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Explore Live NSE Ticks</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setActiveSubTab('invest')}
-                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>+ Make New Investment</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold uppercase tracking-wider text-[10px]">
-                      <tr>
-                        <th className="p-3.5">Asset / Company</th>
-                        <th className="p-3.5">Units Owned</th>
-                        <th className="p-3.5">Invested Amount</th>
-                        <th className="p-3.5">Current Value</th>
-                        <th className="p-3.5">Returns (P&L)</th>
-                        <th className="p-3.5">SIP Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100">
-                      {p.holdings.map((h, idx) => (
-                        <tr key={h.asset_id || idx} className="hover:bg-stone-50/50">
-                          <td className="p-3.5">
-                            <span className="font-black text-stone-900 block">{h.asset_name}</span>
-                            <span className="text-[10px] text-stone-500">{h.ticker} • {h.category}</span>
-                          </td>
-                          <td className="p-3.5 font-bold text-stone-700">{h.units}</td>
-                          <td className="p-3.5 font-bold text-stone-900">₹{h.total_invested_inr.toLocaleString('en-IN')}</td>
-                          <td className="p-3.5 font-black text-stone-900">₹{h.current_value_inr.toLocaleString('en-IN')}</td>
-                          <td className="p-3.5">
-                            <span className={`font-bold ${h.absolute_return_inr >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                              {h.absolute_return_inr >= 0 ? '+' : ''}₹{h.absolute_return_inr.toLocaleString('en-IN')} ({h.absolute_return_pct}%)
-                            </span>
-                          </td>
-                          <td className="p-3.5">
-                            {h.sip_active ? (
-                              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                                ₹{h.sip_amount_monthly}/mo Active
-                              </span>
-                            ) : (
-                              <span className="text-stone-400 text-[10px]">Lumpsum</span>
-                            )}
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold uppercase tracking-wider text-[10px]">
+                        <tr>
+                          <th className="p-3.5">Instrument / Symbol</th>
+                          <th className="p-3.5">Qty</th>
+                          <th className="p-3.5">Avg Buy Price</th>
+                          <th className="p-3.5">LTP (Live Price)</th>
+                          <th className="p-3.5">Current Value</th>
+                          <th className="p-3.5">Unrealized P&L</th>
+                          <th className="p-3.5 text-right">Regulated Order Ticket</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {brokerPortfolio.holdings.map((h, idx) => (
+                          <tr key={h.symbol || idx} className="hover:bg-stone-50/50">
+                            <td className="p-3.5">
+                              <span className="font-black text-stone-900 block">{h.company_name || h.symbol}</span>
+                              <span className="text-[10px] text-stone-500 font-mono">{h.symbol} • {h.exchange || 'NSE'}</span>
+                            </td>
+                            <td className="p-3.5 font-bold text-stone-700">{h.quantity}</td>
+                            <td className="p-3.5 font-mono text-stone-700">₹{h.average_buy_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-3.5">
+                              <span className="font-black text-stone-900 font-mono block">
+                                ₹{h.current_market_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </span>
+                              <span className={`text-[10px] font-bold ${h.day_change_percentage >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {h.day_change_percentage >= 0 ? '▲ +' : '▼ '}{h.day_change_percentage}% Today
+                              </span>
+                            </td>
+                            <td className="p-3.5 font-black text-stone-900 font-mono">
+                              ₹{h.current_value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="p-3.5">
+                              <span className={`font-bold font-mono ${h.unrealized_pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {h.unrealized_pnl >= 0 ? '+' : ''}₹{h.unrealized_pnl.toLocaleString('en-IN', { minimumFractionDigits: 2 })} ({h.pnl_percentage}%)
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOrderModalParams({
+                                      symbol: h.symbol,
+                                      company: h.company_name || h.symbol,
+                                      price: h.current_market_price,
+                                      type: 'BUY'
+                                    });
+                                    setIsOrderModalOpen(true);
+                                  }}
+                                  className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-lg text-[11px] cursor-pointer"
+                                >
+                                  Buy More
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOrderModalParams({
+                                      symbol: h.symbol,
+                                      company: h.company_name || h.symbol,
+                                      price: h.current_market_price,
+                                      type: 'SELL'
+                                    });
+                                    setIsOrderModalOpen(true);
+                                  }}
+                                  className="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold rounded-lg text-[11px] cursor-pointer"
+                                >
+                                  Sell
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Goal Asset Holdings Table */}
+              {p?.holdings && p.holdings.length > 0 && (
+                <div className="advisor-card p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <WalletIcon className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">Goal & Basket Holdings</h3>
+                    </div>
+                    <button
+                      onClick={() => setActiveSubTab('invest')}
+                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>+ Make New Investment</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold uppercase tracking-wider text-[10px]">
+                        <tr>
+                          <th className="p-3.5">Asset / Company</th>
+                          <th className="p-3.5">Units Owned</th>
+                          <th className="p-3.5">Invested Amount</th>
+                          <th className="p-3.5">Current Value</th>
+                          <th className="p-3.5">Returns (P&L)</th>
+                          <th className="p-3.5">SIP Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {p.holdings.map((h, idx) => (
+                          <tr key={h.asset_id || idx} className="hover:bg-stone-50/50">
+                            <td className="p-3.5">
+                              <span className="font-black text-stone-900 block">{h.asset_name}</span>
+                              <span className="text-[10px] text-stone-500">{h.ticker} • {h.category}</span>
+                            </td>
+                            <td className="p-3.5 font-bold text-stone-700">{h.units}</td>
+                            <td className="p-3.5 font-bold text-stone-900">₹{h.total_invested_inr.toLocaleString('en-IN')}</td>
+                            <td className="p-3.5 font-black text-stone-900">₹{h.current_value_inr.toLocaleString('en-IN')}</td>
+                            <td className="p-3.5">
+                              <span className={`font-bold ${h.absolute_return_inr >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {h.absolute_return_inr >= 0 ? '+' : ''}₹{h.absolute_return_inr.toLocaleString('en-IN')} ({h.absolute_return_pct}%)
+                              </span>
+                            </td>
+                            <td className="p-3.5">
+                              {h.sip_active ? (
+                                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">
+                                  ₹{h.sip_amount_monthly}/mo Active
+                                </span>
+                              ) : (
+                                <span className="text-stone-400 text-[10px]">Lumpsum</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Official Verified Demat & UPI Transactions Ledger */}
               <div className="advisor-card p-6 space-y-4">
@@ -2116,6 +2388,43 @@ export default function InvestmentView({ profile }) {
           </div>
         </div>
       )}
+
+      {/* SEBI Pluggable Broker Connect Modal */}
+      <BrokerConnectModal
+        isOpen={isBrokerModalOpen}
+        onClose={() => setIsBrokerModalOpen(false)}
+        brokerStatus={brokerStatus}
+        onConnectionChanged={() => {
+          fetchBrokerDetails();
+          fetchHubData();
+        }}
+      />
+
+      {/* Regulated Broker Order Placement Modal */}
+      <BrokerOrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => {
+          setIsOrderModalOpen(false);
+          setOrderModalParams(null);
+        }}
+        orderParams={orderModalParams}
+        brokerStatus={brokerStatus}
+        onOrderExecuted={() => {
+          fetchBrokerDetails();
+          fetchHubData();
+        }}
+      />
+
+      {/* Safe NPCI UPI Mandate Deposit Modal */}
+      <SafeUpiMandateModal
+        isOpen={isSafeUpiModalOpen}
+        onClose={() => setIsSafeUpiModalOpen(false)}
+        brokerStatus={brokerStatus}
+        onFundsDeposited={() => {
+          fetchBrokerDetails();
+          fetchHubData();
+        }}
+      />
 
     </div>
   );

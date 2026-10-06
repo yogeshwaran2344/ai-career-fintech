@@ -316,9 +316,131 @@ def run_tests():
         f"Level {gamify_data.get('current_level')} ({gamify_data.get('current_xp')} XP) Unlocked: {gamify_data.get('unlocked_count')}/{gamify_data.get('total_badges')} badges"
     )
 
+    # ==================== P. REGULATED LIVE MARKETS, BROKERS & SAFE UPI ====================
+    print("\n--- P. Live Markets, Pluggable Brokers & Safe UPI Mandates ---")
+    # 1. Live Market Overview (NSE/BSE Indices & Equities)
+    res_mkt_over = requests.get(f"{BASE_URL}/api/market/overview", headers=headers)
+    mkt_over_data = res_mkt_over.json()
+    assert_test(
+        res_mkt_over.status_code == 200 and len(mkt_over_data.get("indices", [])) >= 3,
+        "Live Market Overview (NSE/BSE Indices & Ticks)",
+        f"Indices: {[idx.get('company_name', idx.get('symbol', '')) + ' ' + str(idx['last_price']) for idx in mkt_over_data.get('indices', [])[:2]]}"
+    )
+
+    # 2. Live Market Quote with 5-Depth Orderbook
+    res_quote = requests.get(f"{BASE_URL}/api/market/quote/TCS", headers=headers)
+    quote_data = res_quote.json()
+    assert_test(
+        res_quote.status_code == 200 and quote_data.get("symbol") == "TCS" and len(quote_data.get("depth", {}).get("bids", [])) == 5,
+        "Live Stock Quote & Level 2 Market Depth (TCS)",
+        f"LTP: ₹{quote_data.get('last_price')} Day Change: {quote_data.get('change_pct')}% Bid/Ask Depth: 5 Levels"
+    )
+
+    # 3. Live Historical Chart Data
+    res_chart = requests.get(f"{BASE_URL}/api/market/chart/TCS?interval=1d", headers=headers)
+    chart_data = res_chart.json()
+    assert_test(
+        res_chart.status_code == 200 and len(chart_data.get("candles", [])) >= 10,
+        "Live Historical Candlestick Chart Telemetry",
+        f"Symbol: {chart_data.get('symbol')} Candles: {len(chart_data.get('candles', []))} Latest Close: ₹{chart_data.get('current_price')}"
+    )
+
+    # 4. Market Security Search
+    res_search = requests.get(f"{BASE_URL}/api/market/search?query=INFY", headers=headers)
+    search_data = res_search.json()
+    assert_test(
+        res_search.status_code == 200 and any(s.get("symbol") == "INFY" for s in search_data),
+        "Live Market Security Search",
+        f"Found {len(search_data)} matches for 'INFY'"
+    )
+
+    # 5. Broker Connection Management
+    connect_payload = {
+        "broker_name": "Zerodha",
+        "account_id": "ZR-STUDENT-9921",
+        "auth_code_or_token": "token-oauth-sim-demo",
+        "is_sandbox": False
+    }
+    res_connect = requests.post(f"{BASE_URL}/api/broker/connect", json=connect_payload, headers=headers)
+    res_status = requests.get(f"{BASE_URL}/api/broker/status", headers=headers)
+    status_data = res_status.json()
+    assert_test(
+        res_connect.status_code == 200 and status_data.get("connected") is True,
+        "Pluggable Broker OAuth/Token Connection (Zerodha Kite)",
+        f"Broker: {status_data.get('broker_name')} Account: {status_data.get('account_id')}"
+    )
+
+    # 6. Live Broker Portfolio Sync
+    res_broker_port = requests.get(f"{BASE_URL}/api/broker/portfolio", headers=headers)
+    broker_port_data = res_broker_port.json()
+    assert_test(
+        res_broker_port.status_code == 200 and len(broker_port_data.get("holdings", [])) >= 3,
+        "Live Broker Synchronized Holdings & Mark-to-Market",
+        f"Total Val: ₹{broker_port_data.get('total_portfolio_value')} Margin: ₹{broker_port_data.get('cash_margin_available')} Holdings: {len(broker_port_data.get('holdings', []))}"
+    )
+
+    # 7. Regulated Order Placement (Zero-Credential Order Routing)
+    order_req = {
+        "symbol": "TCS",
+        "exchange": "NSE",
+        "transaction_type": "BUY",
+        "order_type": "MARKET",
+        "product": "CNC",
+        "quantity": 1
+    }
+    res_order = requests.post(f"{BASE_URL}/api/broker/order", json=order_req, headers=headers)
+    order_res_data = res_order.json()
+    assert_test(
+        res_order.status_code == 200 and order_res_data.get("status") in ["EXECUTED", "PENDING_CUSTODY"],
+        "Regulated Order Execution via Broker OMS (TCS BUY)",
+        f"Order ID: {order_res_data.get('order_id')} Exec Price: ₹{order_res_data.get('price')} Status: {order_res_data.get('status')}"
+    )
+
+    # 8. Broker Order Audit Log
+    res_order_logs = requests.get(f"{BASE_URL}/api/broker/orders", headers=headers)
+    logs_data = res_order_logs.json()
+    assert_test(
+        res_order_logs.status_code == 200 and len(logs_data) >= 1,
+        "Broker Demat Order Execution Audit Trail",
+        f"Total Logged Orders: {len(logs_data)}"
+    )
+
+    # 9. Safe NPCI UPI Mandate Creation (No PIN Collected)
+    mandate_req = {
+        "amount_inr": 2500.0,
+        "vpa": "yogesh@okhdfcbank"
+    }
+    res_mandate = requests.post(f"{BASE_URL}/api/payment/upi-mandate/create", json=mandate_req, headers=headers)
+    mandate_data = res_mandate.json()
+    assert_test(
+        res_mandate.status_code == 200 and mandate_data.get("mandate_ref") is not None,
+        "Safe NPCI UPI Collect Mandate Initiation (Zero-PIN)",
+        f"Ref: {mandate_data.get('mandate_ref')} Amount: ₹{mandate_data.get('amount_inr')} Status: {mandate_data.get('status')}"
+    )
+
+    # 10. NPCI Mandate Authorization & Margin Credit
+    ref = mandate_data.get("mandate_ref")
+    res_approve = requests.post(f"{BASE_URL}/api/payment/upi-mandate/approve/{ref}", headers=headers)
+    approve_data = res_approve.json()
+    assert_test(
+        res_approve.status_code == 200 and approve_data.get("approved") is True,
+        "UPI Bank Mandate Approval & Broker Margin Balance Credit",
+        f"Ref: {approve_data.get('mandate_ref')} Status: {approve_data.get('status')} Approved: {approve_data.get('approved')}"
+    )
+
+    # 11. Real AI Wealth Copilot Audit (Sector Risk vs Career Profile)
+    res_audit = requests.get(f"{BASE_URL}/api/wealth/ai-audit", headers=headers)
+    audit_data = res_audit.json()
+    assert_test(
+        res_audit.status_code == 200 and bool(audit_data.get("student_cash_flow_advice")),
+        "Real AI Wealth Copilot Audit (Career vs Sector Concentration)",
+        f"Buffer: {audit_data.get('emergency_buffer_status')} Sectors: {list(audit_data.get('sector_concentration', {}).keys())} Advice: {audit_data.get('student_cash_flow_advice')[:50]}..."
+    )
+
     print("\n==================================================================")
     print(f"🎯 TEST SUMMARY: {passed} / {total} Passed ({int(passed/total*100)}%)")
     print("==================================================================")
 
 if __name__ == "__main__":
     run_tests()
+

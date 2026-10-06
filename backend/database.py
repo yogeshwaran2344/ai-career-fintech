@@ -197,6 +197,58 @@ def init_database():
         )
     """)
 
+    # 13. User Broker Connections (Regulated Broker OAuth/Session Token Store)
+    # ZERO-CREDENTIAL POLICY: We NEVER store broker passwords, PINs, or trading passwords.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_broker_connections (
+            user_id TEXT PRIMARY KEY,
+            broker_name TEXT NOT NULL,
+            account_id TEXT NOT NULL,
+            broker_token_encrypted TEXT NOT NULL,
+            is_sandbox INTEGER DEFAULT 0,
+            connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    # 14. Regulated Broker Order Audit Ledger
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS broker_order_logs (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            broker_order_id TEXT,
+            broker_name TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            exchange TEXT DEFAULT 'NSE',
+            transaction_type TEXT NOT NULL,
+            order_type TEXT NOT NULL,
+            product TEXT DEFAULT 'CNC',
+            quantity INTEGER NOT NULL,
+            price REAL,
+            status TEXT DEFAULT 'EXECUTED',
+            rejection_reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    # 15. Safe NPCI UPI Mandate Logs (NEVER stores UPI PIN)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS upi_mandate_logs (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            mandate_ref TEXT NOT NULL UNIQUE,
+            amount_inr REAL NOT NULL,
+            vpa TEXT NOT NULL,
+            purpose TEXT NOT NULL,
+            status TEXT DEFAULT 'PENDING_APPROVAL_IN_UPI_APP',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -604,6 +656,128 @@ class DatabaseManager:
         conn.commit()
         conn.close()
         return deleted
+
+    # Broker Connections
+    @staticmethod
+    def get_broker_connection(user_id: str) -> Optional[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_broker_connections WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    @staticmethod
+    def save_broker_connection(user_id: str, broker_name: str, account_id: str, broker_token: str, is_sandbox: bool = False):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO user_broker_connections (user_id, broker_name, account_id, broker_token_encrypted, is_sandbox, last_synced_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id) DO UPDATE SET
+                broker_name = excluded.broker_name,
+                account_id = excluded.account_id,
+                broker_token_encrypted = excluded.broker_token_encrypted,
+                is_sandbox = excluded.is_sandbox,
+                last_synced_at = CURRENT_TIMESTAMP
+        """, (user_id, broker_name, account_id, broker_token, 1 if is_sandbox else 0))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def delete_broker_connection(user_id: str) -> bool:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM user_broker_connections WHERE user_id = ?", (user_id,))
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return deleted
+
+    # Broker Order Logs
+    @staticmethod
+    def log_broker_order(
+        order_id: str,
+        user_id: str,
+        broker_order_id: str,
+        broker_name: str,
+        symbol: str,
+        exchange: str,
+        transaction_type: str,
+        order_type: str,
+        product: str,
+        quantity: int,
+        price: float,
+        status: str = "EXECUTED",
+        rejection_reason: Optional[str] = None
+    ) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO broker_order_logs (
+                id, user_id, broker_order_id, broker_name, symbol, exchange,
+                transaction_type, order_type, product, quantity, price, status, rejection_reason
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            order_id, user_id, broker_order_id, broker_name, symbol, exchange,
+            transaction_type, order_type, product, quantity, price, status, rejection_reason
+        ))
+        conn.commit()
+        cursor.execute("SELECT * FROM broker_order_logs WHERE id = ?", (order_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row)
+
+    @staticmethod
+    def get_user_broker_orders(user_id: str) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM broker_order_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 50", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    # Safe NPCI UPI Mandate Logs
+    @staticmethod
+    def create_upi_mandate(
+        mandate_id: str,
+        user_id: str,
+        mandate_ref: str,
+        amount_inr: float,
+        vpa: str,
+        purpose: str
+    ) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO upi_mandate_logs (id, user_id, mandate_ref, amount_inr, vpa, purpose, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'PENDING_APPROVAL_IN_UPI_APP')
+        """, (mandate_id, user_id, mandate_ref, amount_inr, vpa, purpose))
+        conn.commit()
+        cursor.execute("SELECT * FROM upi_mandate_logs WHERE id = ?", (mandate_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row)
+
+    @staticmethod
+    def get_upi_mandate(mandate_ref: str) -> Optional[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM upi_mandate_logs WHERE mandate_ref = ?", (mandate_ref,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    @staticmethod
+    def update_upi_mandate_status(mandate_ref: str, status: str) -> bool:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE upi_mandate_logs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE mandate_ref = ?", (status, mandate_ref))
+        updated = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return updated
+
 
 
 

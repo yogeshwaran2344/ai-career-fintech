@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, status, UploadFile, File
+from fastapi import FastAPI, HTTPException, Header, Depends, Query, status, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import uuid
 import os
+import asyncio
 
 from models import (
     StudentProfile, SkillItem, SkillGapItem, CareerMatch,
@@ -33,7 +34,11 @@ from models import (
     LinkedInAnalysisRequest, LinkedInAnalysisResult,
     NotificationsResponse, GamificationStatusResponse,
     SkillMarketDemandResponse, JobMatchHistoryResponse,
-    InteractiveDigitalTwinRequest, InteractiveDigitalTwinResponse
+    InteractiveDigitalTwinRequest, InteractiveDigitalTwinResponse,
+    LiveMarketQuote, MarketOverviewResponse, MarketChartResponse,
+    BrokerConnectRequest, BrokerStatusResponse, BrokerPortfolioResponse,
+    PlaceBrokerOrderRequest, BrokerOrderResult,
+    CreateUpiMandateRequest, UpiMandateResponse, RealAiWealthAuditResponse
 )
 from engines.career_engine import CareerEngine
 from engines.finance_engine import FinanceEngine
@@ -51,6 +56,11 @@ from engines.linkedin_analyzer import LinkedInAnalyzerEngine
 from engines.market_demand_engine import SkillMarketDemandEngine
 from engines.interactive_digital_twin import InteractiveDigitalTwinEngine
 from engines.engagement_engine import EngagementEngine
+from engines.market_data_service import MarketDataService
+from engines.broker_adapters import BrokerManager
+from engines.real_portfolio_engine import RealPortfolioEngine
+from engines.order_execution_engine import OrderExecutionEngine
+from engines.real_ai_wealth_copilot import RealAiWealthCopilot
 from database import (
     DatabaseManager, hash_password
 )
@@ -544,6 +554,94 @@ def execute_upi_investment(req: UpiPaymentExecuteRequest, current_user: StudentP
 @app.get("/api/wealth/company-chart/{ticker}", response_model=CompanyChartData)
 def get_company_chart(ticker: str, current_user: StudentProfile = Depends(get_user_from_auth)):
     return InvestmentEngine.get_company_chart(ticker)
+
+# ==================== LIVE REAL-TIME MARKET DATA (NSE / BSE) ====================
+
+@app.get("/api/market/overview", response_model=MarketOverviewResponse)
+def get_live_market_overview(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return MarketDataService.get_market_overview()
+
+@app.get("/api/market/quote/{symbol}", response_model=LiveMarketQuote)
+def get_live_market_quote(symbol: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return MarketDataService.get_quote(symbol)
+
+@app.get("/api/market/chart/{symbol}", response_model=MarketChartResponse)
+def get_live_market_chart(symbol: str, interval: str = Query("5m"), current_user: StudentProfile = Depends(get_user_from_auth)):
+    return MarketDataService.get_chart_candles(symbol, interval)
+
+@app.get("/api/market/search")
+def search_market_symbols(query: str = Query(...), current_user: StudentProfile = Depends(get_user_from_auth)):
+    return MarketDataService.search_symbols(query)
+
+@app.websocket("/api/ws/market")
+async def websocket_market_feed(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            overview = MarketDataService.get_market_overview()
+            await websocket.send_json(overview.model_dump())
+            await asyncio.sleep(2.0)
+    except (WebSocketDisconnect, Exception):
+        pass
+
+# ==================== REGULATED BROKER GATEWAY & REAL PORTFOLIO ====================
+
+@app.get("/api/broker/status", response_model=BrokerStatusResponse)
+def get_broker_status(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return RealPortfolioEngine.get_broker_status(current_user.id)
+
+@app.post("/api/broker/connect")
+def connect_broker_account(req: BrokerConnectRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    res = BrokerManager.connect_broker(
+        user_id=current_user.id,
+        broker_name=req.broker_name,
+        account_id=req.account_id,
+        auth_token=req.auth_code_or_token,
+        is_sandbox=req.is_sandbox
+    )
+    return {"success": True, "message": f"Successfully connected {req.broker_name} account {req.account_id}."}
+
+@app.post("/api/broker/disconnect")
+def disconnect_broker_account(current_user: StudentProfile = Depends(get_user_from_auth)):
+    BrokerManager.disconnect_broker(current_user.id)
+    return {"success": True, "message": "Broker account disconnected."}
+
+@app.get("/api/broker/portfolio", response_model=BrokerPortfolioResponse)
+def get_broker_synchronized_portfolio(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return RealPortfolioEngine.get_portfolio(current_user.id)
+
+@app.post("/api/broker/order", response_model=BrokerOrderResult)
+def place_broker_order(req: PlaceBrokerOrderRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    try:
+        return OrderExecutionEngine.execute_order(current_user.id, req)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/broker/orders")
+def get_broker_order_history(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return DatabaseManager.get_user_broker_orders(current_user.id)
+
+# ==================== SAFE NPCI UPI MANDATE FLOW (ZERO-PIN) ====================
+
+@app.post("/api/payment/upi-mandate/create", response_model=UpiMandateResponse)
+def create_upi_mandate_request(req: CreateUpiMandateRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    try:
+        return OrderExecutionEngine.create_upi_mandate(current_user.id, req)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/payment/upi-mandate/approve/{mandate_ref}", response_model=UpiMandateResponse)
+def approve_upi_mandate_payment(mandate_ref: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    try:
+        return OrderExecutionEngine.approve_upi_mandate(mandate_ref)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+# ==================== REAL AI WEALTH COPILOT WITH LIVE PORTFOLIO ====================
+
+@app.get("/api/wealth/ai-audit", response_model=RealAiWealthAuditResponse)
+def audit_real_portfolio(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return RealAiWealthCopilot.audit_portfolio(current_user)
 
 # ==================== STRATEGIC ADVISOR & TODAY'S PLAN ====================
 
