@@ -426,3 +426,10 @@ async def chat_with_copilot(req: ChatRequest, current_user: StudentProfile = Dep
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def root():
+    return {"message": "Hello from AI-Career-Fintech"}
