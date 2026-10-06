@@ -537,12 +537,13 @@ def get_job_funnel_analytics(current_user: StudentProfile = Depends(get_user_fro
     
     total = len(app_items)
     applied = sum(1 for a in app_items if a.stage == "Applied")
-    oa = sum(1 for a in app_items if a.stage == "OA")
-    technical = sum(1 for a in app_items if a.stage == "Technical Interview")
-    hr = sum(1 for a in app_items if a.stage == "HR Round")
+    oa = sum(1 for a in app_items if a.stage in ["Assessment", "OA"])
+    interview_general = sum(1 for a in app_items if a.stage in ["Interview", "First Round"])
+    technical = sum(1 for a in app_items if a.stage in ["Technical", "Technical Interview"])
+    hr = sum(1 for a in app_items if a.stage in ["HR", "HR Round"])
     offers = sum(1 for a in app_items if a.stage == "Offer")
     rejections = sum(1 for a in app_items if a.stage == "Rejected")
-    interviews = technical + hr
+    interviews = interview_general + technical + hr
 
     conversion_rate = round((offers / max(1, total)) * 100, 1)
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
 import CareerSimulationView from './components/CareerSimulationView';
@@ -17,7 +17,21 @@ import PlacementScoreModal from './components/PlacementScoreModal';
 import WeeklyReviewModal from './components/WeeklyReviewModal';
 import { api, authState } from './api';
 import confetti from 'canvas-confetti';
-import { Sparkles, Bell, CheckCircle2, Sliders, Award, Calendar, RotateCcw, Settings, ArrowRight, LogOut } from 'lucide-react';
+import { 
+  Sparkles, 
+  Bell, 
+  CheckCircle2, 
+  Sliders, 
+  Award, 
+  Calendar, 
+  RotateCcw, 
+  Settings, 
+  ArrowRight, 
+  LogOut,
+  Check,
+  Inbox,
+  X
+} from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -76,6 +90,13 @@ export default function App() {
   const [isPlacementModalOpen, setIsPlacementModalOpen] = useState(false);
   const [isWeeklyReviewOpen, setIsWeeklyReviewOpen] = useState(false);
 
+  // Notifications & Signals
+  const [notificationsList, setNotificationsList] = useState([]);
+  const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
+  const [readNotifIds, setReadNotifIds] = useState([]);
+  const [notifFilter, setNotifFilter] = useState('ALL');
+  const notifRef = useRef(null);
+
   useEffect(() => {
     initAuthAndData();
 
@@ -89,6 +110,27 @@ export default function App() {
     return () => {
       window.removeEventListener('auth:expired', handleAuthExpired);
     };
+  }, []);
+
+  useEffect(() => {
+    if (profile?.id) {
+      try {
+        const stored = localStorage.getItem(`advisor_read_notifs_${profile.id}`);
+        if (stored) {
+          setReadNotifIds(JSON.parse(stored));
+        }
+      } catch {}
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setIsNotifDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const initAuthAndData = async () => {
@@ -130,27 +172,65 @@ export default function App() {
         roadData,
         projData,
         budData,
-        dayData
+        dayData,
+        notifData
       ] = await Promise.all([
-        api.getReadiness(),
-        api.getRecommendations(),
-        api.getSkillGaps(),
-        api.getRoadmap(),
-        api.getProjects(),
-        api.getBudgetAnalysis(),
-        api.getDailyPlan()
+        api.getReadiness().catch(() => null),
+        api.getRecommendations().catch(() => []),
+        api.getSkillGaps().catch(() => []),
+        api.getRoadmap().catch(() => null),
+        api.getProjects().catch(() => []),
+        api.getBudgetAnalysis().catch(() => null),
+        api.getDailyPlan().catch(() => null),
+        api.getNotifications().catch(() => null)
       ]);
 
-      setReadiness(rData);
-      setRecommendations(recData);
-      setSkillGaps(gapData);
-      setRoadmap(roadData);
-      setProjects(projData);
-      setBudgetAnalysis(budData);
-      setDailyPlan(dayData);
+      if (rData) setReadiness(rData);
+      if (recData) setRecommendations(recData);
+      if (gapData) setSkillGaps(gapData);
+      if (roadData) setRoadmap(roadData);
+      if (projData) setProjects(projData);
+      if (budData) setBudgetAnalysis(budData);
+      if (dayData) setDailyPlan(dayData);
+      if (notifData && Array.isArray(notifData.notifications)) {
+        setNotificationsList(notifData.notifications);
+      }
     } catch (err) {
       console.error('Error fetching engine metrics:', err);
     }
+  };
+
+  const markNotifAsRead = (id) => {
+    setReadNotifIds(prev => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      try {
+        localStorage.setItem(`advisor_read_notifs_${profile?.id || 'default'}`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const markAllNotifsAsRead = () => {
+    const allIds = notificationsList.map(n => n.id);
+    setReadNotifIds(allIds);
+    try {
+      localStorage.setItem(`advisor_read_notifs_${profile?.id || 'default'}`, JSON.stringify(allIds));
+    } catch {}
+  };
+
+  const handleNotificationAction = (item) => {
+    markNotifAsRead(item.id);
+    setIsNotifDropdownOpen(false);
+    const actionUrl = item.action_url || '';
+    if (actionUrl.includes('daily-plan') || actionUrl.includes('daily')) setCurrentTab('today');
+    else if (actionUrl.includes('skills') || actionUrl.includes('skill')) setCurrentTab('skillgraph');
+    else if (actionUrl.includes('jobs') || actionUrl.includes('job')) setCurrentTab('jobmarket');
+    else if (actionUrl.includes('resume')) setCurrentTab('resume');
+    else if (actionUrl.includes('wealth') || actionUrl.includes('finance')) setCurrentTab('finance');
+    else if (actionUrl.includes('investments')) setCurrentTab('investments');
+    else if (actionUrl.includes('applications')) setCurrentTab('applications');
+    else setCurrentTab('dashboard');
   };
 
   const showNotification = (message, title = 'AI Alert') => {
@@ -298,6 +378,164 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Notification Bell Dropdown */}
+            <div className="relative" ref={notifRef}>
+              <button
+                type="button"
+                onClick={() => setIsNotifDropdownOpen(prev => !prev)}
+                className={`relative flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                  unreadNotifCount > 0
+                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
+                    : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200'
+                }`}
+                title="AI & System Notifications"
+              >
+                <Bell className={`w-3.5 h-3.5 ${unreadNotifCount > 0 ? 'text-amber-600 animate-pulse' : 'text-stone-500'}`} />
+                <span>Signals</span>
+                {unreadNotifCount > 0 && (
+                  <span className="bg-orange-600 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none shadow-xs">
+                    {unreadNotifCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Popover Dropdown */}
+              {isNotifDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-stone-200 z-50 overflow-hidden text-stone-800">
+                  {/* Dropdown Header */}
+                  <div className="p-3 bg-stone-900 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-orange-600 flex items-center justify-center text-white text-xs">
+                        <Bell className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black tracking-tight">AI Signals & Alerts</h4>
+                        <p className="text-[10px] text-stone-400">
+                          {unreadNotifCount > 0 ? `${unreadNotifCount} unread proactive update${unreadNotifCount > 1 ? 's' : ''}` : 'All caught up'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {unreadNotifCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={markAllNotifsAsRead}
+                          className="text-[10px] text-amber-300 hover:text-amber-200 font-bold px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 transition cursor-pointer"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsNotifDropdownOpen(false)}
+                        className="p-1 text-stone-400 hover:text-white rounded-lg hover:bg-white/10 transition cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  <div className="p-2 bg-stone-50 border-b border-stone-200 flex items-center gap-1 overflow-x-auto text-[10px] font-bold">
+                    {['ALL', 'study', 'career', 'finance', 'jobs'].map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setNotifFilter(cat)}
+                        className={`px-2 py-0.5 rounded-md transition cursor-pointer uppercase ${
+                          notifFilter === cat
+                            ? 'bg-stone-900 text-white shadow-xs'
+                            : 'bg-white text-stone-600 hover:bg-stone-200/70 border border-stone-200'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Notifications List */}
+                  <div className="max-h-80 overflow-y-auto divide-y divide-stone-100">
+                    {filteredNotifications.length === 0 ? (
+                      <div className="p-8 text-center space-y-2">
+                        <Inbox className="w-8 h-8 text-stone-300 mx-auto" />
+                        <p className="text-xs font-bold text-stone-700">No signals in this category</p>
+                        <p className="text-[11px] text-stone-400">Everything is aligned with your learning and wealth roadmap.</p>
+                      </div>
+                    ) : (
+                      filteredNotifications.map(item => {
+                        const isRead = readNotifIds.includes(item.id);
+                        const categoryColor = 
+                          item.category === 'career' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                          item.category === 'finance' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                          item.category === 'jobs' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                          'bg-amber-100 text-amber-800 border-amber-200';
+
+                        return (
+                          <div
+                            key={item.id}
+                            className={`p-3 transition-colors ${isRead ? 'bg-white hover:bg-stone-50/80 opacity-75' : 'bg-amber-50/40 hover:bg-amber-50/70'}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${categoryColor}`}>
+                                  {item.category || 'signal'}
+                                </span>
+                                <h5 className={`text-xs font-black ${isRead ? 'text-stone-700' : 'text-stone-900'}`}>
+                                  {item.title}
+                                </h5>
+                              </div>
+                              <span className="text-[10px] text-stone-400 font-medium whitespace-nowrap">
+                                {item.timestamp}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                              {item.message}
+                            </p>
+
+                            <div className="mt-2 pt-2 border-t border-stone-100 flex items-center justify-between">
+                              <button
+                                type="button"
+                                onClick={() => handleNotificationAction(item)}
+                                className="text-[11px] font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 transition cursor-pointer"
+                              >
+                                <span>Take Action</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+
+                              {!isRead ? (
+                                <button
+                                  type="button"
+                                  onClick={() => markNotifAsRead(item.id)}
+                                  className="text-[10px] font-bold text-stone-500 hover:text-stone-800 flex items-center gap-1 cursor-pointer"
+                                  title="Mark as read"
+                                >
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span>Mark read</span>
+                                </button>
+                              ) : (
+                                <span className="text-[9px] font-medium text-stone-400 flex items-center gap-0.5">
+                                  <CheckCircle2 className="w-2.5 h-2.5 text-stone-300" />
+                                  <span>Read</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Dropdown Footer */}
+                  <div className="p-2.5 bg-stone-50 border-t border-stone-200 text-center">
+                    <p className="text-[10px] text-stone-500 font-medium">
+                      💡 AI-driven insights re-evaluated with your real progress
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => setIsPlacementModalOpen(true)}
               className="flex items-center gap-1 text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-100 border border-stone-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"

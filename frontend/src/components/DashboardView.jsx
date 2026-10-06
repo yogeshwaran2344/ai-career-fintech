@@ -236,23 +236,23 @@ export default function DashboardView({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 relative z-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 relative z-10">
           {/* Action 1 */}
           <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-orange-400 tracking-wider">
-                  Action 1: Technical Sprint
+                  🎯 Assessment
                 </span>
                 <span className="text-[10px] bg-orange-500/30 text-orange-200 px-2 py-0.5 rounded-full font-bold">
-                  +8% Readiness
+                  +8 readiness
                 </span>
               </div>
               <h4 className="text-sm font-black text-white mt-1">
-                Complete {missingSkills[0] || 'Python & SQL'} Focus Sprint
+                Complete {missingSkills[0] || 'SQL & Python'} Assessment
               </h4>
               <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                Direct benchmark gap for {profile?.career_goal}. Completing a 45m sprint unblocks your primary ATS filter barrier.
+                Direct benchmark screening test for {profile?.career_goal}. Verifies proficiency and lifts placement readiness index.
               </p>
             </div>
             <button
@@ -260,7 +260,7 @@ export default function DashboardView({
               onClick={() => setCurrentTab('today')}
               className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
             >
-              <span>Start Focus Sprint</span>
+              <span>Take Assessment</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -270,17 +270,17 @@ export default function DashboardView({
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider">
-                  Action 2: Applications
+                  💼 Outbound
                 </span>
                 <span className="text-[10px] bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-full font-bold">
-                  Funnel Health
+                  +12 opportunity
                 </span>
               </div>
               <h4 className="text-sm font-black text-white mt-1">
-                Apply to 3 Matching Roles & Log Pipeline
+                Apply to 3 Matching Roles
               </h4>
               <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                Roles matched to your {profile?.academic?.branch || 'branch'}. Track conversion from Applied ➔ OA ➔ Interview without drop-off.
+                High-match opportunities aligned with your profile. Log them directly in your Application Tracker funnel.
               </p>
             </div>
             <button
@@ -288,7 +288,7 @@ export default function DashboardView({
               onClick={() => setCurrentTab('applications')}
               className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
             >
-              <span>Track Job Pipeline</span>
+              <span>Track Pipeline</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -298,17 +298,17 @@ export default function DashboardView({
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">
-                  Action 3: Wealth Safety
+                  💰 Sinking Fund
                 </span>
                 <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">
-                  SEBI Gate 1
+                  +4 financial health
                 </span>
               </div>
               <h4 className="text-sm font-black text-white mt-1">
-                Invest ₹2,000 Toward Emergency Goal
+                Save ₹2,000 Toward Goal
               </h4>
               <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                Build a 3-month basic expense cushion in liquid savings before taking paper or live equity exposure.
+                Fortifies your 3-month living buffer, satisfying SEBI Gate 1 before capital is deployed into market assets.
               </p>
             </div>
             <button
@@ -316,7 +316,35 @@ export default function DashboardView({
               onClick={() => setCurrentTab('finance')}
               className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
             >
-              <span>Deposit Sinking Fund</span>
+              <span>Deposit Savings</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Action 4 */}
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-purple-400 tracking-wider">
+                  🧠 Capstone
+                </span>
+                <span className="text-[10px] bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded-full font-bold">
+                  +6 skill score
+                </span>
+              </div>
+              <h4 className="text-sm font-black text-white mt-1">
+                Finish AWS / Microservices Project
+              </h4>
+              <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
+                Containerize endpoints and deploy live on cloud infrastructure with production metrics on your resume.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCurrentTab('career')}
+              className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <span>View Blueprint</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

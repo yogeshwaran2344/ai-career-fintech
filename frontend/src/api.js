@@ -422,6 +422,14 @@ export const api = {
     return authFetch(`${API_BASE}/wealth/financial-safety`);
   },
 
+  // NOTIFICATIONS & GAMIFICATION
+  getNotifications: async () => {
+    return authFetch(`${API_BASE}/notifications`);
+  },
+  getGamificationStatus: async () => {
+    return authFetch(`${API_BASE}/gamification/status`);
+  },
+
   // SESSION & DEVICE MANAGEMENT
   logout: async () => {
     return authFetch(`${API_BASE}/auth/logout`, { method: 'POST' });

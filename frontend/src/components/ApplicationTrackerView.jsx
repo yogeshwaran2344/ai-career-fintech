@@ -23,18 +23,20 @@ import confetti from 'canvas-confetti';
 
 const STAGES = [
   'Applied',
-  'OA',
-  'Technical Interview',
-  'HR Round',
+  'Assessment',
+  'Interview',
+  'Technical',
+  'HR',
   'Offer',
   'Rejected'
 ];
 
 const STAGE_COLORS = {
   'Applied': 'bg-stone-100 text-stone-700 border-stone-200',
-  'OA': 'bg-amber-50 text-amber-800 border-amber-200',
-  'Technical Interview': 'bg-blue-50 text-blue-800 border-blue-200',
-  'HR Round': 'bg-purple-50 text-purple-800 border-purple-200',
+  'Assessment': 'bg-amber-50 text-amber-800 border-amber-200',
+  'Interview': 'bg-sky-50 text-sky-800 border-sky-200',
+  'Technical': 'bg-blue-50 text-blue-800 border-blue-200',
+  'HR': 'bg-purple-50 text-purple-800 border-purple-200',
   'Offer': 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold',
   'Rejected': 'bg-rose-50 text-rose-700 border-rose-200'
 };
@@ -197,13 +199,13 @@ export default function ApplicationTrackerView({ profile }) {
               </span>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center">
               {[
                 { label: 'Applied', count: analytics.applied_count, color: 'text-stone-700' },
-                { label: 'OA', count: analytics.oa_count, color: 'text-amber-700' },
-                { label: 'Tech Round', count: analytics.technical_count, color: 'text-blue-700' },
-                { label: 'HR Round', count: analytics.hr_count, color: 'text-purple-700' },
-                { label: 'Offers', count: analytics.offers_count, color: 'text-emerald-700 font-black' },
+                { label: 'Assessment', count: analytics.oa_count, color: 'text-amber-700' },
+                { label: 'Technical', count: analytics.technical_count, color: 'text-blue-700' },
+                { label: 'HR', count: analytics.hr_count, color: 'text-purple-700' },
+                { label: 'Offer', count: analytics.offers_count, color: 'text-emerald-700 font-black' },
                 { label: 'Rejected', count: analytics.rejections_count, color: 'text-stone-400' }
               ].map((step, idx) => (
                 <div key={idx} className="p-3 bg-stone-50 border border-stone-200 rounded-xl space-y-1">
