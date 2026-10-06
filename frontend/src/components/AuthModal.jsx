@@ -310,68 +310,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
     }
   };
 
-  // Quick Demo Account Login
-  const handleQuickDemoLogin = async () => {
-    setErrorMsg('');
-    try {
-      setIsSubmitting(true);
-      const demoEmail = 'student_demo@careerwealth.ai';
-      const demoPassword = 'DemoStudent123!';
-      try {
-        const res = await api.login(demoEmail, demoPassword);
-        confetti({ particleCount: 60, spread: 50 });
-        onAuthSuccess(res.profile);
-        if (onClose) onClose();
-        return;
-      } catch {
-        // If demo user does not exist yet, auto-create it
-        const starterSkills = [
-          { name: 'Python', proficiency: 7.0, level: 'Intermediate', category: 'General' },
-          { name: 'SQL', proficiency: 6.0, level: 'Intermediate', category: 'General' },
-          { name: 'Machine Learning', proficiency: 5.5, level: 'Intermediate', category: 'General' },
-          { name: 'FastAPI', proficiency: 5.0, level: 'Intermediate', category: 'General' },
-          { name: 'DSA', proficiency: 4.5, level: 'Intermediate', category: 'General' }
-        ];
-        const res = await api.setupProfile({
-          name: 'Yogeshwaran (Demo)',
-          email: demoEmail,
-          password: demoPassword,
-          avatar: '🚀',
-          career_goal: 'AI Engineer',
-          academic: {
-            degree: 'B.Tech / B.E',
-            branch: 'Artificial Intelligence & Machine Learning',
-            year: '3rd Year',
-            college: 'College of Technology',
-            cgpa: 8.8
-          },
-          preferences: {
-            study_hours_per_day: 3.0,
-            target_placement_year: 2027,
-            preferred_learning_style: 'Hands-on / Projects'
-          },
-          financial: {
-            monthly_income: 18000,
-            food: 4000,
-            travel: 2000,
-            entertainment: 1500,
-            other: 2000,
-            available_for_learning: 3000,
-            savings: 4000,
-            emergency_buffer: 3500
-          },
-          skills: starterSkills
-        });
-        confetti({ particleCount: 70, spread: 60 });
-        onAuthSuccess(res.profile);
-        if (onClose) onClose();
-      }
-    } catch (err) {
-      setErrorMsg(err.message || 'Demo login failed.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+
 
   // Step 0 of Sign Up: Validate basic identity and move to Questionnaire Step 1
   const handleSignUpStart = (e) => {
@@ -602,26 +541,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
               <span>{isSubmitting ? 'Verifying Account...' : 'Sign In to CareerWealth'}</span>
             </button>
 
-            <div className="pt-2 border-t border-stone-200 flex flex-col gap-2">
+            <div className="pt-3 border-t border-stone-200 text-center">
               <button
                 type="button"
-                onClick={handleQuickDemoLogin}
-                disabled={isSubmitting}
-                className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2"
+                onClick={() => { setAuthMode('REGISTER'); setErrorMsg(''); }}
+                className="text-xs text-orange-600 hover:text-orange-700 font-bold underline cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-orange-600" />
-                <span>⚡ Instant Try: One-Click Demo Student Account</span>
+                New to CareerWealth? Create an account & calibrate your career →
               </button>
-
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => { setAuthMode('REGISTER'); setErrorMsg(''); }}
-                  className="text-xs text-orange-600 hover:text-orange-700 font-bold underline cursor-pointer"
-                >
-                  New to CareerWealth? Create an account & answer questionnaire →
-                </button>
-              </div>
             </div>
           </form>
         )}
@@ -636,7 +563,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
               <input
                 type="text"
                 required
-                placeholder="e.g. Yogeshwaran"
+                placeholder="e.g. Priya Sharma"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"

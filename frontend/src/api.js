@@ -46,9 +46,6 @@ const authFetch = async (url, options = {}) => {
 
 export const api = {
   // Auth
-  getDemoUsers: async () => {
-    return authFetch(`${API_BASE}/auth/demo-users`);
-  },
   login: async (email, password) => {
     const data = await authFetch(`${API_BASE}/auth/login`, {
       method: 'POST',

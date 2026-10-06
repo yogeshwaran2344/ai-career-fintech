@@ -44,7 +44,7 @@ def run_tests():
 
     # 4. Setup Profile Direct (Student Onboarding)
     setup_payload = {
-        "name": "Yogeshwaran",
+        "name": "Alex Morgan",
         "avatar": "🚀",
         "career_goal": "AI Engineer",
         "academic": {
@@ -85,7 +85,7 @@ def run_tests():
 
     # Verify session profile retrieval
     res = requests.get(f"{BASE_URL}/api/auth/me", headers=headers)
-    assert_test(res.status_code == 200 and res.json().get("name") == "Yogeshwaran", "Get Me with Session Token", f"Name: {res.json().get('name')}")
+    assert_test(res.status_code == 200 and res.json().get("name") == "Alex Morgan", "Get Me with Session Token", f"Name: {res.json().get('name')}")
 
     # ==================== B. CAREER ENGINE & READINESS ====================
     print("\n--- B. Career Engine & Readiness ---")
@@ -151,7 +151,7 @@ def run_tests():
 
     # ==================== E. GITHUB ANALYZER ENGINE ====================
     print("\n--- E. GitHub Profile Analyzer ---")
-    res = requests.post(f"{BASE_URL}/api/career/github-analyzer", json={"username": "yogeshwaran2344"}, headers=headers)
+    res = requests.post(f"{BASE_URL}/api/career/github-analyzer", json={"username": "torvalds"}, headers=headers)
     gh_data = res.json()
     assert_test(
         res.status_code == 200 and gh_data.get("overall_github_score", 0) >= 50,
@@ -234,7 +234,7 @@ def run_tests():
     # ==================== J. REAL RESUME ANALYZER & ATS ====================
     print("\n--- J. Resume Analyzer & ATS Scoring ---")
     res_text = requests.post(f"{BASE_URL}/api/resume/analyze", json={
-        "resume_text": "Yogeshwaran - AI Engineer with B.Tech in AI & ML. Built end-to-end full stack web applications with FastAPI, React, PyTorch, Docker, Python, PostgreSQL. Developed a Random Forest pipeline with 92% classification accuracy on 20,000 records. Experience with LangChain, Vector Databases, Git, and Microservices."
+        "resume_text": "Alex Morgan - AI Engineer with B.Tech in AI & ML. Built end-to-end full stack web applications with FastAPI, React, PyTorch, Docker, Python, PostgreSQL. Developed a Random Forest pipeline with 92% classification accuracy on 20,000 records. Experience with LangChain, Vector Databases, Git, and Microservices."
     }, headers=headers)
     assert_test(
         res_text.status_code == 200 and res_text.json().get("ats_compatibility_pct", 0) >= 70,
