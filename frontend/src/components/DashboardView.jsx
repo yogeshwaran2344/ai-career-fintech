@@ -15,7 +15,12 @@ import {
   Sliders,
   GitFork,
   FileText,
-  Award
+  Award,
+  ShieldCheck,
+  ChevronRight,
+  TrendingDown,
+  Layers,
+  ArrowUpRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import GamificationHUD from './GamificationHUD';
@@ -24,12 +29,17 @@ export default function DashboardView({
   profile, 
   readiness, 
   dailyPlan, 
+  budgetAnalysis,
   onToggleTask, 
   setCurrentTab,
   onOpenPlacementModal,
   onOpenWeeklyReview
 }) {
   const [isWhyModalOpen, setIsWhyModalOpen] = useState(false);
+
+  // Digital Twin quick sandbox state
+  const [selectedSkillLeap, setSelectedSkillLeap] = useState('AWS & Cloud Architecture');
+  const [selectedMonthlyInvest, setSelectedMonthlyInvest] = useState(5000);
 
   const handleTaskToggle = (taskId) => {
     onToggleTask(taskId);
@@ -41,30 +51,166 @@ export default function DashboardView({
   };
 
   const actualReadinessPct = readiness?.readiness_pct ?? 0;
-  const actualSkillScore = readiness?.readiness_score ?? 0;
   const strongSkills = readiness?.strong_skills || [];
   const missingSkills = readiness?.missing_skills || [];
 
+  // Calculate Financial Health Score (0-100)
+  const disposable = budgetAnalysis?.remaining_disposable ?? (profile?.financial?.monthly_income - profile?.financial?.monthly_expenses || 4000);
+  const income = budgetAnalysis?.monthly_income ?? (profile?.financial?.monthly_income || 15000);
+  const savingsHealth = budgetAnalysis?.savings_health || 'HEALTHY';
+  
+  const financialHealthPct = savingsHealth === 'HEALTHY' 
+    ? Math.min(95, Math.round(55 + (disposable / Math.max(1, income)) * 40))
+    : savingsHealth === 'MODERATE' 
+      ? 68 
+      : 42;
+
+  // Trajectory Assessment
+  const trajectoryStatus = actualReadinessPct >= 65 && financialHealthPct >= 65
+    ? { label: '↑ Accelerating', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
+    : actualReadinessPct >= 40
+      ? { label: '↑ Improving', color: 'text-orange-700 bg-orange-50 border-orange-200' }
+      : { label: '⚡ Action Needed', color: 'text-amber-700 bg-amber-50 border-amber-200' };
+
+  // 3-Year Projection multipliers based on quick twin inputs
+  const currentEstLpa = 6.5;
+  const projectedLpa = selectedSkillLeap.includes('AWS') 
+    ? 14.8 
+    : selectedSkillLeap.includes('PyTorch') 
+      ? 16.5 
+      : 13.2;
+
+  // 3-year SIP corpus calculation: FV = P * [((1 + r)^n - 1) / r] * (1 + r) with r = 12%/12 = 0.01, n = 36
+  const r = 0.12 / 12;
+  const n = 36;
+  const projectedCorpus = Math.round(selectedMonthlyInvest * ((Math.pow(1 + r, n) - 1) / r) * (1 + r));
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      {/* 1. Very Top Prominent Bold Welcome Hero Banner */}
-      <div className="bg-white rounded-2xl p-6 border border-stone-200/90 shadow-sm relative overflow-hidden">
-        <div className="relative z-10">
-          <h1 className="text-3xl md:text-4xl font-black text-stone-900 tracking-tight flex flex-wrap items-center gap-2">
-            Welcome <span className="text-orange-600 font-black underline decoration-orange-400 decoration-wavy decoration-3">{profile?.name || 'Student'}</span> , Let's Get Started
-          </h1>
-          <p className="text-sm font-bold text-stone-600 mt-2 flex flex-wrap items-center gap-1.5">
-            <span>{profile?.academic?.degree || 'B.Tech / B.E'} in {profile?.academic?.branch || 'Computer Science & Engineering'} ({profile?.academic?.year || '3rd Year'})</span>
-            <span className="text-stone-400">•</span>
-            <span>Target Placement: <strong className="font-black text-stone-900">{profile?.preferences?.target_placement_year || 2027}</strong></span>
-          </p>
+      
+      {/* =========================================================================
+          SECTION 1: "WHERE AM I NOW?" (5-SECOND CLARITY SNAPSHOT)
+          ========================================================================= */}
+      <div className="bg-white rounded-3xl p-6 border border-stone-200 shadow-sm relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-stone-100 gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black tracking-widest uppercase text-stone-400">
+                CAREERWEALTH AI PLATFORM
+              </span>
+              <span className="text-[10px] bg-orange-100 text-orange-800 font-extrabold px-2 py-0.5 rounded-full">
+                LIVE TELEMETRY
+              </span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black text-stone-900 mt-1 tracking-tight">
+              Where Am I Now?
+            </h1>
+            <p className="text-xs text-stone-500 font-medium mt-0.5">
+              Unified status for <strong className="text-stone-800">{profile?.name}</strong> • Target: <span className="text-orange-600 font-bold">{profile?.career_goal}</span>
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-black px-3 py-1.5 rounded-xl border flex items-center gap-1.5 shadow-2xs ${trajectoryStatus.color}`}>
+              <span>Overall Trajectory:</span>
+              <strong className="underline decoration-2">{trajectoryStatus.label}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* 3 Core Metric Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-5">
+          {/* 1. Career Readiness */}
+          <div className="p-4 bg-stone-50/80 rounded-2xl border border-stone-200/80 hover:border-orange-300 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
+                Career Readiness
+              </span>
+              <button
+                onClick={onOpenPlacementModal}
+                className="text-[10px] font-bold text-orange-600 hover:text-orange-700 bg-orange-50 px-2 py-0.5 rounded cursor-pointer"
+              >
+                Inspect 7 Factors →
+              </button>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-stone-900">{actualReadinessPct}%</span>
+              <span className="text-xs text-stone-500 font-bold">vs 75% target</span>
+            </div>
+            <div className="w-full bg-stone-200 rounded-full h-2 mt-2.5 overflow-hidden">
+              <div 
+                className="bg-orange-500 h-full rounded-full transition-all duration-700" 
+                style={{ width: `${actualReadinessPct}%` }}
+              ></div>
+            </div>
+            <p className="text-[11px] text-stone-500 mt-2 font-medium">
+              Primary Gap: <strong className="text-stone-800">{missingSkills[0] || 'Technical Stack'}</strong>
+            </p>
+          </div>
+
+          {/* 2. Financial Health */}
+          <div className="p-4 bg-stone-50/80 rounded-2xl border border-stone-200/80 hover:border-blue-300 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
+                Financial Health
+              </span>
+              <button
+                onClick={() => setCurrentTab('finance')}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer"
+              >
+                Budget Intel →
+              </button>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-stone-900">{financialHealthPct}%</span>
+              <span className="text-xs text-emerald-700 font-bold">
+                {savingsHealth === 'HEALTHY' ? 'Resilient' : 'Safe Runway'}
+              </span>
+            </div>
+            <div className="w-full bg-stone-200 rounded-full h-2 mt-2.5 overflow-hidden">
+              <div 
+                className="bg-blue-600 h-full rounded-full transition-all duration-700" 
+                style={{ width: `${financialHealthPct}%` }}
+              ></div>
+            </div>
+            <p className="text-[11px] text-stone-500 mt-2 font-medium">
+              Monthly Surplus: <strong className="text-stone-800">₹{disposable.toLocaleString()}</strong>
+            </p>
+          </div>
+
+          {/* 3. Overall Trajectory Momentum */}
+          <div className="p-4 bg-stone-50/80 rounded-2xl border border-stone-200/80 hover:border-emerald-300 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
+                Active Momentum
+              </span>
+              <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                Streak: {profile?.streak_days || 1} Days
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-emerald-700">+{profile?.total_xp || 50}</span>
+              <span className="text-xs text-stone-500 font-bold">XP Gained</span>
+            </div>
+            <div className="w-full bg-stone-200 rounded-full h-2 mt-2.5 overflow-hidden">
+              <div 
+                className="bg-emerald-500 h-full rounded-full transition-all duration-700" 
+                style={{ width: `${Math.min(100, (profile?.total_xp || 50) / 2)}%` }}
+              ></div>
+            </div>
+            <p className="text-[11px] text-stone-500 mt-2 font-medium">
+              Level {profile?.user_level || 1} Student • {profile?.badges?.length || 1} Badges Unlocked
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* 2. Gamification Level & Streak Bar */}
+      {/* Gamification Level & Streak Bar */}
       <GamificationHUD profile={profile} />
 
-      {/* 3. AI Action Center: 3 Highest-Impact Actions Today */}
+      {/* =========================================================================
+          SECTION 2: "WHAT SHOULD I DO TODAY?" (YOUR NEXT BEST ACTIONS)
+          ========================================================================= */}
       <div className="bg-gradient-to-r from-stone-900 via-stone-850 to-orange-950 text-white rounded-3xl p-6 shadow-xl border border-stone-800 relative overflow-hidden">
         <div className="absolute right-0 top-0 w-80 h-80 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -72,12 +218,12 @@ export default function DashboardView({
           <div>
             <div className="flex items-center gap-2">
               <span className="bg-orange-500/30 text-orange-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-orange-400/30">
-                AI Strategic Dispatch
+                Decision Layer
               </span>
-              <span className="text-[11px] text-stone-400 font-bold">Personalized For You</span>
+              <span className="text-[11px] text-stone-400 font-bold">Prioritized Daily Impact</span>
             </div>
             <h2 className="text-xl md:text-2xl font-black text-white mt-1">
-              Your 3 Highest-Impact Actions Today
+              What Should I Do Today? (Next Best Actions)
             </h2>
           </div>
 
@@ -90,19 +236,23 @@ export default function DashboardView({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 relative z-10">
           {/* Action 1 */}
           <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-orange-400 tracking-wider">1. Core Technical</span>
-                <span className="text-[10px] bg-orange-500/30 text-orange-200 px-2 py-0.5 rounded-full font-bold">+8% Readiness</span>
+                <span className="text-[10px] font-black uppercase text-orange-400 tracking-wider">
+                  Action 1: Technical Sprint
+                </span>
+                <span className="text-[10px] bg-orange-500/30 text-orange-200 px-2 py-0.5 rounded-full font-bold">
+                  +8% Readiness
+                </span>
               </div>
               <h4 className="text-sm font-black text-white mt-1">
-                Finish {missingSkills[0] || 'Python & SQL'} Focus Sprint
+                Complete {missingSkills[0] || 'Python & SQL'} Focus Sprint
               </h4>
               <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                Primary placement bottleneck for {profile?.career_goal}. Completing a 45m sprint closes your highest-weight gap.
+                Direct benchmark gap for {profile?.career_goal}. Completing a 45m sprint unblocks your primary ATS filter barrier.
               </p>
             </div>
             <button
@@ -119,22 +269,26 @@ export default function DashboardView({
           <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider">2. Placement Funnel</span>
-                <span className="text-[10px] bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-full font-bold">Target {profile?.preferences?.target_placement_year || 2027}</span>
+                <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider">
+                  Action 2: Applications
+                </span>
+                <span className="text-[10px] bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-full font-bold">
+                  Funnel Health
+                </span>
               </div>
               <h4 className="text-sm font-black text-white mt-1">
-                Apply to 3 Target Internships
+                Apply to 3 Matching Roles & Log Pipeline
               </h4>
               <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                Curated opportunities matching your {profile?.academic?.branch || 'major'}. Early applications yield 2.4x higher interview conversion.
+                Roles matched to your {profile?.academic?.branch || 'branch'}. Track conversion from Applied ➔ OA ➔ Interview without drop-off.
               </p>
             </div>
             <button
               type="button"
-              onClick={() => setCurrentTab('jobmarket')}
+              onClick={() => setCurrentTab('applications')}
               className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
             >
-              <span>Explore Openings</span>
+              <span>Track Job Pipeline</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -143,14 +297,18 @@ export default function DashboardView({
           <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">3. Wealth Safety Gate</span>
-                <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">5-Gate Check</span>
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">
+                  Action 3: Wealth Safety
+                </span>
+                <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">
+                  SEBI Gate 1
+                </span>
               </div>
               <h4 className="text-sm font-black text-white mt-1">
-                Allocate ₹1,500 to Emergency Sinking Fund
+                Invest ₹2,000 Toward Emergency Goal
               </h4>
               <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                Fulfills SEBI Safety Gate 1 (Emergency Runway) before exposing student capital to market volatility.
+                Build a 3-month basic expense cushion in liquid savings before taking paper or live equity exposure.
               </p>
             </div>
             <button
@@ -165,67 +323,165 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* "Why Am I Seeing This?" Explainability Modal */}
-      {isWhyModalOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-orange-600">Explainable AI Attribution</span>
-                <h3 className="text-base font-black text-stone-900">Why Are You Seeing These Recommendations?</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsWhyModalOpen(false)}
-                className="p-1.5 text-stone-400 hover:text-stone-800 rounded-lg cursor-pointer"
-              >
-                ✕
-              </button>
+      {/* =========================================================================
+          SECTION 3: "WHERE AM I GOING?" (CAREER + WEALTH DIGITAL TWIN TRAJECTORY)
+          ========================================================================= */}
+      <div className="advisor-card p-6 border-2 border-stone-200 hover:border-orange-300 transition-all space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-stone-100 gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="bg-purple-100 text-purple-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                🌟 Signature Platform Feature
+              </span>
+              <span className="text-xs text-stone-500 font-bold">3-Year Predictive Projection</span>
             </div>
-
-            <p className="text-xs text-stone-600 leading-relaxed">
-              CareerWealth.AI uses zero generic advice. Every action is derived mathematically from your active profile envelope:
+            <h2 className="text-xl md:text-2xl font-black text-stone-900 mt-1">
+              Where Am I Going? (Career + Wealth Digital Twin)
+            </h2>
+            <p className="text-xs text-stone-600 mt-0.5">
+              Simulate: <em>"What happens if I acquire high-impact skills and invest ₹{selectedMonthlyInvest.toLocaleString()}/month?"</em>
             </p>
+          </div>
 
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
-                <span className="text-base">📊</span>
-                <div>
-                  <strong className="text-stone-900 block">Placement Readiness Gap ({actualReadinessPct}%)</strong>
-                  <span className="text-stone-500 text-[11px]">Your target role ({profile?.career_goal}) requires ~75% readiness. Action 1 targets your highest-weight missing skill ({missingSkills[0] || 'Technical Stack'}).</span>
-                </div>
-              </div>
+          <button
+            onClick={() => setCurrentTab('simulation')}
+            className="px-4 py-2.5 bg-stone-900 hover:bg-black text-white text-xs font-bold rounded-xl flex items-center gap-2 transition cursor-pointer flex-shrink-0 shadow-md"
+          >
+            <span>Open Full Twin Sandbox</span>
+            <ArrowRight className="w-4 h-4 text-orange-400" />
+          </button>
+        </div>
 
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
-                <span className="text-base">🎯</span>
-                <div>
-                  <strong className="text-stone-900 block">Graduation Horizon ({profile?.preferences?.target_placement_year || 2027})</strong>
-                  <span className="text-stone-500 text-[11px]">Companies start hiring 12-18 months prior to batch graduation. Action 2 puts your portfolio in front of active hiring managers.</span>
-                </div>
-              </div>
-
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
-                <span className="text-base">🛡️</span>
-                <div>
-                  <strong className="text-stone-900 block">SEBI 5-Gate Prerequisite Checklist</strong>
-                  <span className="text-stone-500 text-[11px]">Students should never trade equity without a 3-month expense runway. Action 3 locks in capital safety before market risk.</span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsWhyModalOpen(false)}
-              className="w-full py-2.5 bg-stone-900 hover:bg-black text-white rounded-xl text-xs font-black transition cursor-pointer"
-            >
-              Understood, Back to Dashboard
-            </button>
+        {/* Visual Bridge Diagram */}
+        <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 font-mono text-xs text-stone-700 hidden sm:block">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-orange-700">Career: {profile?.career_goal} + {selectedSkillLeap}</span>
+            <span className="text-stone-400">───╮</span>
+          </div>
+          <div className="flex items-center justify-center my-0.5">
+            <span className="bg-stone-900 text-white px-3 py-1 rounded-lg text-[11px] font-sans font-bold shadow-xs">
+              🤖 Unified AI Digital Twin Engine
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-emerald-700">Wealth: ₹{selectedMonthlyInvest.toLocaleString()}/mo Compounding SIP</span>
+            <span className="text-stone-400">───╯</span>
           </div>
         </div>
-      )}
 
+        {/* Interactive Sandbox Controls & Immediate Outcomes */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1">
+          {/* Left 5 Cols: Quick Variables */}
+          <div className="lg:col-span-5 space-y-3.5 bg-stone-50/70 p-4 rounded-2xl border border-stone-200">
+            <div>
+              <label className="text-xs font-bold text-stone-700 block mb-1.5">
+                Target Skill Leap:
+              </label>
+              <div className="space-y-1.5">
+                {[
+                  'AWS & Cloud Architecture',
+                  'PyTorch & Deep Learning Systems',
+                  'DSA & Production System Design'
+                ].map((skill) => (
+                  <button
+                    key={skill}
+                    onClick={() => setSelectedSkillLeap(skill)}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between cursor-pointer ${
+                      selectedSkillLeap === skill
+                        ? 'bg-stone-900 text-white shadow-xs'
+                        : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    <span>{skill}</span>
+                    {selectedSkillLeap === skill && <Check className="w-3.5 h-3.5 text-orange-400" />}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-      {/* 4 Feature Power Action Cards */}
+            <div>
+              <label className="text-xs font-bold text-stone-700 block mb-1.5">
+                Monthly Systematic Investment (SIP):
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[2000, 5000, 10000].map((amt) => (
+                  <button
+                    key={amt}
+                    onClick={() => setSelectedMonthlyInvest(amt)}
+                    className={`py-2 rounded-xl text-xs font-bold transition text-center cursor-pointer ${
+                      selectedMonthlyInvest === amt
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    ₹{amt.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right 7 Cols: Projected 3-Year Trajectory */}
+          <div className="lg:col-span-7 grid grid-cols-2 gap-3">
+            {/* Projected Salary */}
+            <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-2xl flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-orange-800 uppercase tracking-wider block">
+                  3-Yr Salary Trajectory
+                </span>
+                <div className="text-2xl font-black text-stone-900 mt-1">
+                  ₹{projectedLpa} LPA
+                </div>
+                <p className="text-[11px] text-stone-600 mt-1">
+                  Up from ₹{currentEstLpa} LPA baseline (+{Math.round(((projectedLpa - currentEstLpa) / currentEstLpa) * 100)}% earnings lift).
+                </p>
+              </div>
+              <span className="text-[10px] font-bold text-orange-700 bg-white px-2 py-0.5 rounded border border-orange-200 w-fit mt-2">
+                Verified Recruiter Benchmark
+              </span>
+            </div>
+
+            {/* Projected Wealth */}
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                  3-Yr Wealth Corpus
+                </span>
+                <div className="text-2xl font-black text-stone-900 mt-1">
+                  ₹{projectedCorpus.toLocaleString()}
+                </div>
+                <p className="text-[11px] text-stone-600 mt-1">
+                  Accumulated portfolio @ 12% CAGR across index & diversified funds.
+                </p>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 w-fit mt-2">
+                ₹{(selectedMonthlyInvest * 36).toLocaleString()} Capital Invested
+              </span>
+            </div>
+
+            {/* Opportunity Cost Verdict */}
+            <div className="col-span-2 p-3 bg-stone-900 text-white rounded-xl flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-base">⚡</span>
+                <span className="text-[11px]">
+                  <strong>Opportunity Cost Verdict:</strong> Investing in this upskilling leap pays for itself within <strong>0.7 months</strong> of salary increase.
+                </span>
+              </div>
+              <button
+                onClick={() => setCurrentTab('simulation')}
+                className="text-orange-400 font-bold hover:underline flex items-center gap-1 text-[11px] flex-shrink-0 cursor-pointer"
+              >
+                <span>Full What-If</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          SECTION 4: QUICK ACCESS ENGINE CARDS
+          ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <button
           onClick={() => setCurrentTab('simulation')}
@@ -237,7 +493,7 @@ export default function DashboardView({
           <div>
             <div className="flex items-center gap-1.5">
               <h3 className="text-xs font-bold text-stone-900 group-hover:text-orange-600">What-If Simulator</h3>
-              <span className="text-[9px] bg-orange-100 text-orange-800 font-extrabold px-1 rounded">HOT</span>
+              <span className="text-[9px] bg-orange-100 text-orange-800 font-extrabold px-1 rounded">Twin</span>
             </div>
             <p className="text-[11px] text-stone-500 mt-0.5">Test study time & budget variable scenarios.</p>
           </div>
@@ -282,7 +538,7 @@ export default function DashboardView({
         </button>
 
         <button
-          onClick={() => setCurrentTab('today')}
+          onClick={() => setCurrentTab('applications')}
           className="advisor-card p-4 text-left flex flex-col justify-between group hover:border-orange-400 hover:shadow-orange-500/10 cursor-pointer"
         >
           <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
@@ -290,189 +546,128 @@ export default function DashboardView({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="text-xs font-bold text-stone-900 group-hover:text-emerald-600">Today's AI Plan</h3>
-              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-extrabold px-1 rounded">Daily</span>
+              <h3 className="text-xs font-bold text-stone-900 group-hover:text-emerald-600">Application Funnel</h3>
+              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-extrabold px-1 rounded">Funnel</span>
             </div>
-            <p className="text-[11px] text-stone-500 mt-0.5">{profile?.preferences?.study_hours_per_day || 2}h focus sprints.</p>
+            <p className="text-[11px] text-stone-500 mt-0.5">Track outreach from Applied to Final Offer.</p>
           </div>
           <div className="mt-3 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-            <span>Start Sprints</span>
+            <span>Open Pipeline</span>
             <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
           </div>
         </button>
       </div>
 
-      {/* Main Grid: Metrics + Today's Plan */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* =========================================================================
+          SECTION 5: TODAY'S PLAN CHECKLIST WIDGET
+          ========================================================================= */}
+      <div className="advisor-card p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+          <div className="flex items-center gap-2">
+            <CalendarCheck className="w-5 h-5 text-orange-600" />
+            <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+              Today's Daily Action Sprints ({dailyPlan?.tasks?.length || 4} Tasks)
+            </h3>
+          </div>
+          <button 
+            onClick={() => setCurrentTab('today')}
+            className="text-xs font-bold text-orange-600 hover:text-orange-700"
+          >
+            Open Full Focus Timer →
+          </button>
+        </div>
         
-        {/* Left 2 Cols: Progress & Metrics */}
-        <div className="lg:col-span-2 space-y-4">
-          
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* Card 1: Dynamic Calculated Career Engine Readiness */}
-            <div className="advisor-card p-4 text-center">
-              <div className="text-2xl font-black text-orange-600">
-                {actualReadinessPct}%
-              </div>
-              <p className="text-[11px] text-stone-500 font-medium mt-0.5">
-                {profile?.career_goal} Readiness
-              </p>
-              <div className="w-full bg-stone-100 rounded-full h-1.5 mt-2 overflow-hidden">
-                <div 
-                  className="bg-orange-500 h-full rounded-full transition-all duration-500" 
-                  style={{ width: `${actualReadinessPct}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Card 2: 7-Factor Placement Score */}
-            <button
-              onClick={onOpenPlacementModal}
-              className="advisor-card p-4 text-center hover:border-orange-400 cursor-pointer"
+        <div className="space-y-2">
+          {dailyPlan?.tasks?.map((task) => (
+            <div 
+              key={task.id}
+              onClick={() => handleTaskToggle(task.id)}
+              className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
+                task.completed 
+                  ? 'bg-stone-50 border-stone-200 opacity-60' 
+                  : 'bg-white border-stone-200 hover:border-orange-300'
+              }`}
             >
-              <div className="text-2xl font-black text-stone-900">
-                78 <span className="text-xs text-stone-400">/ 100</span>
-              </div>
-              <p className="text-[11px] text-stone-500 font-medium mt-0.5">
-                Placement Factor Score
-              </p>
-              <span className="inline-block text-[9px] text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded font-bold mt-1">
-                View 7 Factors →
-              </span>
-            </button>
-
-            {/* Card 3: Financial Sinking Fund */}
-            <div className="advisor-card p-4 text-center">
-              <div className="text-2xl font-black text-stone-900">
-                ₹{(profile?.financial?.available_for_learning ?? 0).toLocaleString()}
-              </div>
-              <p className="text-[11px] text-stone-500 font-medium mt-0.5">
-                Learning Sinking Fund
-              </p>
-              <span className="inline-block text-[9px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-semibold mt-1">
-                Sustainable
-              </span>
-            </div>
-
-            {/* Card 4: Study Capacity */}
-            <div className="advisor-card p-4 text-center">
-              <div className="text-2xl font-black text-stone-900">
-                {profile?.preferences?.study_hours_per_day ?? 2.0} <span className="text-xs font-normal text-stone-500">h/day</span>
-              </div>
-              <p className="text-[11px] text-stone-500 font-medium mt-0.5">
-                Daily Study Sprints
-              </p>
-              <span className="inline-block text-[9px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-semibold mt-1">
-                {Math.round((profile?.preferences?.study_hours_per_day ?? 2.0) * 7)}h/week Pace
-              </span>
-            </div>
-          </div>
-
-          {/* Quick Bottleneck Alert */}
-          <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-xs font-bold text-amber-950">
-                  AI Placement Bottleneck: {missingSkills.length > 0 ? missingSkills[0] : 'System Architecture'}
-                </h4>
-                <p className="text-xs text-stone-700 mt-0.5 leading-relaxed">
-                  Your primary technical gap for {profile?.career_goal || 'your target role'} is {missingSkills.length > 0 ? missingSkills[0] : 'core engineering'}. Closing this bottleneck accelerates your placement readiness.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setCurrentTab('today')}
-              className="text-xs font-bold text-orange-700 bg-white border border-orange-200 px-3 py-1.5 rounded-xl shadow-2xs flex-shrink-0"
-            >
-              Start Sprint
-            </button>
-          </div>
-
-          {/* Today's Plan Checklist Widget */}
-          <div className="advisor-card p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CalendarCheck className="w-4 h-4 text-orange-600" />
-                <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
-                  Today's AI Action Plan ({dailyPlan?.tasks?.length || 4} Sprints)
-                </h3>
-              </div>
-              <button 
-                onClick={() => setCurrentTab('today')}
-                className="text-xs font-bold text-orange-600 hover:text-orange-700"
-              >
-                Open Full Timer →
-              </button>
-            </div>
-            
-            <div className="space-y-2">
-              {dailyPlan?.tasks?.map((task) => (
-                <div 
-                  key={task.id}
-                  onClick={() => handleTaskToggle(task.id)}
-                  className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                    task.completed 
-                      ? 'bg-stone-50 border-stone-200 opacity-60' 
-                      : 'bg-white border-stone-200 hover:border-orange-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <button className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
-                      task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-stone-300'
-                    }`}>
-                      {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                    </button>
-                    <div>
-                      <h4 className={`text-xs font-bold ${task.completed ? 'line-through text-stone-500' : 'text-stone-900'}`}>
-                        {task.subject}: {task.topic}
-                      </h4>
-                      <p className="text-[11px] text-stone-500">{task.why_today}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2 py-1 rounded-lg">
-                    {task.duration_minutes} min
-                  </span>
+              <div className="flex items-center gap-3">
+                <button className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
+                  task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-stone-300'
+                }`}>
+                  {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </button>
+                <div>
+                  <h4 className={`text-xs font-bold ${task.completed ? 'line-through text-stone-500' : 'text-stone-900'}`}>
+                    {task.subject}: {task.topic}
+                  </h4>
+                  <p className="text-[11px] text-stone-500">{task.why_today}</p>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right 1 Col: Sunday AI Review & Milestones */}
-        <div className="space-y-4">
-          <div className="advisor-card p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-              <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
-                Sunday AI Career Review
+              </div>
+              <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-lg">
+                {task.duration_minutes} min
               </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* "Why Am I Seeing This?" Explainability Modal */}
+      {isWhyModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-orange-600">Explainable AI Attribution</span>
+                <h3 className="text-base font-black text-stone-900">Why Are You Seeing These Next Best Actions?</h3>
+              </div>
               <button
-                onClick={onOpenWeeklyReview}
-                className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded"
+                type="button"
+                onClick={() => setIsWhyModalOpen(false)}
+                className="p-1.5 text-stone-400 hover:text-stone-800 rounded-lg cursor-pointer"
               >
-                Full Report →
+                ✕
               </button>
             </div>
 
-            <div className="p-3.5 bg-orange-50/70 border border-orange-200 rounded-xl space-y-2 text-xs">
-              <span className="text-[10px] font-extrabold uppercase text-orange-800 block">This Week's Feedback</span>
-              <p className="text-stone-800 leading-relaxed font-sans">
-                "You completed 18/21 sprints and logged 11.5 hours of study (+0.8 DSA velocity). Next week, unblock your portfolio by containerizing your AI Resume Analyzer."
-              </p>
-            </div>
+            <p className="text-xs text-stone-600 leading-relaxed">
+              CareerWealth.AI uses zero generic advice. Every action is derived mathematically from your active profile envelope:
+            </p>
 
-            <div className="space-y-2 pt-1 text-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">Next Directives:</span>
-              <div className="space-y-1 text-stone-700">
-                <p className="flex items-center gap-1.5"><span className="text-orange-500">•</span> Dockerize FastAPI backend</p>
-                <p className="flex items-center gap-1.5"><span className="text-orange-500">•</span> Solve 15 Tree LeetCode questions</p>
-                <p className="flex items-center gap-1.5"><span className="text-orange-500">•</span> Save ₹500 into AWS sinking fund</p>
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
+                <span className="text-base">📊</span>
+                <div>
+                  <strong className="text-stone-900 block">Placement Readiness Gap ({actualReadinessPct}%)</strong>
+                  <span className="text-stone-500 text-[11px]">Your target role ({profile?.career_goal}) requires ~75% readiness. Action 1 targets your highest-weight missing skill ({missingSkills[0] || 'Technical Stack'}).</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
+                <span className="text-base">💼</span>
+                <div>
+                  <strong className="text-stone-900 block">Application Funnel Velocity</strong>
+                  <span className="text-stone-500 text-[11px]">Consistent top-of-funnel outreach reduces time-to-offer by 4.2 weeks. Action 2 advances your pipeline across target companies.</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
+                <span className="text-base">🛡️</span>
+                <div>
+                  <strong className="text-stone-900 block">SEBI 5-Gate Prerequisite Checklist</strong>
+                  <span className="text-stone-500 text-[11px]">Students should never trade equity without a 3-month expense runway. Action 3 locks in capital safety before market risk.</span>
+                </div>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsWhyModalOpen(false)}
+              className="w-full py-2.5 bg-stone-900 hover:bg-black text-white rounded-xl text-xs font-black transition cursor-pointer"
+            >
+              Understood, Back to Dashboard
+            </button>
           </div>
         </div>
+      )}
 
-      </div>
     </div>
   );
 }

@@ -347,6 +347,7 @@ export default function App() {
               profile={profile}
               readiness={readiness}
               dailyPlan={dailyPlan}
+              budgetAnalysis={budgetAnalysis}
               onToggleTask={handleToggleTask}
               setCurrentTab={setCurrentTab}
               onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
