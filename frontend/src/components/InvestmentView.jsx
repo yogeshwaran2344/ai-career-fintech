@@ -421,41 +421,66 @@ export default function InvestmentView({ profile }) {
             <div className="flex flex-wrap items-center gap-2">
               <span className="bg-white/20 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-xs flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
-                <span>Live NSE/BSE Telemetry</span>
+                <span>NSE/BSE Telemetry (Educational Feed)</span>
               </span>
               <button 
                 onClick={() => setIsBrokerModalOpen(true)}
                 className="text-emerald-100 hover:text-white text-xs font-bold underline cursor-pointer"
               >
-                {brokerStatus?.connected ? `🟢 Connected: ${brokerStatus.broker_name}` : '⚡ Connect Broker / Demat'}
+                {brokerStatus?.connected ? `🟢 Linked: ${brokerStatus.broker_name}` : '⚡ Connect Broker / Demat'}
               </button>
               
-              {/* PAPER vs LIVE Execution Mode Toggle Pill */}
-              <div className="flex items-center bg-black/30 p-0.5 rounded-full border border-white/25">
+              {/* 3-State Execution Mode: PAPER MODE -> BROKER CONNECTED -> LIVE TRADING */}
+              <div className="flex items-center bg-black/40 p-0.5 rounded-full border border-white/25">
                 <button
                   type="button"
                   onClick={() => setExecutionEnvironment('PAPER')}
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold transition cursor-pointer ${
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold transition cursor-pointer flex items-center gap-1 ${
                     executionEnvironment === 'PAPER'
-                      ? 'bg-amber-400 text-stone-900 shadow-sm'
-                      : 'text-stone-200 hover:text-white'
+                      ? 'bg-emerald-500 text-stone-950 shadow-sm'
+                      : 'text-stone-300 hover:text-white'
                   }`}
-                  title="Virtual Paper Trading (Risk-free simulation)"
+                  title="Virtual Paper Trading (Risk-free simulation without real capital)"
                 >
-                  📄 PAPER SIMULATION
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
+                  <span>🟢 PAPER MODE</span>
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => setExecutionEnvironment('LIVE')}
+                  onClick={() => {
+                    setExecutionEnvironment('CONNECTED');
+                    if (!brokerStatus?.connected) setIsBrokerModalOpen(true);
+                  }}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold transition cursor-pointer flex items-center gap-1 ${
+                    executionEnvironment === 'CONNECTED'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'text-stone-300 hover:text-white'
+                  }`}
+                  title="Broker Demat Connected via Sandbox OAuth"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-300"></span>
+                  <span>🔵 BROKER CONNECTED</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!brokerStatus?.connected) {
+                      setIsBrokerModalOpen(true);
+                    } else {
+                      setExecutionEnvironment('LIVE');
+                    }
+                  }}
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold transition cursor-pointer flex items-center gap-1 ${
                     executionEnvironment === 'LIVE'
                       ? 'bg-rose-500 text-white shadow-sm'
-                      : 'text-stone-200 hover:text-white'
+                      : 'text-stone-300 hover:text-white'
                   }`}
-                  title="Live Order Execution via Connected Broker OMS"
+                  title="Live Order Execution via Connected Broker OMS (Requires Connected Account)"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                  🔴 LIVE BROKER OMS
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                  <span>🔴 LIVE TRADING</span>
                 </button>
               </div>
             </div>

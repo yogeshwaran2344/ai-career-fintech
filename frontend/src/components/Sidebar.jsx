@@ -16,7 +16,9 @@ import {
   Calendar,
   Award,
   TrendingUp,
-  Settings
+  Settings,
+  LogOut,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -27,25 +29,51 @@ export default function Sidebar({
   onReset,
   onOpenAuth,
   onOpenPlacementModal,
-  onOpenWeeklyReview
+  onOpenWeeklyReview,
+  onLogout
 }) {
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'simulation', label: 'What-If Simulator', icon: Sliders, badge: 'Digital Twin' },
-    { id: 'skillgraph', label: 'Skill Graph', icon: GitFork },
-    { id: 'jobmarket', label: 'Job-Market Intel', icon: Briefcase },
-    { id: 'resume', label: 'Resume Analyzer', icon: FileText },
-    { id: 'career', label: 'Career Engine', icon: Compass },
-    { id: 'finance', label: 'Finance Engine', icon: Wallet },
-    { id: 'investments', label: 'Invest & Save', icon: TrendingUp, badge: 'UPI Live' },
-    { id: 'copilot', label: 'AI Strategic Advisor', icon: Bot },
-    { id: 'today', label: "Today's AI Plan", icon: CalendarCheck, badge: 'Daily' },
-    { id: 'profile', label: 'Profile & Setup', icon: UserCircle },
+  const sections = [
+    {
+      title: 'OVERVIEW',
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'copilot', label: 'AI Career Copilot', icon: Bot, badge: 'Advisor' }
+      ]
+    },
+    {
+      title: 'CAREER',
+      items: [
+        { id: 'career', label: 'Career Engine', icon: Compass },
+        { id: 'simulation', label: 'What-If Simulator', icon: Sliders, badge: 'Twin' },
+        { id: 'skillgraph', label: 'Skill Graph Tree', icon: GitFork },
+        { id: 'resume', label: 'Resume & ATS', icon: FileText },
+        { id: 'jobmarket', label: 'Job Market Intel', icon: Briefcase }
+      ]
+    },
+    {
+      title: 'WEALTH & FINTECH',
+      items: [
+        { id: 'finance', label: 'Finance & Budget', icon: Wallet },
+        { id: 'investments', label: 'Investments & Orders', icon: TrendingUp, badge: 'Paper/Live' }
+      ]
+    },
+    {
+      title: 'PROGRESS',
+      items: [
+        { id: 'today', label: "Today's AI Plan", icon: CalendarCheck, badge: 'Daily' }
+      ]
+    },
+    {
+      title: 'SETTINGS',
+      items: [
+        { id: 'profile', label: 'Profile & Setup', icon: UserCircle }
+      ]
+    }
   ];
 
   return (
     <aside className="w-64 bg-[#FCFAF7] border-r border-stone-200/80 flex flex-col justify-between p-4 select-none flex-shrink-0 min-h-screen">
-      <div>
+      <div className="overflow-y-auto max-h-[calc(100vh-140px)] pr-1">
         {/* Brand Header */}
         <div className="flex items-center justify-between px-2 py-3 mb-3 border-b border-stone-200/60">
           <div className="flex items-center gap-2.5">
@@ -62,7 +90,7 @@ export default function Sidebar({
         </div>
 
         {/* User Mini Card */}
-        <div className="bg-white border border-stone-200/80 rounded-2xl p-3 mb-4 shadow-2xs flex items-center justify-between">
+        <div className="bg-white border border-stone-200/80 rounded-2xl p-3 mb-3 shadow-2xs flex items-center justify-between">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-800 font-black flex items-center justify-center text-sm border border-orange-200 flex-shrink-0">
               {profile?.avatar || (profile?.name ? profile.name[0] : '🎓')}
@@ -79,7 +107,7 @@ export default function Sidebar({
 
           <button
             onClick={onOpenAuth}
-            className="p-1.5 text-stone-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+            className="p-1.5 text-stone-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
             title="Edit Setup Questions"
           >
             <Settings className="w-4 h-4" />
@@ -105,54 +133,63 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setCurrentTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
-                  active
-                    ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/70'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-stone-500'}`} />
-                  <span>{item.label}</span>
-                </div>
-                {item.badge && (
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
-                    active ? 'bg-orange-600 text-orange-100' : 'bg-orange-100 text-orange-700'
-                  }`}>
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* Navigation Sections */}
+        <nav className="space-y-4">
+          {sections.map((sec) => (
+            <div key={sec.title} className="space-y-1">
+              <div className="px-3 text-[10px] font-black text-stone-400 uppercase tracking-wider">
+                {sec.title}
+              </div>
+              {sec.items.map((item) => {
+                const Icon = item.icon;
+                const active = currentTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setCurrentTab(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                      active
+                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/70'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-stone-500'}`} />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                        active ? 'bg-orange-600 text-orange-100' : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </div>
 
-      {/* Footer controls */}
-      <div className="pt-3 border-t border-stone-200/60 space-y-2">
-        <button
-          onClick={onOpenAuth}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-stone-700 bg-white hover:bg-stone-100 border border-stone-200 rounded-xl transition-colors shadow-2xs cursor-pointer"
-        >
-          <Settings className="w-3.5 h-3.5 text-orange-600" />
-          <span>Edit Profile / Re-run Setup</span>
-        </button>
+      {/* Footer Controls */}
+      <div className="pt-3 border-t border-stone-200/60 space-y-2 bg-[#FCFAF7]">
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out of Account</span>
+          </button>
+        )}
 
         <button
           onClick={onReset}
           className="w-full flex items-center justify-center gap-1 px-3 py-1 text-[11px] font-medium text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
         >
           <RotateCcw className="w-3 h-3" />
-          <span>Reset Progress Metrics</span>
+          <span>Reset Progress Baseline</span>
         </button>
       </div>
     </aside>

@@ -152,21 +152,33 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
               <div className={`p-4 rounded-2xl border space-y-2 ${
                 executionEnvironment === 'LIVE'
                   ? 'bg-rose-50/80 border-rose-300 text-rose-950'
-                  : 'bg-amber-50/80 border-amber-300 text-amber-950'
+                  : executionEnvironment === 'CONNECTED'
+                  ? 'bg-blue-50/80 border-blue-300 text-blue-950'
+                  : 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
               }`}>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase tracking-wider block">
                     ⚠️ Pre-Execution Order Confirmation
                   </span>
                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                    executionEnvironment === 'LIVE' ? 'bg-rose-600 text-white' : 'bg-amber-400 text-stone-900'
+                    executionEnvironment === 'LIVE' 
+                      ? 'bg-rose-600 text-white' 
+                      : executionEnvironment === 'CONNECTED'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-emerald-600 text-white'
                   }`}>
-                    {executionEnvironment === 'LIVE' ? '🔴 LIVE REAL-MONEY TRADE' : '📄 PAPER SIMULATION TRADE'}
+                    {executionEnvironment === 'LIVE' 
+                      ? '🔴 LIVE REAL-MONEY TRADE' 
+                      : executionEnvironment === 'CONNECTED'
+                      ? '🔵 BROKER SANDBOX DEMAT'
+                      : '🟢 PAPER SIMULATION (ZERO RISK)'}
                   </span>
                 </div>
                 <p className="text-xs leading-relaxed font-medium">
                   {executionEnvironment === 'LIVE'
                     ? 'This order will be dispatched to your connected SEBI regulated broker OMS for actual market execution.'
+                    : executionEnvironment === 'CONNECTED'
+                    ? 'This order will be simulated against your connected broker sandbox account.'
                     : 'This order will be matched in risk-free paper simulation. No real money or margin will be deducted.'}
                 </p>
               </div>

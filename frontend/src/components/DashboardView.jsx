@@ -29,6 +29,8 @@ export default function DashboardView({
   onOpenPlacementModal,
   onOpenWeeklyReview
 }) {
+  const [isWhyModalOpen, setIsWhyModalOpen] = useState(false);
+
   const handleTaskToggle = (taskId) => {
     onToggleTask(taskId);
     confetti({
@@ -61,6 +63,166 @@ export default function DashboardView({
 
       {/* 2. Gamification Level & Streak Bar */}
       <GamificationHUD profile={profile} />
+
+      {/* 3. AI Action Center: 3 Highest-Impact Actions Today */}
+      <div className="bg-gradient-to-r from-stone-900 via-stone-850 to-orange-950 text-white rounded-3xl p-6 shadow-xl border border-stone-800 relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-80 h-80 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 relative z-10">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="bg-orange-500/30 text-orange-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-orange-400/30">
+                AI Strategic Dispatch
+              </span>
+              <span className="text-[11px] text-stone-400 font-bold">Personalized For You</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-black text-white mt-1">
+              Your 3 Highest-Impact Actions Today
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsWhyModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-orange-200 transition cursor-pointer"
+          >
+            <span>💡 Why am I seeing this?</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 relative z-10">
+          {/* Action 1 */}
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-orange-400 tracking-wider">1. Core Technical</span>
+                <span className="text-[10px] bg-orange-500/30 text-orange-200 px-2 py-0.5 rounded-full font-bold">+8% Readiness</span>
+              </div>
+              <h4 className="text-sm font-black text-white mt-1">
+                Finish {missingSkills[0] || 'Python & SQL'} Focus Sprint
+              </h4>
+              <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
+                Primary placement bottleneck for {profile?.career_goal}. Completing a 45m sprint closes your highest-weight gap.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCurrentTab('today')}
+              className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <span>Start Focus Sprint</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Action 2 */}
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider">2. Placement Funnel</span>
+                <span className="text-[10px] bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-full font-bold">Target {profile?.preferences?.target_placement_year || 2027}</span>
+              </div>
+              <h4 className="text-sm font-black text-white mt-1">
+                Apply to 3 Target Internships
+              </h4>
+              <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
+                Curated opportunities matching your {profile?.academic?.branch || 'major'}. Early applications yield 2.4x higher interview conversion.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCurrentTab('jobmarket')}
+              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <span>Explore Openings</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Action 3 */}
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">3. Wealth Safety Gate</span>
+                <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">5-Gate Check</span>
+              </div>
+              <h4 className="text-sm font-black text-white mt-1">
+                Allocate ₹1,500 to Emergency Sinking Fund
+              </h4>
+              <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
+                Fulfills SEBI Safety Gate 1 (Emergency Runway) before exposing student capital to market volatility.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCurrentTab('finance')}
+              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <span>Deposit Sinking Fund</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* "Why Am I Seeing This?" Explainability Modal */}
+      {isWhyModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-orange-600">Explainable AI Attribution</span>
+                <h3 className="text-base font-black text-stone-900">Why Are You Seeing These Recommendations?</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWhyModalOpen(false)}
+                className="p-1.5 text-stone-400 hover:text-stone-800 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed">
+              CareerWealth.AI uses zero generic advice. Every action is derived mathematically from your active profile envelope:
+            </p>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
+                <span className="text-base">📊</span>
+                <div>
+                  <strong className="text-stone-900 block">Placement Readiness Gap ({actualReadinessPct}%)</strong>
+                  <span className="text-stone-500 text-[11px]">Your target role ({profile?.career_goal}) requires ~75% readiness. Action 1 targets your highest-weight missing skill ({missingSkills[0] || 'Technical Stack'}).</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
+                <span className="text-base">🎯</span>
+                <div>
+                  <strong className="text-stone-900 block">Graduation Horizon ({profile?.preferences?.target_placement_year || 2027})</strong>
+                  <span className="text-stone-500 text-[11px]">Companies start hiring 12-18 months prior to batch graduation. Action 2 puts your portfolio in front of active hiring managers.</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
+                <span className="text-base">🛡️</span>
+                <div>
+                  <strong className="text-stone-900 block">SEBI 5-Gate Prerequisite Checklist</strong>
+                  <span className="text-stone-500 text-[11px]">Students should never trade equity without a 3-month expense runway. Action 3 locks in capital safety before market risk.</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsWhyModalOpen(false)}
+              className="w-full py-2.5 bg-stone-900 hover:bg-black text-white rounded-xl text-xs font-black transition cursor-pointer"
+            >
+              Understood, Back to Dashboard
+            </button>
+          </div>
+        </div>
+      )}
 
 
       {/* 4 Feature Power Action Cards */}

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header, Depends, Query, status, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import uuid
@@ -119,6 +119,60 @@ def get_user_from_auth(
 def health_check():
     return {"status": "healthy", "service": "CareerWealth.AI Platform", "database": "SQLite Persistent", "version": "3.0.0"}
 
+@app.get("/llms.txt", response_class=PlainTextResponse)
+def get_llms_txt():
+    """
+    Standard machine-readable manifest for AI chatbots, agents, and LLMs (llms.txt standard).
+    """
+    return """# CareerWealth AI Platform
+
+> AI-Powered Integrated Career Copilot & Regulated Indian Fintech Wealth Engine for Engineering & University Students.
+
+## Overview
+CareerWealth AI connects student human capital development (skill roadmaps, ATS resume optimization, AI mock interviews, GitHub code analysis, and placement readiness) with financial intelligence (SEBI-aligned 5-gate safety check, Career ROI vs Stock Investment comparator, simulated Paper Trading vs Live Regulated Broker OMS execution, and safe NPCI UPI mandate management).
+
+## Core Capabilities & Engines
+
+### 1. Career Engine & Human Capital
+- Placement Readiness Formula: Technical Skills (30%) + Projects (20%) + Resume ATS (15%) + DSA Proficiency (15%) + Mock Interviews (10%) + GitHub Repos (10%).
+- AI Mock Interview Engine: Technical and behavioral question generation with rubric-based transcript evaluations.
+- Skill Demand Telemetry: Real-time industry demand tracking for tech stacks.
+- Career vs Investment Comparator: Quantitative tradeoff analysis evaluating whether capital (e.g. ₹10,000) is better allocated to high-ROI career certifications or stock market SIPs.
+
+### 2. Wealth & Financial Engine
+- Financial Safety Center: 5-Gate prerequisite checklist (Emergency Fund runway, debt clearance, healthcare buffer, stable surplus, risk literacy) before market exposure.
+- Pluggable Regulated Broker OMS: Zero-credential architecture connecting to Zerodha, Upstox, Angel One, and Sandbox Broker with mandatory 2-step order review.
+- Statutory Charges Engine: Computes STT, exchange turnover fees, SEBI charges, stamp duty, and GST on trades.
+- Safe NPCI UPI Mandate Flow: Collect mandate initiation with zero user PIN storage or interception.
+- Live NSE/BSE Telemetry: Real-time stock ticks, 5-level market depth, and historical candlestick charts.
+
+## Machine-Readable API Endpoints
+- OpenAPI Schema (JSON): /openapi.json
+- Interactive Swagger UI: /docs
+- ReDoc UI: /redoc
+- Health Check: /api/health
+- Broker Orders Summary: /api/broker/orders/summary
+- Career ROI vs Investment: /api/career/career-vs-investment
+- Financial Safety Status: /api/wealth/financial-safety
+"""
+
+@app.get("/api/manifest")
+def get_api_manifest():
+    return {
+        "platform": "CareerWealth AI",
+        "version": "3.0.0",
+        "description": "Unified Career Intelligence & Regulated Fintech Engine",
+        "openapi_schema": "/openapi.json",
+        "docs_url": "/docs",
+        "llms_manifest": "/llms.txt",
+        "auth_policy": "Strict Bearer Token (zero query-param auth)",
+        "security": {
+            "password_hashing": "bcrypt (12 rounds) with individual unique salts",
+            "broker_policy": "Zero-Credential Architecture (No broker/bank passwords or UPI PINs stored)",
+            "order_execution": "Two-step user confirmation review before broker OMS dispatch"
+        }
+    }
+
 # ==================== AUTHENTICATION & ONBOARDING ====================
 
 @app.get("/api/career/degree-catalogue")
@@ -137,10 +191,12 @@ def get_demo_users():
 def setup_profile_direct(req: ProfileSetupRequest):
     name_clean = req.name.strip() or "Student"
     user_id = f"user-{uuid.uuid4().hex[:8]}"
-    email_auto = f"{name_clean.lower().replace(' ', '_')}_{uuid.uuid4().hex[:6]}@student.ai"
+    email_auto = req.email.strip().lower() if (req.email and req.email.strip()) else f"{name_clean.lower().replace(' ', '_')}_{uuid.uuid4().hex[:6]}@student.ai"
+    pwd = req.password if (req.password and req.password.strip()) else f"pwd-{uuid.uuid4().hex}"
     
+    existing_user = DatabaseManager.get_user_by_email(email_auto)
     new_profile = StudentProfile(
-        id=user_id,
+        id=user_id if not existing_user else existing_user["id"],
         name=name_clean,
         email=email_auto,
         avatar=req.avatar or "👨‍💻",
@@ -151,13 +207,20 @@ def setup_profile_direct(req: ProfileSetupRequest):
         preferences=req.preferences
     )
     
-    user_id, token = DatabaseManager.create_user(
-        name=name_clean,
-        email=email_auto,
-        password_plain=f"pwd-{uuid.uuid4().hex}",
-        avatar=req.avatar or "👨‍💻",
-        profile=new_profile
-    )
+    if existing_user:
+        if req.password and not verify_password(req.password, existing_user["password_hash"]):
+            raise HTTPException(status_code=400, detail="An account with this email already exists with a different password. Please sign in instead.")
+        user_id = existing_user["id"]
+        DatabaseManager.save_profile(new_profile)
+        token = DatabaseManager.create_session(user_id, duration_days=7)
+    else:
+        user_id, token = DatabaseManager.create_user(
+            name=name_clean,
+            email=email_auto,
+            password_plain=pwd,
+            avatar=req.avatar or "👨‍💻",
+            profile=new_profile
+        )
     
     return AuthResponse(
         token=token,

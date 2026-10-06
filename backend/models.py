@@ -51,6 +51,8 @@ class StudentProfile(BaseModel):
 
 class ProfileSetupRequest(BaseModel):
     name: str
+    email: Optional[str] = None
+    password: Optional[str] = None
     avatar: Optional[str] = "👨‍💻"
     career_goal: str = "AI Engineer"
     academic: AcademicProfile = Field(default_factory=AcademicProfile)

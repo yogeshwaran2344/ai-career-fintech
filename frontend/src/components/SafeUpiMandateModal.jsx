@@ -82,13 +82,20 @@ export default function SafeUpiMandateModal({ isOpen, onClose, onFundsDeposited,
             <X className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-300">
-            <ShieldCheck className="w-4 h-4" />
-            <span>NPCI Regulated UPI Gateway</span>
+            <span className="bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-black border border-emerald-400/30">
+              🧪 SANDBOX UPI INTENT SIMULATOR
+            </span>
           </div>
-          <h3 className="text-xl font-black mt-1">Deposit Funds via UPI Mandate</h3>
+          <h3 className="text-xl font-black mt-1">NPCI UPI Mandate Deposit Flow</h3>
           <p className="text-xs text-emerald-100 mt-1">
-            Zero-PIN Architecture: Authorize securely inside your own bank / UPI app.
+            Zero-PIN Architecture: Demonstrating the official NPCI 2-step collect mandate.
           </p>
+        </div>
+
+        {/* Sandbox Notice Banner */}
+        <div className="bg-amber-50 px-6 py-2 border-b border-amber-200/80 text-[11px] text-amber-900 flex items-center gap-1.5 font-medium">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          <span><strong>Educational Sandbox:</strong> Simulates collect intent. No real bank accounts are debited.</span>
         </div>
 
         {/* Content */}

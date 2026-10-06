@@ -16,7 +16,7 @@ import PlacementScoreModal from './components/PlacementScoreModal';
 import WeeklyReviewModal from './components/WeeklyReviewModal';
 import { api, authState } from './api';
 import confetti from 'canvas-confetti';
-import { Sparkles, Bell, CheckCircle2, Sliders, Award, Calendar, RotateCcw, Settings, ArrowRight } from 'lucide-react';
+import { Sparkles, Bell, CheckCircle2, Sliders, Award, Calendar, RotateCcw, Settings, ArrowRight, LogOut } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -226,44 +226,25 @@ export default function App() {
     );
   }
 
-  // Not set up gate
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } catch {}
+    setProfile(null);
+    setIsAuthOpen(true);
+    showNotification('You have signed out successfully.', 'Session Closed');
+  };
+
+  // Not set up gate - directly show the login and signup interface
   if (!profile) {
     return (
       <div className="min-h-screen bg-[#FBF9F6] flex flex-col items-center justify-center p-6 text-stone-800">
-        <div className="max-w-md w-full text-center space-y-6 bg-white p-8 rounded-3xl border border-stone-200 shadow-xl">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-600 via-amber-500 to-rose-500 flex items-center justify-center text-white text-3xl mx-auto shadow-lg shadow-orange-500/30">
-            🚀
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-stone-900 tracking-tight">
-              CareerWealth<span className="text-orange-600">.AI</span>
-            </h1>
-            <p className="text-xs text-stone-600 mt-2 leading-relaxed">
-              Autonomous Student Career & Wealth Optimization Engine. Direct onboarding—driven 100% by your degree, your actual skill ratings, and your live financial goals.
-            </p>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={() => setIsAuthOpen(true)}
-              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-md shadow-orange-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Get Started: Set Up Your Profile</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          <p className="text-[11px] text-stone-400">
-            Tailored tracks for B.Tech, BCA/MCA, B.Sc/M.Sc, B.Com/BBA/MBA with zero mock defaults.
-          </p>
-        </div>
-
         <AuthModal
-          isOpen={isAuthOpen}
+          isOpen={true}
           onClose={() => {}}
           onAuthSuccess={handleAuthSuccess}
           isDismissible={false}
+          initialMode="LOGIN"
         />
       </div>
     );
@@ -281,6 +262,7 @@ export default function App() {
         onOpenAuth={() => setIsAuthOpen(true)}
         onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
         onOpenWeeklyReview={() => setIsWeeklyReviewOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
@@ -318,6 +300,15 @@ export default function App() {
             >
               <Settings className="w-3.5 h-3.5 text-stone-600" />
               <span>Edit Setup</span>
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+              title="Sign Out of Session"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
             </button>
           </div>
         </div>

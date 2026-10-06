@@ -20,7 +20,12 @@ import {
   Compass,
   Zap,
   TrendingUp,
-  ShieldCheck
+  ShieldCheck,
+  Lock,
+  Mail,
+  LogIn,
+  UserPlus,
+  KeyRound
 } from 'lucide-react';
 import { api } from '../api';
 import confetti from 'canvas-confetti';
@@ -220,18 +225,26 @@ const DEFAULT_SKILLS_FOR_ROLE = {
   ]
 };
 
-export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissible = true }) {
-  const [step, setStep] = useState(1); // 1: Identity & College, 2: Career Track, 3: Skills, 4: Financials
+export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissible = true, initialMode = 'LOGIN' }) {
+  // authMode: 'LOGIN' (Sign In), 'REGISTER' (Sign Up), 'QUESTIONNAIRE' (Step 1-4)
+  const [authMode, setAuthMode] = useState(initialMode);
+  const [step, setStep] = useState(1); // 1: Academic, 2: Career Track, 3: Skills, 4: Financials
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isParsingIntent, setIsParsingIntent] = useState(false);
-  const [intentInsights, setIntentInsights] = useState(null);
 
-  // Multi-step Questionnaire Data
+  // Login credentials
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
+  // Questionnaire / Registration Data
   const [formData, setFormData] = useState({
-    // Step 1: Identity & Academic
+    // User credentials
     name: '',
+    email: '',
+    password: '',
     avatar: '👨‍💻',
+
+    // Step 1: Academic
     degree: 'B.Tech / B.E',
     branch: 'Computer Science & Engineering',
     year: '3rd Year',
@@ -240,145 +253,154 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
     target_placement_year: 2027,
 
     // Step 2: Career Goal & Learning Style
-    career_goal: 'Full Stack Developer',
+    career_goal: 'AI Engineer',
     free_text_intent: '',
     study_hours_per_day: 2.0,
     preferred_learning_style: 'Hands-on / Projects',
 
     // Step 3: Skills
     skills: {
-      'JavaScript/TypeScript': 5.0,
-      'React / Next.js': 4.5,
-      'Node.js / Python': 4.0,
-      'SQL & PostgreSQL': 4.0,
-      'DSA': 3.5,
+      'Python': 6.0,
+      'SQL': 5.0,
+      'Machine Learning': 4.0,
+      'DSA': 4.0,
+      'FastAPI': 3.0,
       'Git/GitHub': 5.0
     },
 
-    // Step 4: Financial Envelope
-    monthly_income: 12000,
-    food: 3500,
-    travel: 1500,
-    entertainment: 1000,
-    other: 1500,
-    available_for_learning: 2000,
-    savings: 2500,
+    // Step 4: Financials
+    monthly_income: 15000,
+    food: 4000,
+    travel: 2000,
+    entertainment: 1500,
+    other: 2000,
+    available_for_learning: 2500,
+    savings: 3000,
     emergency_buffer: 2000
   });
 
   const [customSkillName, setCustomSkillName] = useState('');
   const avatars = ['👨‍💻', '👩‍💻', '🚀', '🤖', '🎓', '⚡', '💡', '🧠', '🎯', '🌟'];
 
-  // Update branches and career goals when Degree changes
-  const handleDegreeChange = (newDegree) => {
-    const degreeData = DEGREE_BRANCH_MAP[newDegree] || DEGREE_BRANCH_MAP["B.Tech / B.E"];
-    const firstBranch = degreeData.branches[0];
-    const availableRoles = degreeData.roles[firstBranch] || ["Full Stack Developer", "AI Engineer", "Data Scientist"];
-    const firstRole = availableRoles[0];
+  useEffect(() => {
+    if (initialMode) setAuthMode(initialMode);
+  }, [initialMode, isOpen]);
 
-    const starterSkills = (DEFAULT_SKILLS_FOR_ROLE[firstRole] || [
-      { name: "Python", proficiency: 5.0 },
-      { name: "SQL", proficiency: 4.0 },
-      { name: "DSA", proficiency: 3.5 }
-    ]).reduce((acc, curr) => ({ ...acc, [curr.name]: curr.proficiency }), {});
+  if (!isOpen) return null;
 
-    setFormData(prev => ({
-      ...prev,
-      degree: newDegree,
-      branch: firstBranch,
-      career_goal: firstRole,
-      skills: starterSkills
-    }));
-  };
-
-  // Update career goals when Branch changes
-  const handleBranchChange = (newBranch) => {
-    const degreeData = DEGREE_BRANCH_MAP[formData.degree] || DEGREE_BRANCH_MAP["B.Tech / B.E"];
-    const availableRoles = degreeData.roles[newBranch] || ["Full Stack Developer", "AI Engineer", "Data Scientist"];
-    const firstRole = availableRoles[0];
-
-    const starterSkills = (DEFAULT_SKILLS_FOR_ROLE[firstRole] || [
-      { name: "Python", proficiency: 5.0 },
-      { name: "SQL", proficiency: 4.0 },
-      { name: "DSA", proficiency: 3.5 }
-    ]).reduce((acc, curr) => ({ ...acc, [curr.name]: curr.proficiency }), {});
-
-    setFormData(prev => ({
-      ...prev,
-      branch: newBranch,
-      career_goal: firstRole,
-      skills: starterSkills
-    }));
-  };
-
-  // Update skills template when Career Goal changes
-  const handleGoalChange = (newGoal) => {
-    const starterSkills = (DEFAULT_SKILLS_FOR_ROLE[newGoal] || [
-      { name: "Python", proficiency: 5.0 },
-      { name: "SQL", proficiency: 4.0 },
-      { name: "DSA", proficiency: 3.5 }
-    ]).reduce((acc, curr) => ({ ...acc, [curr.name]: curr.proficiency }), {});
-
-    setFormData(prev => ({
-      ...prev,
-      career_goal: newGoal,
-      skills: starterSkills
-    }));
-  };
-
-  const handleParseIntent = async () => {
-    if (!formData.free_text_intent.trim()) return;
-    setIsParsingIntent(true);
-    try {
-      const res = await api.parseIntent(formData.free_text_intent);
-      setIntentInsights(res);
-      if (res.interpreted_goal) {
-        handleGoalChange(res.interpreted_goal);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsParsingIntent(false);
-    }
-  };
-
-  const handleSkillChange = (skillName, val) => {
-    setFormData(prev => ({
-      ...prev,
-      skills: { ...prev.skills, [skillName]: Number(val) }
-    }));
-  };
-
-  const handleAddCustomSkill = () => {
-    if (!customSkillName.trim()) return;
-    const name = customSkillName.trim();
-    if (!formData.skills[name]) {
-      setFormData(prev => ({
-        ...prev,
-        skills: { ...prev.skills, [name]: 3.0 }
-      }));
-    }
-    setCustomSkillName('');
-  };
-
-  const handleRemoveSkill = (skillName) => {
-    const updated = { ...formData.skills };
-    delete updated[skillName];
-    setFormData(prev => ({ ...prev, skills: updated }));
-  };
-
-  const handleCompleteSetup = async (e) => {
-    if (e) e.preventDefault();
+  // Handle direct Sign In
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
     setErrorMsg('');
-
-    if (!formData.name.trim()) {
-      setErrorMsg('Please enter your name.');
-      setStep(1);
+    if (!loginEmail.trim() || !loginPassword.trim()) {
+      setErrorMsg('Please enter both email and password.');
       return;
     }
 
+    try {
+      setIsSubmitting(true);
+      const res = await api.login(loginEmail.trim().toLowerCase(), loginPassword);
+      confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+      onAuthSuccess(res.profile);
+      if (onClose) onClose();
+    } catch (err) {
+      setErrorMsg(err.message || 'Invalid email or password. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Quick Demo Account Login
+  const handleQuickDemoLogin = async () => {
+    setErrorMsg('');
+    try {
+      setIsSubmitting(true);
+      const demoEmail = 'student_demo@careerwealth.ai';
+      const demoPassword = 'DemoStudent123!';
+      try {
+        const res = await api.login(demoEmail, demoPassword);
+        confetti({ particleCount: 60, spread: 50 });
+        onAuthSuccess(res.profile);
+        if (onClose) onClose();
+        return;
+      } catch {
+        // If demo user does not exist yet, auto-create it
+        const starterSkills = [
+          { name: 'Python', proficiency: 7.0, level: 'Intermediate', category: 'General' },
+          { name: 'SQL', proficiency: 6.0, level: 'Intermediate', category: 'General' },
+          { name: 'Machine Learning', proficiency: 5.5, level: 'Intermediate', category: 'General' },
+          { name: 'FastAPI', proficiency: 5.0, level: 'Intermediate', category: 'General' },
+          { name: 'DSA', proficiency: 4.5, level: 'Intermediate', category: 'General' }
+        ];
+        const res = await api.setupProfile({
+          name: 'Yogeshwaran (Demo)',
+          email: demoEmail,
+          password: demoPassword,
+          avatar: '🚀',
+          career_goal: 'AI Engineer',
+          academic: {
+            degree: 'B.Tech / B.E',
+            branch: 'Artificial Intelligence & Machine Learning',
+            year: '3rd Year',
+            college: 'College of Technology',
+            cgpa: 8.8
+          },
+          preferences: {
+            study_hours_per_day: 3.0,
+            target_placement_year: 2027,
+            preferred_learning_style: 'Hands-on / Projects'
+          },
+          financial: {
+            monthly_income: 18000,
+            food: 4000,
+            travel: 2000,
+            entertainment: 1500,
+            other: 2000,
+            available_for_learning: 3000,
+            savings: 4000,
+            emergency_buffer: 3500
+          },
+          skills: starterSkills
+        });
+        confetti({ particleCount: 70, spread: 60 });
+        onAuthSuccess(res.profile);
+        if (onClose) onClose();
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Demo login failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Step 0 of Sign Up: Validate basic identity and move to Questionnaire Step 1
+  const handleSignUpStart = (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    if (!formData.name.trim()) {
+      setErrorMsg('Please enter your full name.');
+      return;
+    }
+    if (!formData.email.trim() || !formData.email.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    if (!formData.password || formData.password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters.');
+      return;
+    }
+
+    setAuthMode('QUESTIONNAIRE');
+    setStep(1);
+  };
+
+  // Complete Onboarding Questionnaire
+  const handleCompleteQuestionnaire = async (e) => {
+    if (e) e.preventDefault();
+    setErrorMsg('');
+
     if (Object.keys(formData.skills).length < 3) {
-      setErrorMsg('Please rate at least 3 skills to initialize your intelligence roadmap.');
+      setErrorMsg('Please rate at least 3 skills to initialize your roadmap.');
       setStep(3);
       return;
     }
@@ -395,6 +417,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
 
       const setupPayload = {
         name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
         avatar: formData.avatar,
         career_goal: formData.career_goal,
         academic: {
@@ -428,13 +452,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
       onAuthSuccess(res.profile);
       if (onClose) onClose();
     } catch (err) {
-      setErrorMsg(err.message || 'Setup failed. Please try again.');
+      setErrorMsg(err.message || 'Registration failed. Please check your details.');
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  if (!isOpen) return null;
 
   const currentDegreeData = DEGREE_BRANCH_MAP[formData.degree] || DEGREE_BRANCH_MAP["B.Tech / B.E"];
   const currentAvailableRoles = currentDegreeData.roles[formData.branch] || ["Full Stack Developer", "AI Engineer", "Data Scientist"];
@@ -443,11 +465,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
     <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
       <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-stone-200 overflow-hidden relative my-6">
         
-        {/* Modal Close (only if dismissible) */}
+        {/* Close Button */}
         {isDismissible && onClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 bg-stone-100 hover:bg-stone-200 p-2 rounded-full transition-colors z-20"
+            className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 bg-stone-100 hover:bg-stone-200 p-2 rounded-full transition-colors z-20 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -461,123 +483,282 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
             <div>
               <div className="flex items-center gap-2">
                 <span className="bg-orange-500/30 text-orange-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-orange-400/30">
-                  Direct Student Onboarding
+                  {authMode === 'LOGIN' ? 'Student Sign In' : authMode === 'REGISTER' ? 'New Student Registration' : `Onboarding Questionnaire (${step}/4)`}
                 </span>
               </div>
               <h2 className="text-xl font-black tracking-tight mt-1">
-                Tell Us About Yourself
+                {authMode === 'LOGIN' ? 'Welcome Back to CareerWealth.AI' : authMode === 'REGISTER' ? 'Create Your Student Account' : 'Build Your Career & Wealth Twin'}
               </h2>
               <p className="text-xs text-stone-300 mt-0.5">
-                Step {step} of 4 — We customize your dynamic readiness scores, learning roadmaps, and budget optimizations.
+                {authMode === 'LOGIN' 
+                  ? 'Sign in to access your placement roadmap, simulated broker, and financial safety gates.'
+                  : authMode === 'REGISTER'
+                  ? 'Start by entering your account credentials, then answer tailored questions for your degree.'
+                  : 'Tailored questions to calculate your explainable readiness score and financial runway.'}
               </p>
             </div>
+            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl border border-white/20">
+              {authMode === 'LOGIN' ? '🔐' : authMode === 'REGISTER' ? '✨' : formData.avatar}
+            </div>
           </div>
+
+          {/* Mode Switcher Tabs (Only when not in multi-step questionnaire) */}
+          {authMode !== 'QUESTIONNAIRE' && (
+            <div className="flex gap-2 mt-4 relative z-10">
+              <button
+                type="button"
+                onClick={() => { setAuthMode('LOGIN'); setErrorMsg(''); }}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
+                  authMode === 'LOGIN' ? 'bg-orange-500 text-white shadow-md' : 'bg-white/10 text-stone-300 hover:bg-white/20'
+                }`}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAuthMode('REGISTER'); setErrorMsg(''); }}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
+                  authMode === 'REGISTER' ? 'bg-orange-500 text-white shadow-md' : 'bg-white/10 text-stone-300 hover:bg-white/20'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Create New Account</span>
+              </button>
+            </div>
+          )}
+
+          {/* Questionnaire Progress Stepper (Only in questionnaire mode) */}
+          {authMode === 'QUESTIONNAIRE' && (
+            <div className="flex items-center gap-2 mt-4 relative z-10">
+              {[
+                { s: 1, label: 'Degree' },
+                { s: 2, label: 'Target Track' },
+                { s: 3, label: 'Skills' },
+                { s: 4, label: 'Financials' }
+              ].map(item => (
+                <div key={item.s} className="flex-1">
+                  <div className={`h-1.5 rounded-full transition-all duration-300 ${
+                    step >= item.s ? 'bg-orange-500' : 'bg-stone-700'
+                  }`} />
+                  <span className="text-[10px] text-stone-400 mt-1 block font-medium truncate">
+                    {item.s}. {item.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Error Alert */}
+        {/* Error Alert Box */}
         {errorMsg && (
-          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-800 text-xs">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* Modal Body */}
-        <div className="p-6">
-          <div className="space-y-5">
-            
-            {/* Step Progress Bar */}
-            <div className="flex items-center justify-between relative px-4">
-              {[
-                { num: 1, label: 'Profile & College' },
-                { num: 2, label: 'Career Track' },
-                { num: 3, label: 'Skills Baseline' },
-                { num: 4, label: 'Monthly Budget' }
-              ].map((s) => (
-                <div key={s.num} className="flex flex-col items-center z-10">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                      step === s.num
-                        ? 'bg-orange-600 text-white ring-4 ring-orange-100 shadow-sm'
-                        : step > s.num
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-stone-200 text-stone-600'
-                    }`}
-                  >
-                    {step > s.num ? <CheckCircle className="w-4 h-4" /> : s.num}
-                  </div>
-                  <span className="text-[10px] font-semibold text-stone-600 mt-1">{s.label}</span>
-                </div>
-              ))}
-              <div className="absolute top-4 left-8 right-8 h-0.5 bg-stone-200 -z-0"></div>
+        {/* ============================================================== */}
+        {/* VIEW 1: SIGN IN (EXISTING USER) */}
+        {/* ============================================================== */}
+        {authMode === 'LOGIN' && (
+          <form onSubmit={handleLoginSubmit} className="p-6 space-y-4">
+            <div>
+              <label className="text-xs font-bold text-stone-700 block mb-1">Email Address</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                <input
+                  type="email"
+                  required
+                  placeholder="student@university.edu"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  className="w-full text-xs font-semibold pl-9 pr-3 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+                />
+              </div>
             </div>
 
-            {/* STEP 1: Profile & College */}
+            <div>
+              <label className="text-xs font-bold text-stone-700 block mb-1">Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full text-xs font-semibold pl-9 pr-3 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black shadow-md shadow-orange-600/25 transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{isSubmitting ? 'Verifying Account...' : 'Sign In to CareerWealth'}</span>
+            </button>
+
+            <div className="pt-2 border-t border-stone-200 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleQuickDemoLogin}
+                disabled={isSubmitting}
+                className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-orange-600" />
+                <span>⚡ Instant Try: One-Click Demo Student Account</span>
+              </button>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('REGISTER'); setErrorMsg(''); }}
+                  className="text-xs text-orange-600 hover:text-orange-700 font-bold underline cursor-pointer"
+                >
+                  New to CareerWealth? Create an account & answer questionnaire →
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {/* ============================================================== */}
+        {/* VIEW 2: NEW USER REGISTRATION STEP */}
+        {/* ============================================================== */}
+        {authMode === 'REGISTER' && (
+          <form onSubmit={handleSignUpStart} className="p-6 space-y-4">
+            <div>
+              <label className="text-xs font-bold text-stone-700 block mb-1">Full Name</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Yogeshwaran"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="student@university.edu"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">Create Password (Min 6 chars)</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-stone-700 block mb-1.5">Choose Avatar</label>
+              <div className="flex flex-wrap gap-2">
+                {avatars.map(av => (
+                  <button
+                    key={av}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, avatar: av })}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg border transition cursor-pointer ${
+                      formData.avatar === av ? 'border-orange-500 bg-orange-50 scale-105' : 'border-stone-200 hover:bg-stone-50'
+                    }`}
+                  >
+                    {av}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black shadow-md shadow-orange-600/25 transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>Continue to Career & Wealth Questionnaire (Step 1/4)</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <div className="text-center pt-1 border-t border-stone-200">
+              <button
+                type="button"
+                onClick={() => { setAuthMode('LOGIN'); setErrorMsg(''); }}
+                className="text-xs text-stone-500 hover:text-stone-800 font-bold underline cursor-pointer"
+              >
+                Already registered? Sign In directly instead
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* ============================================================== */}
+        {/* VIEW 3: QUESTIONNAIRE (STEPS 1 TO 4) */}
+        {/* ============================================================== */}
+        {authMode === 'QUESTIONNAIRE' && (
+          <div className="p-6 space-y-4">
+            
+            {/* STEP 1: DEGREE & ACADEMIC PROFILE */}
             {step === 1 && (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-fadeIn">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-stone-700 block mb-1">
-                      What is your Name? <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-                      <input
-                        type="text"
-                        required
-                        autoFocus
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g. Yogeshwaran"
-                        className="w-full text-xs pl-9 pr-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none font-semibold text-stone-900"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-stone-700 block mb-1.5">Choose Avatar</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {avatars.map((av) => (
-                        <button
-                          key={av}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, avatar: av })}
-                          className={`w-8 h-8 rounded-xl text-base flex items-center justify-center border transition-all ${
-                            formData.avatar === av
-                              ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-200 shadow-2xs'
-                              : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                          }`}
-                        >
-                          {av}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-stone-700 block mb-1">Pursuing Degree</label>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Your Degree</label>
                     <select
                       value={formData.degree}
-                      onChange={(e) => handleDegreeChange(e.target.value)}
-                      className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none font-semibold text-stone-900"
+                      onChange={(e) => {
+                        const newDeg = e.target.value;
+                        const branches = DEGREE_BRANCH_MAP[newDeg]?.branches || [];
+                        const firstBranch = branches[0] || 'General';
+                        const firstRole = (DEGREE_BRANCH_MAP[newDeg]?.roles[firstBranch] || ['Full Stack Developer'])[0];
+                        setFormData({
+                          ...formData,
+                          degree: newDeg,
+                          branch: firstBranch,
+                          career_goal: firstRole
+                        });
+                      }}
+                      className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                     >
-                      {Object.keys(DEGREE_BRANCH_MAP).map((deg) => (
+                      {Object.keys(DEGREE_BRANCH_MAP).map(deg => (
                         <option key={deg} value={deg}>{deg}</option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-stone-700 block mb-1">Branch / Major</label>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Department / Branch</label>
                     <select
                       value={formData.branch}
-                      onChange={(e) => handleBranchChange(e.target.value)}
-                      className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none font-semibold text-stone-900"
+                      onChange={(e) => {
+                        const newBranch = e.target.value;
+                        const roles = (currentDegreeData.roles[newBranch] || ['Full Stack Developer']);
+                        setFormData({
+                          ...formData,
+                          branch: newBranch,
+                          career_goal: roles[0]
+                        });
+                      }}
+                      className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                     >
-                      {currentDegreeData.branches.map((br) => (
-                        <option key={br} value={br}>{br}</option>
+                      {(currentDegreeData.branches || []).map(b => (
+                        <option key={b} value={b}>{b}</option>
                       ))}
                     </select>
                   </div>
@@ -589,13 +770,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
                     <select
                       value={formData.year}
                       onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                      className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none font-medium text-stone-900"
+                      className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                     >
-                      <option value="1st Year">1st Year</option>
-                      <option value="2nd Year">2nd Year</option>
-                      <option value="3rd Year">3rd Year</option>
-                      <option value="4th Year">4th Year / Final</option>
-                      <option value="Recent Graduate">Recent Graduate</option>
+                      {['1st Year', '2nd Year', '3rd Year', '4th / Final Year', 'Recent Graduate'].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -607,22 +786,21 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
                       min="4.0"
                       max="10.0"
                       value={formData.cgpa}
-                      onChange={(e) => setFormData({ ...formData, cgpa: Number(e.target.value) })}
-                      className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none font-medium text-stone-900"
+                      onChange={(e) => setFormData({ ...formData, cgpa: parseFloat(e.target.value) || 8.0 })}
+                      className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-stone-700 block mb-1">Placement / Target Year</label>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Target Placement Year</label>
                     <select
                       value={formData.target_placement_year}
-                      onChange={(e) => setFormData({ ...formData, target_placement_year: Number(e.target.value) })}
-                      className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none font-medium text-stone-900"
+                      onChange={(e) => setFormData({ ...formData, target_placement_year: parseInt(e.target.value, 10) })}
+                      className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                     >
-                      <option value={2026}>2026</option>
-                      <option value={2027}>2027</option>
-                      <option value={2028}>2028</option>
-                      <option value={2029}>2029</option>
+                      {[2025, 2026, 2027, 2028, 2029].map(yr => (
+                        <option key={yr} value={yr}>{yr}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -631,64 +809,55 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
                   <label className="text-xs font-bold text-stone-700 block mb-1">College / University Name</label>
                   <input
                     type="text"
+                    placeholder="e.g. College of Technology, Anna University, IIT Madras"
                     value={formData.college}
                     onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-                    placeholder="e.g. National Institute of Technology / University"
-                    className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none font-medium text-stone-900"
+                    className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                   />
                 </div>
               </div>
             )}
 
-            {/* STEP 2: Career Goal & Learning Style */}
+            {/* STEP 2: TARGET CAREER TRACK */}
             {step === 2 && (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-fadeIn">
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-stone-700">
-                      Select Target Career Goal (Tailored for {formData.branch})
-                    </label>
-                    <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
-                      {currentAvailableRoles.length} Matching Roles
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 border border-stone-200 rounded-xl bg-stone-50/60">
-                    {currentAvailableRoles.map((role) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => handleGoalChange(role)}
-                        className={`p-2.5 text-left rounded-xl text-xs font-bold transition-all border ${
-                          formData.career_goal === role
-                            ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
-                            : 'bg-white text-stone-800 border-stone-200 hover:border-orange-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{role}</span>
-                          {formData.career_goal === role && <CheckCircle className="w-3.5 h-3.5 fill-current" />}
-                        </div>
-                      </button>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">Target Job Role / Placement Goal</label>
+                  <select
+                    value={formData.career_goal}
+                    onChange={(e) => {
+                      const newRole = e.target.value;
+                      const roleSkills = (DEFAULT_SKILLS_FOR_ROLE[newRole] || [
+                        { name: 'Python', proficiency: 5.0 },
+                        { name: 'SQL', proficiency: 4.0 },
+                        { name: 'DSA', proficiency: 3.5 }
+                      ]).reduce((acc, curr) => ({ ...acc, [curr.name]: curr.proficiency }), {});
+                      setFormData({
+                        ...formData,
+                        career_goal: newRole,
+                        skills: roleSkills
+                      });
+                    }}
+                    className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+                  >
+                    {currentAvailableRoles.map(role => (
+                      <option key={role} value={role}>{role}</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-stone-100">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <div className="flex justify-between text-xs font-bold text-stone-700 mb-1">
-                      <span>Daily Available Study Hours</span>
-                      <span className="text-orange-600 font-extrabold">{formData.study_hours_per_day} Hours / Day</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="6"
-                      step="0.5"
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Daily Study Hours Available</label>
+                    <select
                       value={formData.study_hours_per_day}
-                      onChange={(e) => setFormData({ ...formData, study_hours_per_day: Number(e.target.value) })}
-                      className="w-full accent-orange-600 cursor-pointer"
-                    />
+                      onChange={(e) => setFormData({ ...formData, study_hours_per_day: parseFloat(e.target.value) })}
+                      className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+                    >
+                      {[1.0, 2.0, 3.0, 4.0, 5.0, 6.0].map(h => (
+                        <option key={h} value={h}>{h} Hours / Day</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -696,163 +865,138 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
                     <select
                       value={formData.preferred_learning_style}
                       onChange={(e) => setFormData({ ...formData, preferred_learning_style: e.target.value })}
-                      className="w-full text-xs p-2 bg-stone-50 border border-stone-300 rounded-lg font-medium"
+                      className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                     >
-                      <option value="Hands-on / Projects">Hands-on / Projects</option>
-                      <option value="Video">Video Courses & Walkthroughs</option>
-                      <option value="Documentation">Official Docs & Codebases</option>
+                      {['Hands-on / Projects', 'Video Tutorials', 'Reading / Documentation', 'Interactive Challenges'].map(st => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
-                {/* AI Intent Parser */}
-                <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-stone-900">
-                      <Bot className="w-4 h-4 text-orange-600" />
-                      <span>Optional: Describe your interests in plain words</span>
-                    </div>
-                  </div>
-
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">Career Aspiration Notes (Optional)</label>
                   <textarea
                     rows={2}
+                    placeholder="e.g. I want to build high-scale AI products, clear Tier-1 campus placements, and invest my stipend wisely."
                     value={formData.free_text_intent}
                     onChange={(e) => setFormData({ ...formData, free_text_intent: e.target.value })}
-                    placeholder="e.g. I want to build scalable web applications and learn AI/ML integration..."
-                    className="w-full text-xs p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                    className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                   />
-
-                  <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={handleParseIntent}
-                      disabled={isParsingIntent || !formData.free_text_intent.trim()}
-                      className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-                      <span>{isParsingIntent ? 'Analyzing Intent...' : 'AI Goal Matcher'}</span>
-                    </button>
-                    {intentInsights && (
-                      <span className="text-xs text-orange-700 font-bold">
-                        Suggested: {intentInsights.interpreted_goal}
-                      </span>
-                    )}
-                  </div>
                 </div>
               </div>
             )}
 
-            {/* STEP 3: Core Skills Baseline */}
+            {/* STEP 3: SKILL PROFICIENCIES */}
             {step === 3 && (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-fadeIn">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xs font-bold text-stone-900">Rate Your Starting Proficiency</h3>
-                    <p className="text-[11px] text-stone-500">
-                      Rate where you are today (0.0 to 10.0). Your scores and roadmaps adjust dynamically.
-                    </p>
-                  </div>
+                  <span className="text-xs font-bold text-stone-700">Rate Your Core Skills (0 = Beginner, 10 = Expert)</span>
+                  <span className="text-[10px] text-stone-500">Benchmark for {formData.career_goal}</span>
                 </div>
 
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                   {Object.entries(formData.skills).map(([skill, prof]) => (
-                    <div key={skill} className="p-2.5 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between gap-3">
-                      <div className="min-w-[140px]">
-                        <span className="text-xs font-bold text-stone-900 block">{skill}</span>
-                        <span className="text-[10px] text-stone-500 font-semibold">
-                          {prof >= 7.5 ? '🟢 Advanced' : prof >= 4.0 ? '🟡 Intermediate' : '⚪ Beginner (0-3.9)'}
-                        </span>
+                    <div key={skill} className="p-3 bg-stone-50 border border-stone-200 rounded-xl space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-stone-800">{skill}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-orange-600">{prof.toFixed(1)}/10</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = { ...formData.skills };
+                              delete updated[skill];
+                              setFormData({ ...formData, skills: updated });
+                            }}
+                            className="text-stone-400 hover:text-rose-600 transition cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-
-                      <div className="flex items-center gap-2 flex-1">
-                        <input
-                          type="range"
-                          min="0"
-                          max="10"
-                          step="0.5"
-                          value={prof}
-                          onChange={(e) => handleSkillChange(skill, e.target.value)}
-                          className="w-full accent-orange-600 cursor-pointer"
-                        />
-                        <span className="text-xs font-extrabold text-stone-900 w-8 text-right">
-                          {prof.toFixed(1)}
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSkill(skill)}
-                        className="text-stone-400 hover:text-rose-600 p-1"
-                        title="Remove Skill"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        step="0.5"
+                        value={prof}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          skills: { ...formData.skills, [skill]: parseFloat(e.target.value) }
+                        })}
+                        className="w-full accent-orange-600 h-1.5 bg-stone-200 rounded-lg cursor-pointer"
+                      />
                     </div>
                   ))}
                 </div>
 
                 {/* Add Custom Skill */}
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex gap-2">
                   <input
                     type="text"
+                    placeholder="Add custom skill (e.g. PyTorch, Rust, LangChain)"
                     value={customSkillName}
                     onChange={(e) => setCustomSkillName(e.target.value)}
-                    placeholder="Add another skill (e.g. PyTorch, Kubernetes, Golang)"
-                    className="flex-1 text-xs p-2 bg-stone-50 border border-stone-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                    className="flex-1 text-xs font-semibold p-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                   />
                   <button
                     type="button"
-                    onClick={handleAddCustomSkill}
-                    className="px-3 py-2 bg-stone-800 hover:bg-stone-900 text-white rounded-xl text-xs font-bold flex items-center gap-1"
+                    onClick={() => {
+                      if (!customSkillName.trim()) return;
+                      setFormData({
+                        ...formData,
+                        skills: { ...formData.skills, [customSkillName.trim()]: 5.0 }
+                      });
+                      setCustomSkillName('');
+                    }}
+                    className="px-4 py-2.5 bg-stone-800 hover:bg-black text-white text-xs font-bold rounded-xl transition cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
+                    Add
                   </button>
                 </div>
               </div>
             )}
 
-            {/* STEP 4: Financial Envelope */}
+            {/* STEP 4: MONTHLY FINANCIAL ENVELOPE */}
             {step === 4 && (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-fadeIn">
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-950 font-medium">
+                  💡 This envelope powers your SEBI-aligned 5-Gate Financial Safety Center, Emergency Fund Runway, and Career ROI vs Investment simulator.
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-stone-700 block mb-1">
-                      Monthly Pocket Money / Allowance (₹ INR)
-                    </label>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Monthly Income / Allowance (₹)</label>
                     <input
                       type="number"
                       step="500"
                       value={formData.monthly_income}
-                      onChange={(e) => setFormData({ ...formData, monthly_income: Number(e.target.value) })}
-                      placeholder="e.g. 12000"
-                      className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-bold text-stone-900 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                      onChange={(e) => setFormData({ ...formData, monthly_income: parseFloat(e.target.value) || 0 })}
+                      className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-stone-700 block mb-1">
-                      Available Monthly Learning Budget (₹ INR)
-                    </label>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Current Emergency Buffer (₹)</label>
                     <input
                       type="number"
-                      step="250"
-                      value={formData.available_for_learning}
-                      onChange={(e) => setFormData({ ...formData, available_for_learning: Number(e.target.value) })}
-                      placeholder="e.g. 2000"
-                      className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-bold text-orange-600 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                      step="500"
+                      value={formData.emergency_buffer}
+                      onChange={(e) => setFormData({ ...formData, emergency_buffer: parseFloat(e.target.value) || 0 })}
+                      className="w-full text-xs font-semibold p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                   <div>
                     <label className="text-[11px] font-bold text-stone-600 block mb-1">Food (₹)</label>
                     <input
                       type="number"
                       value={formData.food}
-                      onChange={(e) => setFormData({ ...formData, food: Number(e.target.value) })}
-                      className="w-full text-xs p-2 bg-stone-50 border border-stone-300 rounded-lg"
+                      onChange={(e) => setFormData({ ...formData, food: parseFloat(e.target.value) || 0 })}
+                      className="w-full p-2 bg-stone-50 border border-stone-200 rounded-xl"
                     />
                   </div>
                   <div>
@@ -860,87 +1004,71 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
                     <input
                       type="number"
                       value={formData.travel}
-                      onChange={(e) => setFormData({ ...formData, travel: Number(e.target.value) })}
-                      className="w-full text-xs p-2 bg-stone-50 border border-stone-300 rounded-lg"
+                      onChange={(e) => setFormData({ ...formData, travel: parseFloat(e.target.value) || 0 })}
+                      className="w-full p-2 bg-stone-50 border border-stone-200 rounded-xl"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-stone-600 block mb-1">Leisure (₹)</label>
+                    <label className="text-[11px] font-bold text-stone-600 block mb-1">Entertainment (₹)</label>
                     <input
                       type="number"
                       value={formData.entertainment}
-                      onChange={(e) => setFormData({ ...formData, entertainment: Number(e.target.value) })}
-                      className="w-full text-xs p-2 bg-stone-50 border border-stone-300 rounded-lg"
+                      onChange={(e) => setFormData({ ...formData, entertainment: parseFloat(e.target.value) || 0 })}
+                      className="w-full p-2 bg-stone-50 border border-stone-200 rounded-xl"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-stone-600 block mb-1">Emergency Buffer (₹)</label>
+                    <label className="text-[11px] font-bold text-stone-600 block mb-1">Upskilling Fund (₹)</label>
                     <input
                       type="number"
-                      value={formData.emergency_buffer}
-                      onChange={(e) => setFormData({ ...formData, emergency_buffer: Number(e.target.value) })}
-                      className="w-full text-xs p-2 bg-stone-50 border border-stone-300 rounded-lg"
+                      value={formData.available_for_learning}
+                      onChange={(e) => setFormData({ ...formData, available_for_learning: parseFloat(e.target.value) || 0 })}
+                      className="w-full p-2 bg-stone-50 border border-stone-200 rounded-xl"
                     />
                   </div>
-                </div>
-
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  <p className="text-[11px] text-emerald-900 leading-relaxed font-medium">
-                    Your financial and learning numbers power your real-time What-If simulator, micro-investment planner, and portfolio builder.
-                  </p>
                 </div>
               </div>
             )}
 
-            {/* Wizard Navigation Footer */}
-            <div className="flex items-center justify-between pt-4 border-t border-stone-200">
-              {step > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setStep(step - 1)}
-                  className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back</span>
-                </button>
-              )}
+            {/* Questionnaire Navigation Buttons */}
+            <div className="pt-3 border-t border-stone-200 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (step > 1) setStep(step - 1);
+                  else setAuthMode('REGISTER');
+                }}
+                className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back</span>
+              </button>
 
               {step < 4 ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (step === 1 && !formData.name.trim()) {
-                      setErrorMsg('Please enter your name before proceeding.');
-                      return;
-                    }
-                    if (step === 3 && Object.keys(formData.skills).length < 3) {
-                      setErrorMsg('Please evaluate and rate at least 3 benchmark skills.');
-                      return;
-                    }
-                    setErrorMsg('');
-                    setStep(step + 1);
-                  }}
-                  className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md shadow-orange-600/20 transition-all ml-auto cursor-pointer"
+                  onClick={() => setStep(step + 1)}
+                  className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span>Next: {step === 1 ? 'Career Goal' : step === 2 ? 'Skills Assessment' : 'Monthly Finances'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>Next Step</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               ) : (
                 <button
                   type="button"
-                  onClick={handleCompleteSetup}
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all ml-auto cursor-pointer"
+                  onClick={handleCompleteQuestionnaire}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Building Your Dashboard...' : 'Complete Setup & Launch Dashboard'}</span>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{isSubmitting ? 'Initializing AI Engines...' : 'Complete Setup & Launch Dashboard'}</span>
                 </button>
               )}
             </div>
 
           </div>
-        </div>
+        )}
+
       </div>
     </div>
   );
