@@ -1,0 +1,722 @@
+from pydantic import BaseModel, Field
+from typing import List, Dict, Optional, Any
+from datetime import date
+
+class AcademicProfile(BaseModel):
+    degree: str = "B.Tech"
+    branch: str = "AI & ML"
+    year: str = "3rd Year"
+    college: Optional[str] = "Indian Institute of Technology / NIT / University"
+    cgpa: float = 8.2
+
+class SkillItem(BaseModel):
+    name: str
+    level: str = "Beginner"  # Beginner, Intermediate, Advanced
+    proficiency: float = 5.0  # 0 to 10
+    category: Optional[str] = "General"
+
+class FinancialProfile(BaseModel):
+    monthly_income: float = 15000.0
+    food: float = 4000.0
+    travel: float = 2000.0
+    entertainment: float = 1500.0
+    other: float = 2500.0
+    available_for_learning: float = 2000.0
+    savings: float = 3000.0
+    emergency_buffer: float = 2000.0
+
+class PreferencesProfile(BaseModel):
+    preferred_learning_style: str = "Video"  # Video, Hands-on / Projects, Reading, Hybrid
+    study_hours_per_day: float = 2.0
+    target_placement_year: int = 2027
+    free_text_intent: Optional[str] = "I want to work in AI but I'm not sure whether I should learn data science or ML engineering."
+
+class StudentProfile(BaseModel):
+    id: str = "student-1"
+    name: str = "Luke"
+    email: Optional[str] = "luke@advisor.ai"
+    avatar: Optional[str] = "👨‍💻"
+    career_goal: str = "AI Engineer"
+    academic: AcademicProfile = Field(default_factory=AcademicProfile)
+    skills: List[SkillItem] = Field(default_factory=list)
+    financial: FinancialProfile = Field(default_factory=FinancialProfile)
+    preferences: PreferencesProfile = Field(default_factory=PreferencesProfile)
+    # Gamification
+    streak_days: int = 7
+    total_xp: int = 1450
+    user_level: int = 7
+    level_title: str = "Interview Ready"
+    badges: List[str] = ["🏅 First Project", "🔥 7-Day Streak", "💻 100 DSA Problems", "📄 Resume Ready"]
+
+# Auth models
+class UserRegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str
+    avatar: Optional[str] = "👨‍💻"
+    career_goal: str = "AI Engineer"
+    academic: AcademicProfile = Field(default_factory=AcademicProfile)
+    skills: List[SkillItem] = Field(default_factory=list)
+    financial: FinancialProfile = Field(default_factory=FinancialProfile)
+    preferences: PreferencesProfile = Field(default_factory=PreferencesProfile)
+
+class UserLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class AuthResponse(BaseModel):
+    token: str
+    user_id: str
+    name: str
+    email: str
+    profile: StudentProfile
+    
+class SkillGapItem(BaseModel):
+    skill: str
+    required_level: str
+    current_level: str
+    status: str  # "MASTERED", "IN_PROGRESS", "MISSING"
+    importance: str  # "HIGH", "MEDIUM", "LOW"
+    category: str
+
+class CareerMatch(BaseModel):
+    role: str
+    match_percentage: int
+    readiness_score: float
+    badge: str
+    description: str
+    why_recommended: str
+    salary_range_inr: str
+    strong_skills: List[str]
+    missing_skills: List[str]
+    partial_skills: List[str]
+
+# 1. Career Simulation "What-If"
+class SimulationRequest(BaseModel):
+    study_hours_per_day: float = 3.0
+    monthly_budget: float = 2000.0
+    target_role: Optional[str] = "AI Engineer"
+    skill_boosts: Dict[str, float] = {}
+    invest_course_cost: Optional[float] = None
+    invest_course_name: Optional[str] = None
+
+class SimulationResponse(BaseModel):
+    scenario_label: str
+    current_readiness_pct: int
+    projected_1m_pct: int
+    projected_3m_pct: int
+    projected_6m_pct: int
+    readiness_gain_pct: int
+    estimated_months_to_ready: int
+    financial_stress: str  # "LOW", "MEDIUM", "HIGH"
+    recommendation_stars: int
+    strategic_verdict: str
+    course_investment_analysis: Optional[Dict[str, Any]] = None
+
+# 2. Placement Readiness Detailed Breakdown
+class PlacementFactor(BaseModel):
+    name: str
+    score: int
+    max_score: int = 100
+    status: str
+    impact: str
+
+class PlacementReadinessBreakdown(BaseModel):
+    overall_placement_score: int
+    tier_classification: str
+    factors: List[PlacementFactor]
+    bottleneck_analysis: str
+    top_actions_to_boost: List[str]
+
+# 3. Skill Dependency Graph
+class SkillGraphNode(BaseModel):
+    id: str
+    label: str
+    category: str
+    status: str  # "MASTERED", "LEARNING", "MISSING"
+    proficiency: float
+    importance: str
+    prerequisites: List[str] = []
+
+class SkillGraphEdge(BaseModel):
+    source: str
+    target: str
+    label: Optional[str] = None
+
+class SkillGraphData(BaseModel):
+    nodes: List[SkillGraphNode]
+    edges: List[SkillGraphEdge]
+
+# 4. Job Market Benchmark
+class MarketSkillBar(BaseModel):
+    skill: str
+    student_match_pct: int
+    market_importance_pct: int
+    status: str
+
+class JobRequirementSkill(BaseModel):
+    skill: str
+    required_level: str
+    student_level: str
+    status: str  # "MATCHED", "DEVELOPING", "GAP"
+
+class JobOpeningRequirementDetail(BaseModel):
+    eligibility_criteria: List[str]
+    required_skills: List[JobRequirementSkill]
+    interview_rounds: List[str]
+    day_to_day_responsibilities: List[str]
+    sample_interview_questions: List[str]
+    recruiter_tip: str
+    expected_work_mode: str
+    mock_apply_link: str
+
+class JobMarketOpening(BaseModel):
+    id: Optional[str] = None
+    company: str
+    title: str
+    location: str
+    salary: str
+    match_pct: int
+    key_tags: List[str]
+    requirements_detail: Optional[JobOpeningRequirementDetail] = None
+
+class JobMarketData(BaseModel):
+    role: str
+    overall_match_pct: int
+    market_demand: str
+    median_salary_inr: str
+    market_skill_bars: List[MarketSkillBar]
+    top_blocking_skills: List[str]
+    live_openings: List[JobMarketOpening]
+
+# 5. AI Resume Analyzer
+class ResumeAnalyzeRequest(BaseModel):
+    resume_text: str
+
+class ResumeBulletImprovement(BaseModel):
+    original: str
+    improved: str
+    rationale: str
+
+class ResumeAnalysisResponse(BaseModel):
+    overall_resume_score: int
+    ats_compatibility_pct: int
+    technical_skills_score: int
+    projects_score: int
+    impact_statements_score: int
+    missing_keywords: List[str]
+    bullet_improvements: List[ResumeBulletImprovement]
+    action_recommendations: List[str]
+
+class RecommendedProject(BaseModel):
+    id: Optional[str] = "proj-1"
+    title: str
+    tagline: Optional[str] = None
+    difficulty: str = "Intermediate"
+    estimated_hours: int = 25
+    skills_covered: Optional[List[str]] = None
+    skills_learned: Optional[List[str]] = None
+    requirements: Optional[List[str]] = None
+    architecture_overview: Optional[str] = None
+    portfolio_impact: Optional[str] = None
+    description: Optional[str] = None
+    roi_score: Optional[str] = "9/10"
+    resume_bullet: Optional[str] = None
+    github_starter: Optional[str] = None
+
+# 6. Detailed Project Blueprint
+class ProjectMilestoneWeek(BaseModel):
+    week_number: int
+    title: str
+    deliverables: List[str]
+
+class DetailedProjectBlueprint(BaseModel):
+    id: str
+    title: str
+    tagline: str
+    difficulty: str
+    estimated_duration_weeks: int
+    estimated_cost_inr: str
+    skills_gained: List[str]
+    weekly_schedule: List[ProjectMilestoneWeek]
+    github_checklist: List[str]
+    architecture_overview: str
+    recruiter_talking_points: List[str]
+
+# 7. Financial "Should I Buy This?" Quick Checker
+class QuickPurchaseCheckRequest(BaseModel):
+    item_name: str
+    cost_inr: float
+    urgency: str = "LOW"  # "LOW", "MEDIUM", "HIGH"
+
+class QuickPurchaseCheckResponse(BaseModel):
+    item_name: str
+    cost_inr: float
+    verdict: str  # "PROCEED_NOW", "WAIT_AND_SAVE", "AVOID_USE_FREE"
+    recommendation_badge: str
+    affordability_pct: int
+    career_benefit: str
+    urgency: str
+    months_to_save: float
+    financial_impact_warning: str
+    better_free_option: str
+    action_plan: str
+
+# 8. Weekly AI Career Review
+class WeeklyReviewData(BaseModel):
+    week_date_range: str
+    tasks_completed: str
+    study_hours_logged: float
+    skill_improvements: List[Dict[str, str]]
+    ai_counselor_narrative: str
+    next_week_directives: List[str]
+
+# Roadmap & Daily tasks
+class RoadmapMilestone(BaseModel):
+    title: str
+    topics: List[str]
+    estimated_hours: int
+    key_deliverable: str
+
+class RoadmapMonth(BaseModel):
+    month_number: int
+    month_title: str
+    focus_theme: str
+    milestones: List[RoadmapMilestone]
+    project_milestone: Optional[str] = None
+    target_completion_weeks: int = 4
+
+class LearningRoadmap(BaseModel):
+    career_goal: str
+    total_months: int = 6
+    total_duration_months: Optional[int] = 6
+    weekly_commitment_hours: float
+    months: List[RoadmapMonth]
+
+class CourseCard(BaseModel):
+    id: str
+    title: str
+    platform: str
+    cost_inr: float
+    duration_weeks: int
+    difficulty: str
+    skills_covered: List[str]
+    career_relevance_stars: int
+    skill_gain_score: float = 5.0
+    roi_score: float = 15.0
+    is_recommended: bool = False
+    verdict: str
+    url: str
+
+class CertificationAffordability(BaseModel):
+    cert_name: str
+    provider: str
+    cost_inr: float
+    learning_budget_monthly: float
+    months_to_save: float
+    exam_target_months: int
+    affordability_verdict: str
+    ai_recommendation: str
+    alternative_options: List[str]
+
+class DailyTask(BaseModel):
+    id: str
+    subject: str
+    topic: str
+    duration_minutes: int
+    action_type: str
+    why_today: str
+    completed: bool = False
+
+class DailyActionPlan(BaseModel):
+    date_str: str
+    total_estimated_minutes: int
+    available_hours: float
+    tasks: List[DailyTask]
+    motivational_quote: str
+
+class DecisionEvaluationRequest(BaseModel):
+    scenario_type: str
+    target_item_name: str
+    cost_inr: float
+    timeline_months: int
+    custom_question: Optional[str] = None
+
+class DecisionEvaluationResponse(BaseModel):
+    verdict: str
+    headline: str
+    career_importance: str
+    financial_feasibility: str
+    recommended_savings_plan: str
+    strategic_advice: str
+    action_steps: List[str]
+
+class ProgressUpdatePayload(BaseModel):
+    skill_updates: Dict[str, float] = {}
+    completed_task_ids: List[str] = []
+
+class LLMIntentAnalysis(BaseModel):
+    interpreted_goal: str
+    suggested_focus: str
+    insights: List[str]
+    confidence_score: float
+
+# ==================== WEALTH BUILDER & INVESTMENT ENGINE SCHEMAS ====================
+
+class SafetyGateCheck(BaseModel):
+    check_name: str
+    passed: bool
+    status_text: str
+    detail: str
+
+class InvestmentReadinessResponse(BaseModel):
+    readiness_status: str  # "FOUNDATION_FIRST", "READY_FOR_MICRO_SIP", "BALANCED_INVESTOR", "CAPITAL_READY"
+    readiness_badge: str
+    overall_readiness_score: int
+    emergency_buffer_score: int
+    savings_discipline_score: int
+    cash_flow_score: int
+    risk_understanding_score: int
+    safety_gate_passed: bool
+    safety_checks: List[SafetyGateCheck]
+    guidance_narrative: str
+    max_safe_monthly_sip_inr: float
+    current_buffer_months: float
+
+class RiskAssessmentRequest(BaseModel):
+    market_drop_reaction: str  # "PANIC_SELL", "WAIT_AND_SEE", "BUY_MORE_DIP"
+    investment_horizon: str   # "SHORT_1YR", "MEDIUM_3_5YRS", "LONG_5PLUS_YRS"
+    primary_goal: str          # "PRESERVE_CAPITAL", "BALANCED_GROWTH", "AGGRESSIVE_WEALTH"
+    emergency_fund_status: str # "NONE", "PARTIAL_1_2M", "COMPLETE_3M_PLUS"
+
+class RiskProfileResponse(BaseModel):
+    risk_category: str  # "CONSERVATIVE", "MODERATE_BALANCED", "GROWTH_SEEKER", "AGGRESSIVE"
+    risk_score: int     # 0 to 100
+    risk_capacity: str  # "LOW", "MEDIUM", "HIGH"
+    risk_tolerance: str # "LOW", "MEDIUM", "HIGH"
+    investment_horizon_recommendation: str
+    recommended_asset_allocation: Dict[str, int]
+    explanation: str
+    suitable_instruments: List[str]
+    instruments_to_avoid: List[str]
+
+class SipSimulatorRequest(BaseModel):
+    monthly_investment_inr: float = 1000.0
+    duration_years: int = 5
+    expected_cagr_pct: float = 12.0
+
+class SipYearMilestone(BaseModel):
+    year: int
+    invested_amount_inr: float
+    estimated_future_value_inr: float
+    estimated_wealth_gain_inr: float
+
+class SipSimulationResponse(BaseModel):
+    monthly_investment_inr: float
+    duration_years: int
+    expected_cagr_pct: float
+    total_invested_inr: float
+    estimated_future_value_inr: float
+    estimated_wealth_gain_inr: float
+    wealth_multiplier: float
+    milestones: List[SipYearMilestone]
+    step_up_comparison: List[Dict[str, Any]]
+    conservative_moderate_aggressive_scenarios: Dict[str, float]
+    regulatory_disclaimer: str
+
+class OpportunityCostRequest(BaseModel):
+    amount_inr: float = 2000.0
+    candidate_course: Optional[str] = None
+
+class OpportunityCostOption(BaseModel):
+    option_id: str
+    title: str
+    category: str  # "EDUCATION", "EMERGENCY_BUFFER", "MUTUAL_FUND_SIP", "CERTIFICATION"
+    immediate_career_impact: str
+    immediate_placement_readiness_gain: str
+    financial_risk: str
+    recommendation_badge: str
+    rationale: str
+
+class OpportunityCostResponse(BaseModel):
+    amount_inr: float
+    primary_winner_id: str
+    verdict_headline: str
+    ai_strategic_guidance: str
+    options: List[OpportunityCostOption]
+    tradeoff_summary: str
+
+class ScamCheckRequest(BaseModel):
+    pitch_text: str
+    platform_name: Optional[str] = "Unknown"
+
+class ScamCheckResponse(BaseModel):
+    risk_level: str  # "EXTREME_RISK", "HIGH_RISK", "MODERATE_RISK", "LEGITIMATE_REGULATED"
+    risk_badge: str
+    safety_score: int  # 0 to 100 (100 = completely safe/regulated)
+    red_flags_detected: List[str]
+    sebi_regulations_breached: List[str]
+    verdict_summary: str
+    action_advice: str
+    safe_regulated_alternative: str
+
+class DigitalTwinYearRecord(BaseModel):
+    year_index: int
+    calendar_year: int
+    estimated_monthly_income_inr: float
+    annual_salary_inr: str
+    career_readiness_pct: int
+    target_job_role: str
+    cumulative_emergency_savings_inr: float
+    cumulative_investment_corpus_inr: float
+    total_net_worth_inr: float
+
+class DigitalTwinScenario(BaseModel):
+    scenario_key: str
+    name: str
+    tagline: str
+    description: str
+    year_5_salary: str
+    year_5_net_worth: str
+    year_5_readiness: int
+    records: List[DigitalTwinYearRecord]
+
+class DigitalTwinResponse(BaseModel):
+    baseline_career_role: str
+    current_readiness_pct: int
+    scenarios: List[DigitalTwinScenario]
+    ai_comparative_synthesis: str
+
+# ==================== INVESTMENT & SMART SAVINGS HUB ====================
+
+class HistoricalPricePoint(BaseModel):
+    date: str
+    price: float
+    volume_m: Optional[float] = 1.2
+    formatted_date: Optional[str] = ""
+
+class CompanyChartData(BaseModel):
+    ticker: str
+    company_name: str
+    category: str
+    current_price_inr: float
+    change_inr: float
+    change_pct: float
+    gmp_inr: float
+    gmp_pct: float
+    gmp_status: str
+    gmp_demand_rating: str
+    timeframe: str  # "1W", "1M", "3M", "6M", "1Y"
+    points: List[HistoricalPricePoint]
+    high_price: float
+    low_price: float
+    moving_average_50d: float
+    market_sentiment: str
+    near_term_catalysts: str
+    why_suggested_for_you: str
+
+class InvestmentAsset(BaseModel):
+    id: str
+    ticker: str
+    name: str
+    category: str  # "INDEX_FUND", "FLEXI_CAP", "LIQUID_OVERNIGHT", "STOCK_EQUITY", "ETF_GOLD", "TECH_ETF"
+    category_label: str
+    expense_ratio_pct: float
+    cagr_3y_pct: float
+    current_nav_or_price: float
+    min_sip_inr: float
+    min_lumpsum_inr: float
+    risk_rating: str  # "LOW", "MODERATE", "VERY_HIGH"
+    risk_badge: str
+    student_fit_reason: str
+    sebi_amfi_type: str
+    popular_badge: Optional[str] = None
+    tags: List[str]
+    pe_ratio: Optional[float] = 0.0
+    market_cap_tier: Optional[str] = "Large Cap"
+    ai_growth_score: Optional[float] = 9.0
+    expected_6m_return_pct: Optional[float] = 7.5
+    expected_1yr_return_pct: Optional[float] = 15.0
+    gmp_inr: Optional[float] = 0.0
+    gmp_pct: Optional[float] = 0.0
+    gmp_status: Optional[str] = "BULLISH_DEMAND"
+    gmp_demand_rating: Optional[str] = "High Institutional Accumulation"
+    why_suggested_for_you: Optional[str] = ""
+    near_term_catalysts: Optional[str] = ""
+    key_moat: Optional[str] = ""
+
+class PortfolioHolding(BaseModel):
+    asset_id: str
+    asset_name: str
+    ticker: str
+    category: str
+    units: float
+    avg_buy_price: float
+    total_invested_inr: float
+    current_value_inr: float
+    absolute_return_inr: float
+    absolute_return_pct: float
+    sip_active: bool
+    sip_amount_monthly: float
+    last_updated: str
+
+class PortfolioSummary(BaseModel):
+    cash_wallet_balance_inr: float
+    total_invested_inr: float
+    current_portfolio_value_inr: float
+    total_returns_inr: float
+    total_returns_pct: float
+    holdings: List[PortfolioHolding]
+    asset_allocation: List[Dict[str, Any]]
+    active_sips_count: int
+    monthly_sip_outflow_inr: float
+
+class TradeOrderRequest(BaseModel):
+    asset_id: str
+    action: str  # "BUY_LUMPSUM", "START_SIP", "CANCEL_SIP", "SELL_ALL"
+    amount_inr: float = 500.0
+
+class TradeOrderResponse(BaseModel):
+    success: bool
+    message: str
+    transaction_id: str
+    portfolio: PortfolioSummary
+
+class SavingsGoal(BaseModel):
+    id: str
+    title: str
+    category: str  # "EMERGENCY_BUFFER", "TECH_HARDWARE", "CLOUD_CREDITS", "CERTIFICATION", "CAREER_WARDROBE", "CUSTOM"
+    icon: str
+    target_amount_inr: float
+    current_amount_inr: float
+    target_date: str
+    monthly_recommendation_inr: float
+    progress_pct: int
+    days_remaining: int
+    status: str  # "ON_TRACK", "AHEAD", "BEHIND", "COMPLETED"
+    suggested_holding_place: str
+
+class CreateSavingsGoalRequest(BaseModel):
+    title: str
+    category: str
+    icon: Optional[str] = "🎯"
+    target_amount_inr: float
+    target_date: str
+    current_amount_inr: Optional[float] = 0.0
+
+class DepositSavingsGoalRequest(BaseModel):
+    goal_id: str
+    amount_inr: float
+
+class SavingRule(BaseModel):
+    rule_key: str
+    name: str
+    icon: str
+    description: str
+    frequency: str
+    estimated_monthly_save_inr: float
+    active: bool
+    gamified_tip: str
+
+class ToggleSavingRuleRequest(BaseModel):
+    rule_key: str
+    active: bool
+
+class StudentDematGuideItem(BaseModel):
+    step_number: int
+    title: str
+    description: str
+    key_advice: str
+    status: str
+
+class InvestmentSavingsHubResponse(BaseModel):
+    investment_readiness: InvestmentReadinessResponse
+    portfolio: PortfolioSummary
+    curated_assets: List[InvestmentAsset]
+    savings_goals: List[SavingsGoal]
+    saving_rules: List[SavingRule]
+    total_monthly_savings_potential_inr: float
+    student_demat_guide: List[StudentDematGuideItem]
+    recent_transactions: Optional[List[Dict[str, Any]]] = []
+
+
+# Multi-Company Basket Investment & UPI Gateway Models (6 Months – 1 Year Horizon)
+class MultiCompanyAssetAllocation(BaseModel):
+    ticker: str
+    company_name: str
+    category: str
+    current_price_inr: float
+    allocation_percentage: float
+    allocated_amount_inr: float
+    units_allotted: float
+    pe_ratio: float
+    market_cap_tier: str
+    ai_growth_score: float
+    target_horizon: str = "6M_TO_1Y"
+    expected_6m_return_pct: float = 7.5
+    expected_1yr_return_pct: float = 15.0
+    expected_3yr_cagr_pct: float = 15.0
+    gmp_inr: float = 0.0
+    gmp_pct: float = 0.0
+    gmp_status: str = "BULLISH_DEMAND"
+    gmp_demand_rating: str = "High Accumulation"
+    why_suggested_for_you: str = ""
+    near_term_catalysts: str = ""
+    ai_investment_rationale: str
+    key_moat: str
+    risk_level: str
+
+class MultiCompanyBasketPlan(BaseModel):
+    basket_id: str
+    basket_name: str
+    tagline: str
+    icon: str
+    risk_profile: str
+    target_horizon_label: str = "6 Months – 1 Year (Student Short-to-Medium Horizon)"
+    expected_6m_return_pct: float = 7.5
+    expected_1yr_return_pct: float = 15.0
+    expected_annual_cagr_pct: float = 15.0
+    minimum_amount_inr: float
+    total_basket_cost_inr: float
+    companies_count: int
+    allocations: List[MultiCompanyAssetAllocation]
+    ai_deep_analysis: str
+    projected_returns: Dict[str, float]
+    conservative_6m_value_inr: float = 0.0
+    realistic_6m_value_inr: float = 0.0
+    bullish_6m_value_inr: float = 0.0
+    conservative_1yr_value_inr: float
+    realistic_1yr_value_inr: float
+    bullish_1yr_value_inr: float
+    conservative_3yr_value_inr: float = 0.0
+    realistic_3yr_value_inr: float = 0.0
+    bullish_3yr_value_inr: float = 0.0
+
+class MultiCompanyBasketResponse(BaseModel):
+    requested_amount_inr: float
+    student_monthly_budget_inr: float
+    recommended_basket_id: str
+    ai_overall_strategy: str
+    baskets: List[MultiCompanyBasketPlan]
+
+class UpiPaymentExecuteRequest(BaseModel):
+    basket_id: Optional[str] = None
+    asset_id: Optional[str] = None
+    payment_method: str  # "GPAY", "PHONEPE", "PAYTM", "BHIM_UPI", "QR_CODE"
+    upi_id: Optional[str] = None
+    amount_inr: float
+    investment_type: str = "MULTI_COMPANY_BASKET"
+
+class UpiPaymentExecuteResponse(BaseModel):
+    success: bool
+    transaction_id: str
+    utr_number: str
+    payment_method: str
+    amount_paid_inr: float
+    timestamp: str
+    units_allocated_summary: List[Dict[str, Any]]
+    amfi_sebi_compliance_note: str
+    message: str
+    updated_portfolio: PortfolioSummary
+
+

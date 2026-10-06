@@ -1,0 +1,290 @@
+// API Client with Auth and Advanced Simulation Engines
+const API_BASE = '/api';
+
+export const authState = {
+  getToken: () => localStorage.getItem('advisor_auth_token') || '',
+  setToken: (token) => localStorage.setItem('advisor_auth_token', token),
+  clearToken: () => localStorage.removeItem('advisor_auth_token'),
+  getUser: () => {
+    try {
+      return JSON.parse(localStorage.getItem('advisor_user') || 'null');
+    } catch {
+      return null;
+    }
+  },
+  setUser: (user) => localStorage.setItem('advisor_user', JSON.stringify(user)),
+  clearUser: () => localStorage.removeItem('advisor_user'),
+};
+
+const authFetch = async (url, options = {}) => {
+  const token = authState.getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Request failed' }));
+    throw new Error(errorData.detail || `HTTP Error ${res.status}`);
+  }
+  return res.json();
+};
+
+export const api = {
+  // Auth
+  getDemoUsers: async () => {
+    return authFetch(`${API_BASE}/auth/demo-users`);
+  },
+  login: async (email, password) => {
+    const data = await authFetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    authState.setToken(data.token);
+    authState.setUser(data.profile);
+    return data;
+  },
+  register: async (registerPayload) => {
+    const data = await authFetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      body: JSON.stringify(registerPayload),
+    });
+    authState.setToken(data.token);
+    authState.setUser(data.profile);
+    return data;
+  },
+  getMe: async () => {
+    const profile = await authFetch(`${API_BASE}/auth/me`);
+    authState.setUser(profile);
+    return profile;
+  },
+  logout: async () => {
+    try {
+      await authFetch(`${API_BASE}/auth/logout`, { method: 'POST' });
+    } catch {}
+    authState.clearToken();
+    authState.clearUser();
+  },
+
+  // Profile
+  getProfile: async () => {
+    return authFetch(`${API_BASE}/profile`);
+  },
+  updateProfile: async (profile) => {
+    const updated = await authFetch(`${API_BASE}/profile`, {
+      method: 'POST',
+      body: JSON.stringify(profile),
+    });
+    authState.setUser(updated);
+    return updated;
+  },
+  resetProfile: async () => {
+    return authFetch(`${API_BASE}/profile/reset`, { method: 'POST' });
+  },
+
+  // 1. What-If Career Simulator
+  simulateWhatIf: async (params) => {
+    return authFetch(`${API_BASE}/simulation/what-if`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  // 2. Placement Factor Breakdown
+  getPlacementBreakdown: async () => {
+    return authFetch(`${API_BASE}/simulation/placement-breakdown`);
+  },
+
+  // 3. Skill Dependency Graph
+  getSkillGraph: async () => {
+    return authFetch(`${API_BASE}/simulation/skill-graph`);
+  },
+
+  // 4. Job Market Benchmark
+  getJobMarket: async () => {
+    return authFetch(`${API_BASE}/simulation/job-market`);
+  },
+
+  // 5. AI Resume Analyzer
+  analyzeResume: async (resumeText) => {
+    return authFetch(`${API_BASE}/simulation/resume-analyzer`, {
+      method: 'POST',
+      body: JSON.stringify({ resume_text: resumeText }),
+    });
+  },
+
+  // 6. Project Blueprints
+  getProjectBlueprints: async () => {
+    return authFetch(`${API_BASE}/simulation/project-blueprints`);
+  },
+
+  // 7. Should I Buy This? Quick Checker
+  checkPurchase: async (itemName, cost, urgency = 'LOW') => {
+    return authFetch(`${API_BASE}/finance/should-i-buy`, {
+      method: 'POST',
+      body: JSON.stringify({ item_name: itemName, cost_inr: cost, urgency }),
+    });
+  },
+
+  // 8. Weekly AI Career Review
+  getWeeklyReview: async () => {
+    return authFetch(`${API_BASE}/progress/weekly-review`);
+  },
+
+  // Career Engine
+  getDegreeCatalogue: async () => {
+    return authFetch(`${API_BASE}/career/degree-catalogue`);
+  },
+  getAvailableRoles: async () => {
+    return authFetch(`${API_BASE}/career/available-roles`);
+  },
+  getReadiness: async () => {
+    return authFetch(`${API_BASE}/career/readiness`);
+  },
+  getRecommendations: async () => {
+    return authFetch(`${API_BASE}/career/recommendations`);
+  },
+  getSkillGaps: async (targetRole) => {
+    const url = targetRole ? `${API_BASE}/career/skill-gaps?target_role=${encodeURIComponent(targetRole)}` : `${API_BASE}/career/skill-gaps`;
+    return authFetch(url);
+  },
+  getRoadmap: async () => {
+    return authFetch(`${API_BASE}/career/roadmap`);
+  },
+  getProjects: async () => {
+    return authFetch(`${API_BASE}/career/projects`);
+  },
+
+  // Finance Engine
+  getBudgetAnalysis: async () => {
+    return authFetch(`${API_BASE}/finance/budget-analysis`);
+  },
+  getCertificationAffordability: async (certName, cost, examMonths) => {
+    const params = new URLSearchParams({
+      cert_name: certName || 'AWS Certified Solutions Architect',
+      cost_inr: cost || 10000,
+      exam_target_months: examMonths || 4
+    });
+    return authFetch(`${API_BASE}/finance/certification-affordability?${params}`);
+  },
+  getCourses: async (topic = 'Deep Learning') => {
+    return authFetch(`${API_BASE}/finance/courses?topic=${encodeURIComponent(topic)}`);
+  },
+
+  // Decision Engine
+  evaluateDecision: async (scenario) => {
+    return authFetch(`${API_BASE}/decision/evaluate`, {
+      method: 'POST',
+      body: JSON.stringify(scenario),
+    });
+  },
+
+  // Progress Engine
+  getDailyPlan: async () => {
+    return authFetch(`${API_BASE}/progress/daily-plan`);
+  },
+  toggleTask: async (taskId) => {
+    return authFetch(`${API_BASE}/progress/toggle-task/${taskId}`, { method: 'POST' });
+  },
+  updateProgress: async (skillUpdates, completedTaskIds) => {
+    return authFetch(`${API_BASE}/progress/update`, {
+      method: 'POST',
+      body: JSON.stringify({ skill_updates: skillUpdates, completed_task_ids: completedTaskIds || [] }),
+    });
+  },
+
+  // AI Service
+  parseIntent: async (text) => {
+    return authFetch(`${API_BASE}/ai/parse-intent`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  },
+  chatWithCopilot: async (message) => {
+    return authFetch(`${API_BASE}/ai/chat`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  },
+
+  // Wealth, Investment & Smart Savings Hub
+  getWealthHub: async () => {
+    return authFetch(`${API_BASE}/wealth/hub`);
+  },
+  getCuratedAssets: async () => {
+    return authFetch(`${API_BASE}/wealth/curated-assets`);
+  },
+  executeTrade: async (assetId, action, amountInr) => {
+    return authFetch(`${API_BASE}/wealth/trade`, {
+      method: 'POST',
+      body: JSON.stringify({ asset_id: assetId, action, amount_inr: amountInr }),
+    });
+  },
+  createSavingsGoal: async (goalData) => {
+    return authFetch(`${API_BASE}/wealth/goals/create`, {
+      method: 'POST',
+      body: JSON.stringify(goalData),
+    });
+  },
+  depositSavingsGoal: async (goalId, amountInr) => {
+    return authFetch(`${API_BASE}/wealth/goals/deposit`, {
+      method: 'POST',
+      body: JSON.stringify({ goal_id: goalId, amount_inr: amountInr }),
+    });
+  },
+  toggleSavingRule: async (ruleKey, active) => {
+    return authFetch(`${API_BASE}/wealth/saving-rules/toggle`, {
+      method: 'POST',
+      body: JSON.stringify({ rule_key: ruleKey, active }),
+    });
+  },
+  getWealthReadiness: async () => {
+    return authFetch(`${API_BASE}/wealth/readiness`);
+  },
+  evaluateRiskProfile: async (riskData) => {
+    return authFetch(`${API_BASE}/wealth/risk-assessment`, {
+      method: 'POST',
+      body: JSON.stringify(riskData),
+    });
+  },
+  simulateSip: async (monthlyInr, years, expectedCagr) => {
+    return authFetch(`${API_BASE}/wealth/sip-simulator`, {
+      method: 'POST',
+      body: JSON.stringify({ monthly_investment_inr: monthlyInr, duration_years: years, expected_cagr_pct: expectedCagr }),
+    });
+  },
+  evaluateOpportunityCost: async (amountInr, course) => {
+    return authFetch(`${API_BASE}/wealth/opportunity-cost`, {
+      method: 'POST',
+      body: JSON.stringify({ amount_inr: amountInr, candidate_course: course }),
+    });
+  },
+  detectInvestmentScam: async (pitchText, platformName) => {
+    return authFetch(`${API_BASE}/wealth/scam-detector`, {
+      method: 'POST',
+      body: JSON.stringify({ pitch_text: pitchText, platform_name: platformName || 'Telegram/WhatsApp' }),
+    });
+  },
+  get5YearDigitalTwin: async () => {
+    return authFetch(`${API_BASE}/wealth/digital-twin`);
+  },
+  getMultiCompanyBaskets: async (amountInr = 2000) => {
+    return authFetch(`${API_BASE}/wealth/multi-company-baskets?amount_inr=${amountInr}`);
+  },
+  getCompanyChart: async (ticker, timeframe = '6M') => {
+    return authFetch(`${API_BASE}/wealth/company-chart/${encodeURIComponent(ticker)}?timeframe=${encodeURIComponent(timeframe)}`);
+  },
+  executeUpiPayment: async (payload) => {
+    return authFetch(`${API_BASE}/wealth/upi-pay`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  getWealthTransactions: async () => {
+    return authFetch(`${API_BASE}/wealth/transactions`);
+  }
+};
+
