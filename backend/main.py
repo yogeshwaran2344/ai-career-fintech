@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, status
+from fastapi import FastAPI, HTTPException, Header, Depends, Query, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -22,7 +22,18 @@ from models import (
     DigitalTwinResponse, InvestmentAsset, TradeOrderRequest, TradeOrderResponse,
     CreateSavingsGoalRequest, DepositSavingsGoalRequest, ToggleSavingRuleRequest,
     InvestmentSavingsHubResponse, MultiCompanyBasketResponse, UpiPaymentExecuteRequest,
-    UpiPaymentExecuteResponse, CompanyChartData
+    UpiPaymentExecuteResponse, CompanyChartData,
+    MockInterviewQuestion, MockInterviewSubmitRequest, MockInterviewResult,
+    SkillAssessmentQuestion, SkillAssessmentSubmitRequest, SkillAssessmentResult,
+    GitHubAnalysisRequest, GitHubAnalysisResult,
+    CareerPathCompareRequest, CareerPathCompareResponse,
+    CareerRoiRequest, CareerRoiResponse,
+    JobApplicationItem, CreateJobApplicationRequest, UpdateJobApplicationRequest, JobFunnelAnalytics,
+    ExplainableReadinessBreakdown,
+    LinkedInAnalysisRequest, LinkedInAnalysisResult,
+    NotificationsResponse, GamificationStatusResponse,
+    SkillMarketDemandResponse, JobMatchHistoryResponse,
+    InteractiveDigitalTwinRequest, InteractiveDigitalTwinResponse
 )
 from engines.career_engine import CareerEngine
 from engines.finance_engine import FinanceEngine
@@ -31,14 +42,23 @@ from engines.decision_engine import DecisionEngine
 from engines.progress_engine import ProgressEngine
 from engines.simulation_engine import AdvancedSimulationEngine
 from engines.llm_service import LLMService
+from engines.interview_engine import MockInterviewEngine
+from engines.skill_assessment_engine import SkillAssessmentEngine
+from engines.github_engine import GitHubAnalyzerEngine
+from engines.career_comparator import CareerComparatorEngine
+from engines.resume_parser import ResumeParserEngine
+from engines.linkedin_analyzer import LinkedInAnalyzerEngine
+from engines.market_demand_engine import SkillMarketDemandEngine
+from engines.interactive_digital_twin import InteractiveDigitalTwinEngine
+from engines.engagement_engine import EngagementEngine
 from database import (
     DatabaseManager, hash_password
 )
 
 app = FastAPI(
-    title="AI Career + Finance Copilot API (Enterprise Production)",
-    description="Adaptive AI Decision Engine with SQLite Persistence, JWT Auth, and Dynamic What-If Simulators",
-    version="2.1.0"
+    title="CareerWealth.AI Intelligence Platform API",
+    description="Adaptive AI Career & Wealth Optimization Platform with Strict Authentication, Digital Twin 2.0, and Real Decision Simulators",
+    version="3.0.0"
 )
 
 # Enable CORS for frontend
@@ -51,27 +71,27 @@ app.add_middleware(
 )
 
 def get_user_from_auth(
-    authorization: Optional[str] = Header(None),
-    user_id: Optional[str] = Query(None)
+    authorization: Optional[str] = Header(None)
 ) -> StudentProfile:
-    # 1. Bearer Token Verification in SQLite
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        profile = DatabaseManager.get_user_by_token(token)
-        if profile:
-            return profile
-            
-    # 2. Query parameter verification
-    if user_id:
-        profile = DatabaseManager.get_profile_by_user_id(user_id)
-        if profile:
-            return profile
-            
-    raise HTTPException(status_code=401, detail="Authentication required. Please log in or create your student profile.")
+    # Strict Bearer Token Verification in SQLite: No fallback mock users, no query bypass
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication token required. Access denied."
+        )
+    
+    token = authorization.split(" ")[1].strip()
+    profile = DatabaseManager.get_user_by_token(token)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session token. Access denied."
+        )
+    return profile
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "service": "AI Career + Finance Copilot", "database": "SQLite Persistent", "version": "3.0.0"}
+    return {"status": "healthy", "service": "CareerWealth.AI Platform", "database": "SQLite Persistent", "version": "3.0.0"}
 
 # ==================== AUTHENTICATION & ONBOARDING ====================
 
@@ -121,13 +141,12 @@ def setup_profile_direct(req: ProfileSetupRequest):
         profile=new_profile
     )
 
-
 @app.post("/api/auth/register", response_model=AuthResponse)
 def register_user(req: UserRegisterRequest):
     email_clean = req.email.strip().lower()
     existing = DatabaseManager.get_user_by_email(email_clean)
     if existing:
-        raise HTTPException(status_code=400, detail="Account with this email already exists. Please sign in.")
+        raise HTTPException(status_code=400, detail="Account with this email already exists.")
         
     new_profile = StudentProfile(
         id=f"user-{uuid.uuid4().hex[:8]}",
@@ -171,20 +190,20 @@ def login_user(req: UserLoginRequest):
     uid = user_row["id"]
     profile = DatabaseManager.get_profile_by_user_id(uid)
     if not profile:
-        raise HTTPException(status_code=404, detail="Student profile not found. Please register a new account.")
+        raise HTTPException(status_code=404, detail="Student profile not found.")
         
     token = DatabaseManager.create_session(uid)
     
     return AuthResponse(
         token=token,
         user_id=uid,
-        name=profile.name,
+        name=user_row["name"],
         email=email_clean,
         profile=profile
     )
 
 @app.get("/api/auth/me", response_model=StudentProfile)
-def get_current_logged_in_user(current_user: StudentProfile = Depends(get_user_from_auth)):
+def get_current_user_profile(current_user: StudentProfile = Depends(get_user_from_auth)):
     return current_user
 
 @app.post("/api/auth/logout")
@@ -192,211 +211,368 @@ def logout_user(authorization: Optional[str] = Header(None)):
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
         DatabaseManager.delete_session(token)
-    return {"status": "logged_out"}
+    return {"message": "Session terminated successfully."}
 
-# ==================== PROFILE ENDPOINTS ====================
+# ==================== PROFILE MANAGEMENT ====================
 
 @app.get("/api/profile", response_model=StudentProfile)
 def get_profile(current_user: StudentProfile = Depends(get_user_from_auth)):
     return current_user
 
 @app.post("/api/profile", response_model=StudentProfile)
-def update_profile(profile: StudentProfile, current_user: StudentProfile = Depends(get_user_from_auth)):
+def save_profile(profile: StudentProfile, current_user: StudentProfile = Depends(get_user_from_auth)):
     profile.id = current_user.id
-    saved = DatabaseManager.save_profile(profile)
-    return saved
+    profile.email = current_user.email
+    return DatabaseManager.save_profile(profile)
 
 @app.post("/api/profile/reset", response_model=StudentProfile)
 def reset_profile(current_user: StudentProfile = Depends(get_user_from_auth)):
-    # Reset learning streak and proficiency to baseline for current logged in user
-    current_user.total_xp = 0
-    current_user.streak_days = 0
+    current_user.total_xp = 50
     current_user.user_level = 1
-    current_user.level_title = "Aspiring Specialist"
-    saved = DatabaseManager.save_profile(current_user)
-    return saved
+    current_user.streak_days = 1
+    return DatabaseManager.save_profile(current_user)
 
-# ==================== SIMULATION ENGINE (WHAT-IF, RESUME, JOB MARKET) ====================
-
-@app.post("/api/simulation/what-if", response_model=SimulationResponse)
-def simulate_what_if(req: SimulationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return AdvancedSimulationEngine.simulate_what_if(current_user, req)
-
-@app.get("/api/simulation/placement-breakdown", response_model=PlacementReadinessBreakdown)
-def get_placement_readiness_breakdown(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return AdvancedSimulationEngine.get_placement_readiness_breakdown(current_user)
-
-@app.get("/api/simulation/skill-graph", response_model=SkillGraphData)
-def get_skill_dependency_graph(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return AdvancedSimulationEngine.get_skill_dependency_graph(current_user)
-
-@app.get("/api/simulation/job-market", response_model=JobMarketData)
-def get_job_market_benchmark(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return AdvancedSimulationEngine.get_job_market_benchmark(current_user)
-
-@app.post("/api/simulation/resume-analyzer", response_model=ResumeAnalysisResponse)
-def analyze_resume(req: ResumeAnalyzeRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return AdvancedSimulationEngine.analyze_resume(req)
-
-@app.get("/api/simulation/project-blueprints", response_model=List[DetailedProjectBlueprint])
-def get_project_blueprints():
-    return AdvancedSimulationEngine.get_detailed_project_blueprints()
-
-@app.post("/api/finance/should-i-buy", response_model=QuickPurchaseCheckResponse)
-def check_purchase_decision(req: QuickPurchaseCheckRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return AdvancedSimulationEngine.check_purchase(current_user, req)
-
-@app.get("/api/progress/weekly-review", response_model=WeeklyReviewData)
-def get_weekly_review(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return AdvancedSimulationEngine.get_weekly_review(current_user)
-
-# ==================== CAREER ENGINE ENDPOINTS ====================
+# ==================== ADVANCED CAREER ENGINE ====================
 
 @app.get("/api/career/readiness")
 def get_career_readiness(current_user: StudentProfile = Depends(get_user_from_auth)):
-    pct, score, strong, missing, partial = CareerEngine.calculate_readiness(current_user, current_user.career_goal)
-    return {
-        "student_name": current_user.name,
-        "career_goal": current_user.career_goal,
-        "readiness_pct": pct,
-        "readiness_score": score,
-        "strong_skills": strong,
-        "missing_skills": missing,
-        "partial_skills": partial
-    }
+    return CareerEngine.calculate_readiness(current_user)
+
+@app.get("/api/career/placement-breakdown", response_model=PlacementReadinessBreakdown)
+def get_placement_breakdown(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.get_placement_breakdown(current_user)
+
+@app.get("/api/career/explainable-readiness", response_model=ExplainableReadinessBreakdown)
+def get_explainable_readiness(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerComparatorEngine.get_explainable_readiness(current_user)
+
+@app.get("/api/career/skill-gaps", response_model=List[SkillGapItem])
+def get_skill_gaps(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.analyze_skill_gap(current_user)
 
 @app.get("/api/career/recommendations", response_model=List[CareerMatch])
 def get_career_recommendations(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.get_career_recommendations(current_user)
-
-@app.get("/api/career/skill-gaps", response_model=List[SkillGapItem])
-def get_skill_gaps(target_role: Optional[str] = None, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.analyze_skill_gap(current_user, target_role)
+    return CareerEngine.recommend_careers(current_user)
 
 @app.get("/api/career/roadmap", response_model=LearningRoadmap)
-def get_learning_roadmap(current_user: StudentProfile = Depends(get_user_from_auth)):
+def get_career_roadmap(current_user: StudentProfile = Depends(get_user_from_auth)):
     return CareerEngine.generate_roadmap(current_user)
 
 @app.get("/api/career/projects", response_model=List[RecommendedProject])
-def get_recommended_projects(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.get_recommended_projects(current_user)
+def get_career_projects(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.recommend_projects(current_user)
 
-# ==================== FINANCE ENGINE ENDPOINTS ====================
+@app.get("/api/career/project-blueprint/{project_title}", response_model=DetailedProjectBlueprint)
+def get_project_blueprint(project_title: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.generate_project_blueprint(project_title, current_user.career_goal)
+
+@app.post("/api/career/simulate", response_model=SimulationResponse)
+def simulate_career_path(req: SimulationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return AdvancedSimulationEngine.simulate_scenario(current_user, req)
+
+@app.post("/api/career/compare-paths", response_model=CareerPathCompareResponse)
+def compare_career_paths(req: CareerPathCompareRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerComparatorEngine.compare_paths(req.roles, current_user)
+
+@app.get("/api/career/skill-graph", response_model=SkillGraphData)
+def get_skill_graph(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.get_skill_graph_data(current_user)
+
+@app.get("/api/career/job-market", response_model=JobMarketData)
+def get_job_market(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.get_job_market_intel(current_user)
+
+# ==================== AI MOCK INTERVIEW ENGINE ====================
+
+@app.get("/api/career/mock-interview/questions", response_model=List[MockInterviewQuestion])
+def get_mock_interview_questions(role: Optional[str] = None, current_user: StudentProfile = Depends(get_user_from_auth)):
+    target_role = role or current_user.career_goal or "AI Engineer"
+    return MockInterviewEngine.generate_interview(target_role)
+
+@app.post("/api/career/mock-interview/evaluate", response_model=MockInterviewResult)
+def evaluate_mock_interview(req: MockInterviewSubmitRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    result = MockInterviewEngine.evaluate_interview(req.role, req.answers, current_user)
+    
+    # Award XP & Gamification
+    current_user.total_xp += 75
+    if "🎤 Interview Ready" not in current_user.badges:
+        current_user.badges.append("🎤 Interview Ready")
+    DatabaseManager.save_profile(current_user)
+    
+    return result
+
+# ==================== AI SKILL ASSESSMENT ENGINE ====================
+
+@app.get("/api/career/skill-assessment/questions", response_model=List[SkillAssessmentQuestion])
+def get_skill_assessment_questions(skill: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return SkillAssessmentEngine.get_questions(skill)
+
+@app.post("/api/career/skill-assessment/submit", response_model=SkillAssessmentResult)
+def submit_skill_assessment(req: SkillAssessmentSubmitRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    result = SkillAssessmentEngine.evaluate_assessment(req.skill_name, req.answers, current_user)
+    
+    # Award XP & update profile in SQLite
+    current_user.total_xp += 50
+    if result.score_pct >= 80 and f"💻 {req.skill_name} Master" not in current_user.badges:
+        current_user.badges.append(f"💻 {req.skill_name} Master")
+    DatabaseManager.save_profile(current_user)
+    
+    return result
+
+# ==================== GITHUB PROFILE ANALYZER ====================
+
+@app.post("/api/career/github-analyzer", response_model=GitHubAnalysisResult)
+def analyze_github_profile(req: GitHubAnalysisRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return GitHubAnalyzerEngine.analyze_profile(req.username, current_user)
+
+# ==================== RESUME ANALYZER & PDF UPLOAD ====================
+
+@app.post("/api/resume/analyze", response_model=ResumeAnalysisResponse)
+def analyze_resume(req: ResumeAnalyzeRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return ResumeParserEngine.analyze_resume_text(req.resume_text, req.target_role or current_user.career_goal)
+
+@app.post("/api/resume/upload-pdf")
+async def upload_pdf_resume(file: UploadFile = File(...), current_user: StudentProfile = Depends(get_user_from_auth)):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Please upload a valid PDF document (.pdf).")
+    
+    pdf_bytes = await file.read()
+    try:
+        extracted_text = ResumeParserEngine.extract_text_from_pdf(pdf_bytes)
+        analysis = ResumeParserEngine.analyze_resume_text(extracted_text, current_user.career_goal)
+        
+        # Award XP
+        current_user.total_xp += 40
+        if "📄 Resume Ready" not in current_user.badges:
+            current_user.badges.append("📄 Resume Ready")
+        DatabaseManager.save_profile(current_user)
+
+        return {
+            "success": True,
+            "filename": file.filename,
+            "extracted_text": extracted_text[:1500] + ("..." if len(extracted_text) > 1500 else ""),
+            "analysis": analysis
+        }
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"PDF extraction error: {str(e)}")
+
+# ==================== JOB APPLICATION FUNNEL TRACKER ====================
+
+@app.get("/api/jobs/applications", response_model=List[JobApplicationItem])
+def list_job_applications(current_user: StudentProfile = Depends(get_user_from_auth)):
+    raw_apps = DatabaseManager.get_user_job_applications(current_user.id)
+    return [JobApplicationItem(**a) for a in raw_apps]
+
+@app.post("/api/jobs/applications", response_model=JobApplicationItem)
+def create_job_application(req: CreateJobApplicationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    row = DatabaseManager.create_job_application(
+        user_id=current_user.id,
+        company=req.company.strip(),
+        role=req.role.strip(),
+        stage=req.stage,
+        salary_package_lpa=req.salary_package_lpa,
+        location=req.location,
+        job_url=req.job_url,
+        notes=req.notes
+    )
+    return JobApplicationItem(**row)
+
+@app.put("/api/jobs/applications/{app_id}", response_model=JobApplicationItem)
+def update_job_application(app_id: str, req: UpdateJobApplicationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    updated = DatabaseManager.update_job_application(
+        app_id=app_id,
+        user_id=current_user.id,
+        stage=req.stage,
+        notes=req.notes,
+        salary_package_lpa=req.salary_package_lpa
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Job application not found.")
+    return JobApplicationItem(**updated)
+
+@app.delete("/api/jobs/applications/{app_id}")
+def delete_job_application(app_id: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    success = DatabaseManager.delete_job_application(app_id, current_user.id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Job application not found.")
+    return {"success": True, "message": "Job application deleted."}
+
+@app.get("/api/jobs/application-analytics", response_model=JobFunnelAnalytics)
+def get_job_funnel_analytics(current_user: StudentProfile = Depends(get_user_from_auth)):
+    raw_apps = DatabaseManager.get_user_job_applications(current_user.id)
+    app_items = [JobApplicationItem(**a) for a in raw_apps]
+    
+    total = len(app_items)
+    applied = sum(1 for a in app_items if a.stage == "Applied")
+    oa = sum(1 for a in app_items if a.stage == "OA")
+    technical = sum(1 for a in app_items if a.stage == "Technical Interview")
+    hr = sum(1 for a in app_items if a.stage == "HR Round")
+    offers = sum(1 for a in app_items if a.stage == "Offer")
+    rejections = sum(1 for a in app_items if a.stage == "Rejected")
+    interviews = technical + hr
+
+    conversion_rate = round((offers / max(1, total)) * 100, 1)
+
+    # Bottleneck diagnosis
+    if total == 0:
+        biggest_dropoff = "No Applications Yet"
+        coach = "Start applying to benchmark job roles directly from the Job-Market Intel tab."
+    elif oa < (applied * 0.4):
+        biggest_dropoff = "Resume Screening → Online Assessment (OA)"
+        coach = "Your biggest drop-off is between Application and OA. Improve your ATS resume score and include quantified project metrics."
+    elif technical < (oa * 0.5):
+        biggest_dropoff = "Online Assessment (OA) → Technical Interview"
+        coach = "OA drop-off detected. Prioritize Data Structures & Algorithms (Trees, Graphs, DP) in your daily plan."
+    elif offers < (interviews * 0.3):
+        biggest_dropoff = "Interview → Final Offer"
+        coach = "Interview conversion bottleneck. Complete AI Mock Interviews focusing on communication structure and production system design."
+    else:
+        biggest_dropoff = "Optimal Funnel Flow"
+        coach = "Healthy conversion rate across all stages! Keep expanding your pipeline."
+
+    return JobFunnelAnalytics(
+        total_applications=total,
+        applied_count=applied,
+        oa_count=oa,
+        interviews_count=interviews,
+        technical_count=technical,
+        hr_count=hr,
+        offers_count=offers,
+        rejections_count=rejections,
+        conversion_rate_pct=conversion_rate,
+        biggest_dropoff_stage=biggest_dropoff,
+        ai_bottleneck_coach=coach,
+        applications=app_items
+    )
+
+@app.get("/api/jobs/match-history", response_model=JobMatchHistoryResponse)
+def get_job_match_history(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return EngagementEngine.get_job_match_history(current_user)
+
+@app.post("/api/career/linkedin-analyzer", response_model=LinkedInAnalysisResult)
+def analyze_linkedin_profile(req: LinkedInAnalysisRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return LinkedInAnalyzerEngine.analyze_profile(req, current_user.career_goal)
+
+@app.get("/api/career/skill-market-demand", response_model=SkillMarketDemandResponse)
+def get_skill_market_demand(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return SkillMarketDemandEngine.get_market_demand(current_user)
+
+# ==================== FINANCE & CAREER ROI ENGINE ====================
 
 @app.get("/api/finance/budget-analysis")
-def get_budget_analysis(emergency_shock: float = 0.0, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return FinanceEngine.analyze_budget(current_user, emergency_shock)
+def get_budget_analysis(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return FinanceEngine.analyze_budget(current_user)
 
-@app.get("/api/finance/certification-affordability", response_model=CertificationAffordability)
-def get_certification_affordability(
-    cert_name: str = "AWS Certified Solutions Architect",
-    cost_inr: float = 10000.0,
-    exam_target_months: int = 4,
-    current_user: StudentProfile = Depends(get_user_from_auth)
-):
-    return FinanceEngine.evaluate_certification(current_user, cert_name, cost_inr, exam_target_months)
+@app.post("/api/finance/career-roi", response_model=CareerRoiResponse)
+def calculate_career_roi(req: CareerRoiRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerComparatorEngine.calculate_career_roi(req, current_user)
 
-@app.get("/api/finance/courses", response_model=List[CourseCard])
-def get_courses(topic: str = "Deep Learning", current_user: StudentProfile = Depends(get_user_from_auth)):
-    return FinanceEngine.get_curated_courses(current_user, topic)
+@app.post("/api/finance/should-i-buy", response_model=QuickPurchaseCheckResponse)
+def evaluate_purchase(req: QuickPurchaseCheckRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return FinanceEngine.quick_purchase_check(current_user, req)
 
-# ==================== WEALTH BUILDER & INVESTMENT ENGINE ENDPOINTS ====================
+# ==================== WEALTH & INVESTMENT ENGINE ====================
 
-@app.get("/api/wealth/readiness", response_model=InvestmentReadinessResponse)
-def get_investment_readiness(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return InvestmentEngine.calculate_investment_readiness(current_user)
+@app.get("/api/wealth/hub", response_model=InvestmentSavingsHubResponse)
+def get_wealth_hub(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return InvestmentEngine.get_hub_data(current_user)
 
 @app.post("/api/wealth/risk-assessment", response_model=RiskProfileResponse)
-def evaluate_risk_profile(req: RiskAssessmentRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+def assess_risk(req: RiskAssessmentRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return InvestmentEngine.evaluate_risk_profile(req)
 
 @app.post("/api/wealth/sip-simulator", response_model=SipSimulationResponse)
-def calculate_sip_projections(req: SipSimulatorRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+def simulate_sip(req: SipSimulatorRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return InvestmentEngine.calculate_sip_projections(req)
 
 @app.post("/api/wealth/opportunity-cost", response_model=OpportunityCostResponse)
-def evaluate_opportunity_cost(req: Optional[OpportunityCostRequest] = None, current_user: StudentProfile = Depends(get_user_from_auth)):
-    amt = req.amount_inr if req else 2000.0
-    course = req.candidate_course if req else None
-    return InvestmentEngine.evaluate_opportunity_cost(current_user, amt, course)
+def calculate_opportunity_cost(req: OpportunityCostRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return InvestmentEngine.evaluate_opportunity_cost(current_user, req.amount_inr, req.candidate_course)
 
-@app.post("/api/wealth/scam-detector", response_model=ScamCheckResponse)
-def detect_investment_scam(req: ScamCheckRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+@app.post("/api/wealth/scam-check", response_model=ScamCheckResponse)
+def check_investment_scam(req: ScamCheckRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return InvestmentEngine.detect_scam_or_high_risk(req)
 
 @app.get("/api/wealth/digital-twin", response_model=DigitalTwinResponse)
-def get_5year_digital_twin(current_user: StudentProfile = Depends(get_user_from_auth)):
+def get_digital_twin(current_user: StudentProfile = Depends(get_user_from_auth)):
     return InvestmentEngine.simulate_5year_digital_twin(current_user)
 
-@app.get("/api/wealth/hub", response_model=InvestmentSavingsHubResponse)
-def get_investment_savings_hub(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return InvestmentEngine.get_hub_data(current_user)
-
-@app.get("/api/wealth/curated-assets", response_model=List[InvestmentAsset])
-def get_curated_investment_assets():
-    return InvestmentEngine.get_curated_assets()
-
-@app.get("/api/wealth/company-chart/{ticker}", response_model=CompanyChartData)
-def get_company_chart(ticker: str, timeframe: str = "6M"):
-    return InvestmentEngine.get_company_chart(ticker, timeframe)
+@app.post("/api/wealth/digital-twin/interactive", response_model=InteractiveDigitalTwinResponse)
+def get_interactive_digital_twin(req: InteractiveDigitalTwinRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return InteractiveDigitalTwinEngine.simulate_scenarios(current_user, req)
 
 @app.post("/api/wealth/trade", response_model=TradeOrderResponse)
-def execute_trade_order(req: TradeOrderRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+def execute_trade(req: TradeOrderRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return InvestmentEngine.execute_trade(current_user.id, current_user, req)
 
-@app.post("/api/wealth/goals/create")
+@app.post("/api/wealth/goals")
 def create_savings_goal(req: CreateSavingsGoalRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    goal_id = DatabaseManager.add_savings_goal(
-        current_user.id, req.title, req.category, req.icon or "🎯",
-        req.target_amount_inr, req.current_amount_inr or 0.0, req.target_date
+    goal_id = f"goal-{uuid.uuid4().hex[:8]}"
+    DatabaseManager.create_savings_goal(
+        user_id=current_user.id,
+        goal_id=goal_id,
+        title=req.title,
+        category=req.category,
+        icon=req.icon or "🎯",
+        target_amount=req.target_amount,
+        target_date=req.target_date
     )
-    return {"success": True, "goal_id": goal_id, "goals": InvestmentEngine.get_savings_goals(current_user.id)}
+    return {"success": True, "goal_id": goal_id, "message": "Savings goal created."}
 
 @app.post("/api/wealth/goals/deposit")
-def deposit_to_savings_goal(req: DepositSavingsGoalRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    success, new_amt = DatabaseManager.deposit_to_savings_goal(current_user.id, req.goal_id, req.amount_inr)
-    return {"success": success, "new_amount": new_amt, "goals": InvestmentEngine.get_savings_goals(current_user.id)}
+def deposit_savings_goal(req: DepositSavingsGoalRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    updated_goal = DatabaseManager.deposit_to_savings_goal(current_user.id, req.goal_id, req.amount_inr)
+    return {"success": True, "updated_goal": updated_goal}
 
-@app.post("/api/wealth/saving-rules/toggle")
+@app.post("/api/wealth/rules/toggle")
 def toggle_saving_rule(req: ToggleSavingRuleRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     DatabaseManager.toggle_saving_rule(current_user.id, req.rule_key, req.active)
-    return {"success": True, "rules": InvestmentEngine.get_saving_rules(current_user.id)}
+    return {"success": True, "rule_key": req.rule_key, "active": req.active}
 
-@app.get("/api/wealth/multi-company-baskets", response_model=MultiCompanyBasketResponse)
-def get_multi_company_baskets(amount_inr: float = 2000.0, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return InvestmentEngine.generate_multi_company_baskets(current_user, amount_inr)
+@app.get("/api/wealth/baskets", response_model=MultiCompanyBasketResponse)
+def get_multi_company_baskets(
+    investment_amount: Optional[float] = Query(None),
+    current_user: StudentProfile = Depends(get_user_from_auth)
+):
+    amount = investment_amount or current_user.financial.available_for_learning or 1500.0
+    return InvestmentEngine.generate_multi_company_baskets(current_user, amount)
 
-@app.post("/api/wealth/upi-pay", response_model=UpiPaymentExecuteResponse)
-def execute_upi_payment(req: UpiPaymentExecuteRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+@app.post("/api/wealth/upi/execute", response_model=UpiPaymentExecuteResponse)
+def execute_upi_investment(req: UpiPaymentExecuteRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return InvestmentEngine.execute_upi_investment(current_user.id, current_user, req)
 
-@app.get("/api/wealth/transactions")
-def get_wealth_transactions(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return {"transactions": DatabaseManager.get_user_transactions(current_user.id)}
+@app.get("/api/wealth/company-chart/{ticker}", response_model=CompanyChartData)
+def get_company_chart(ticker: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return InvestmentEngine.get_company_chart(ticker)
 
-
-# ==================== DECISION ENGINE ENDPOINTS ====================
+# ==================== STRATEGIC ADVISOR & TODAY'S PLAN ====================
 
 @app.post("/api/decision/evaluate", response_model=DecisionEvaluationResponse)
-def evaluate_decision(request: DecisionEvaluationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return DecisionEngine.evaluate_scenario(current_user, request)
+def evaluate_decision(req: DecisionEvaluationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return DecisionEngine.evaluate_decision(current_user, req)
 
-# ==================== PROGRESS & DATE-AWARE DAILY ACTION PLAN ====================
+@app.get("/api/career/weekly-review", response_model=WeeklyReviewData)
+def get_weekly_review(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return CareerEngine.generate_weekly_review(current_user)
 
-@app.get("/api/progress/daily-plan", response_model=DailyActionPlan)
-def get_daily_action_plan(date_str: Optional[str] = None, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return ProgressEngine.generate_daily_plan(current_user, date_str)
+@app.get("/api/career/daily-plan", response_model=DailyActionPlan)
+def get_daily_plan(date_str: Optional[str] = Query(None), current_user: StudentProfile = Depends(get_user_from_auth)):
+    target_date = date_str or None
+    return CareerEngine.generate_daily_plan(current_user, target_date)
 
-@app.post("/api/progress/toggle-task/{task_id}")
+@app.post("/api/career/daily-plan/toggle-task/{task_id}")
 def toggle_daily_task(task_id: str, current_user: StudentProfile = Depends(get_user_from_auth)):
-    completed, total = DatabaseManager.toggle_task(current_user.id, task_id)
+    profile = current_user
+    today_tasks = DatabaseManager.get_daily_tasks(profile.id)
+    task_row = next((t for t in today_tasks if t["id"] == task_id), None)
     
+    completed = DatabaseManager.toggle_task_completion(task_id, profile.id)
+    
+    all_tasks = DatabaseManager.get_daily_tasks(profile.id)
+    total = sum(1 for t in all_tasks if t["completed"])
+
     skill_gained = None
     if completed:
-        task_row = DatabaseManager.get_task_by_id(current_user.id, task_id)
-        profile = DatabaseManager.get_profile_by_user_id(current_user.id) or current_user
-        
-        # Determine skill based on task subject/action/topic
         skill_name = "DSA"
         if task_row:
             subject = (task_row.get("subject") or "").lower()
@@ -414,7 +590,6 @@ def toggle_daily_task(task_id: str, current_user: StudentProfile = Depends(get_u
                 else:
                     skill_name = "Machine Learning"
 
-        # Look up current proficiency
         curr_prof = next((s.proficiency for s in profile.skills if s.name.lower() == skill_name.lower()), 3.0)
         new_prof = round(min(10.0, curr_prof + 0.1), 1)
         
@@ -461,18 +636,19 @@ class ChatRequest(BaseModel):
 async def chat_with_copilot(req: ChatRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return await LLMService.chat_copilot(current_user, req.message)
 
-@app.get("/api/health")
-def health_check():
-    return {
-        "status": "healthy",
-        "service": "AI Career + Finance Copilot",
-        "version": "2.1.0"
-    }
+# ==================== ENGAGEMENT, GAMIFICATION & NOTIFICATIONS ====================
+
+@app.get("/api/notifications", response_model=NotificationsResponse)
+def get_user_notifications(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return EngagementEngine.get_notifications(current_user)
+
+@app.get("/api/gamification/status", response_model=GamificationStatusResponse)
+def get_gamification_status(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return EngagementEngine.get_gamification_status(current_user)
 
 # ==================== STATIC FRONTEND SERVING (UNIFIED RENDER DEPLOYMENT) ====================
 frontend_dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
 if not os.path.exists(frontend_dist_dir):
-    # Try alternative path if running inside backend folder
     frontend_dist_dir = os.path.abspath(os.path.join(os.getcwd(), "frontend", "dist"))
 
 if os.path.exists(frontend_dist_dir):
@@ -494,4 +670,3 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
-

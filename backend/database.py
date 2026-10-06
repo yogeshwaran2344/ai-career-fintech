@@ -172,10 +172,27 @@ def init_database():
             investment_type TEXT NOT NULL,
             target_name TEXT NOT NULL,
             ticker TEXT,
-            units REAL DEFAULT 0.0,
-            price_per_unit REAL DEFAULT 0.0,
             status TEXT DEFAULT 'COMPLETED',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    # 12. User Job Application Tracker
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_job_applications (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            company TEXT NOT NULL,
+            role TEXT NOT NULL,
+            stage TEXT DEFAULT 'Applied',
+            salary_package_lpa REAL,
+            applied_date TEXT NOT NULL,
+            location TEXT,
+            job_url TEXT,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
@@ -289,13 +306,19 @@ class DatabaseManager:
 
     # Date-Aware Daily Tasks Store
     @staticmethod
-    def get_daily_tasks(user_id: str, target_date: str) -> List[Dict[str, Any]]:
+    def get_daily_tasks(user_id: str, target_date: Optional[str] = None) -> List[Dict[str, Any]]:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM daily_tasks WHERE user_id = ? AND task_date = ? ORDER BY id ASC",
-            (user_id, target_date)
-        )
+        if target_date:
+            cursor.execute(
+                "SELECT * FROM daily_tasks WHERE user_id = ? AND task_date = ? ORDER BY id ASC",
+                (user_id, target_date)
+            )
+        else:
+            cursor.execute(
+                "SELECT * FROM daily_tasks WHERE user_id = ? ORDER BY id ASC",
+                (user_id,)
+            )
         rows = cursor.fetchall()
         conn.close()
         return [dict(r) for r in rows]
@@ -515,5 +538,72 @@ class DatabaseManager:
         rows = cursor.fetchall()
         conn.close()
         return [dict(r) for r in rows]
+
+    @staticmethod
+    def get_user_job_applications(user_id: str) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_job_applications WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def create_job_application(
+        user_id: str,
+        company: str,
+        role: str,
+        stage: str = "Applied",
+        salary_package_lpa: Optional[float] = None,
+        location: Optional[str] = None,
+        job_url: Optional[str] = None,
+        notes: Optional[str] = None
+    ) -> Dict[str, Any]:
+        app_id = f"app-{uuid.uuid4().hex[:8]}"
+        today_str = datetime.date.today().isoformat()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO user_job_applications (id, user_id, company, role, stage, salary_package_lpa, applied_date, location, job_url, notes, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """, (app_id, user_id, company, role, stage, salary_package_lpa, today_str, location, job_url, notes))
+        conn.commit()
+        cursor.execute("SELECT * FROM user_job_applications WHERE id = ?", (app_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row)
+
+    @staticmethod
+    def update_job_application(
+        app_id: str,
+        user_id: str,
+        stage: Optional[str] = None,
+        notes: Optional[str] = None,
+        salary_package_lpa: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        if stage is not None:
+            cursor.execute("UPDATE user_job_applications SET stage = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?", (stage, app_id, user_id))
+        if notes is not None:
+            cursor.execute("UPDATE user_job_applications SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?", (notes, app_id, user_id))
+        if salary_package_lpa is not None:
+            cursor.execute("UPDATE user_job_applications SET salary_package_lpa = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?", (salary_package_lpa, app_id, user_id))
+        conn.commit()
+        cursor.execute("SELECT * FROM user_job_applications WHERE id = ? AND user_id = ?", (app_id, user_id))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    @staticmethod
+    def delete_job_application(app_id: str, user_id: str) -> bool:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM user_job_applications WHERE id = ? AND user_id = ?", (app_id, user_id))
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return deleted
+
 
 

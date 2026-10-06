@@ -201,6 +201,7 @@ class JobMarketData(BaseModel):
 # 5. AI Resume Analyzer
 class ResumeAnalyzeRequest(BaseModel):
     resume_text: str
+    target_role: Optional[str] = None
 
 class ResumeBulletImprovement(BaseModel):
     original: str
@@ -727,5 +728,328 @@ class UpiPaymentExecuteResponse(BaseModel):
     amfi_sebi_compliance_note: str
     message: str
     updated_portfolio: PortfolioSummary
+
+
+# =========================================================================
+# NEW INTEGRATED ADVANCED FEATURE MODELS
+# =========================================================================
+
+# 1. AI Mock Interview
+class MockInterviewQuestion(BaseModel):
+    id: str
+    category: str  # "Technical", "DSA/Algorithms", "System Design", "Behavioral"
+    question: str
+    sample_hint: str
+    difficulty: str = "Medium"
+
+class MockInterviewAnswerItem(BaseModel):
+    question_id: str
+    question: str
+    user_answer: str
+
+class MockInterviewSubmitRequest(BaseModel):
+    role: str
+    answers: List[MockInterviewAnswerItem]
+
+class MockInterviewScores(BaseModel):
+    technical: int
+    communication: int
+    confidence: int
+    accuracy: int
+    structure: int
+    overall: int
+
+class MockInterviewResult(BaseModel):
+    role: str
+    scores: MockInterviewScores
+    strengths: List[str]
+    areas_to_improve: List[str]
+    actionable_feedback: str
+    exemplar_answers: List[Dict[str, str]]
+    previous_mock_score: int
+    new_mock_score: int
+    readiness_impact: int
+    new_readiness_pct: int
+
+
+# 2. AI Skill Assessment (Interactive Tests)
+class SkillAssessmentQuestion(BaseModel):
+    id: str
+    skill_name: str
+    question: str
+    options: List[str]
+    code_snippet: Optional[str] = None
+    difficulty: str = "Intermediate"
+
+class SkillAssessmentSubmitRequest(BaseModel):
+    skill_name: str
+    answers: Dict[str, int]  # question_id -> chosen option index
+
+class SkillAssessmentResult(BaseModel):
+    skill_name: str
+    score: float
+    max_score: float
+    score_pct: int
+    old_proficiency: float
+    new_proficiency: float
+    status: str
+    explanation: str
+    new_readiness_pct: int
+
+
+# 3. GitHub Profile Analyzer
+class GitHubAnalysisRequest(BaseModel):
+    username: str
+
+class GitHubAnalysisResult(BaseModel):
+    username: str
+    avatar_url: str
+    public_repos: int
+    total_stars: int
+    top_languages: List[Dict[str, Any]]
+    code_activity_score: int
+    project_quality_score: int
+    consistency_score: int
+    documentation_score: int
+    open_source_score: int
+    overall_github_score: int
+    readiness_impact: int
+    strengths: List[str]
+    actionable_improvements: List[str]
+    pinned_highlights: List[Dict[str, str]]
+
+
+# 4. Career Path Comparison
+class CareerPathCompareRequest(BaseModel):
+    roles: List[str] = ["Data Scientist", "ML Engineer", "AI Engineer"]
+
+class CareerPathItem(BaseModel):
+    role: str
+    current_fit_pct: int
+    avg_salary_inr: str
+    missing_skills_count: int
+    missing_skills: List[str]
+    time_to_ready_months: int
+    prep_cost_inr: str
+    job_demand_tier: str
+    market_growth_pct: int
+    key_pros: List[str]
+    key_challenges: List[str]
+
+class CareerPathCompareResponse(BaseModel):
+    paths: List[CareerPathItem]
+    recommended_role: str
+    recommendation_reason: str
+
+
+# 5. Career ROI Calculator
+class CareerRoiRequest(BaseModel):
+    course_name: str
+    provider: str
+    cost_inr: float
+    target_role: str
+    study_hours: int = 40
+
+class CareerRoiResponse(BaseModel):
+    course_name: str
+    provider: str
+    cost_inr: float
+    expected_skill_gain_pct: int
+    readiness_gain_pct: int
+    time_required_hours: int
+    career_relevance_pct: int
+    financial_stress_level: str
+    estimated_salary_uplift_inr: str
+    payback_period_months: float
+    estimated_roi_rating: str
+    verdict: str
+    ai_advice: str
+
+
+# 6. Job Application Funnel Tracker
+class JobApplicationItem(BaseModel):
+    id: str
+    user_id: str
+    company: str
+    role: str
+    stage: str  # "Applied", "OA", "Technical Interview", "HR Round", "Offer", "Rejected"
+    salary_package_lpa: Optional[float] = None
+    applied_date: str
+    location: Optional[str] = None
+    job_url: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+class CreateJobApplicationRequest(BaseModel):
+    company: str
+    role: str
+    stage: str = "Applied"
+    salary_package_lpa: Optional[float] = None
+    location: Optional[str] = None
+    job_url: Optional[str] = None
+    notes: Optional[str] = None
+
+class UpdateJobApplicationRequest(BaseModel):
+    stage: Optional[str] = None
+    notes: Optional[str] = None
+    salary_package_lpa: Optional[float] = None
+
+class JobFunnelAnalytics(BaseModel):
+    total_applications: int
+    applied_count: int
+    oa_count: int
+    interviews_count: int
+    technical_count: int
+    hr_count: int
+    offers_count: int
+    rejections_count: int
+    conversion_rate_pct: float
+    biggest_dropoff_stage: str
+    ai_bottleneck_coach: str
+    applications: List[JobApplicationItem]
+
+
+# 7. Explainable AI Breakdown
+class ReadinessAttributionItem(BaseModel):
+    factor: str
+    weight_pct: int
+    points_contributed: int
+    max_points: int
+    current_status: str
+    suggestion_for_gain: str
+
+class ExplainableReadinessBreakdown(BaseModel):
+    total_readiness_pct: int
+    target_role: str
+    formula_summary: str
+    attributions: List[ReadinessAttributionItem]
+    top_bottleneck: str
+    quickest_win: str
+
+
+# 8. LinkedIn Profile Analyzer
+class LinkedInAnalysisRequest(BaseModel):
+    headline: Optional[str] = None
+    about: Optional[str] = None
+    skills: List[str] = []
+    projects: List[str] = []
+    experience: Optional[str] = None
+    certifications: List[str] = []
+
+class LinkedInSectionScore(BaseModel):
+    section: str
+    score: int
+    feedback: str
+
+class LinkedInAnalysisResult(BaseModel):
+    overall_score: int
+    section_breakdown: List[LinkedInSectionScore]
+    optimized_headline: str
+    optimized_about: str
+    strengths: List[str]
+    actionable_recommendations: List[str]
+    readiness_impact: int
+
+
+# 9. Smart Contextual Notifications
+class NotificationItem(BaseModel):
+    id: str
+    title: str
+    message: str
+    type: str  # "info", "warning", "success", "alert"
+    category: str  # "career", "study", "finance", "jobs"
+    timestamp: str
+    read: bool = False
+    action_url: Optional[str] = None
+
+class NotificationsResponse(BaseModel):
+    notifications: List[NotificationItem]
+    unread_count: int
+
+
+# 10. Gamification & Badges
+class GamificationBadge(BaseModel):
+    id: str
+    name: str
+    icon: str
+    description: str
+    unlocked: bool
+    unlocked_at: Optional[str] = None
+    category: str
+
+class GamificationStatusResponse(BaseModel):
+    current_level: int
+    current_xp: int
+    next_level_xp: int
+    progress_pct: int
+    streak_days: int
+    unlocked_count: int
+    total_badges: int
+    badges: List[GamificationBadge]
+
+
+# 11. Skill Market Demand
+class SkillMarketDemandItem(BaseModel):
+    skill_name: str
+    demand_score: int  # 0-100
+    growth_score: int  # 0-100
+    trend: str  # "Surging", "High Growth", "Stable"
+    avg_salary_impact_lpa: str
+    in_user_profile: bool
+
+class SkillMarketDemandResponse(BaseModel):
+    target_role: str
+    market_skills: List[SkillMarketDemandItem]
+    high_demand_missing_skills: List[str]
+    market_insight_summary: str
+
+
+# 12. Job Match Progression History
+class JobMatchHistoryEntry(BaseModel):
+    company: str
+    role: str
+    match_pct: int
+    salary_lpa: float
+    recorded_date: str
+
+class JobMatchHistoryResponse(BaseModel):
+    history: List[JobMatchHistoryEntry]
+    current_avg_match_pct: int
+    previous_avg_match_pct: int
+    improvement_pct: int
+    summary_message: str
+
+
+# 13. Career + Wealth Digital Twin 2.0 (Interactive Multi-Scenario Simulator)
+class InteractiveDigitalTwinRequest(BaseModel):
+    study_hours: float = 3.5
+    monthly_income: float = 15000.0
+    monthly_expenses: float = 8000.0
+    course_spending: float = 2000.0
+    career_choice: str = "AI Engineer"
+    monthly_investment: float = 3000.0
+    target_salary_lpa: float = 14.0
+
+class InteractiveDigitalTwinScenario(BaseModel):
+    scenario_id: str  # "scenario_a", "scenario_b", "scenario_c"
+    scenario_name: str
+    tagline: str
+    readiness_pct: int
+    expected_salary_lpa: float
+    five_year_net_wealth_inr: float
+    five_year_savings_inr: float
+    five_year_investment_inr: float
+    pros: List[str]
+    cons: List[str]
+    suitability: str
+
+class InteractiveDigitalTwinResponse(BaseModel):
+    input_parameters: Dict[str, Any]
+    scenarios: List[InteractiveDigitalTwinScenario]
+    recommended_scenario_id: str
+    ai_recommendation: str
+
+
 
 

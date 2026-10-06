@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 from models import (
     StudentProfile, SkillItem, SkillGapItem, CareerMatch,
     LearningRoadmap, RoadmapMonth, RoadmapMilestone, RecommendedProject
@@ -192,6 +192,26 @@ ROLE_BENCHMARKS: Dict[str, Dict[str, Dict[str, Any]]] = {
     }
 }
 
+class ReadinessResult(dict):
+    def __init__(self, pct: int, score: float, strong: List[str], missing: List[str], partial: List[str], role: str = ""):
+        super().__init__(
+            readiness_pct=pct,
+            readiness_score=score,
+            strong_skills=strong,
+            missing_skills=missing,
+            partial_skills=partial,
+            target_role=role
+        )
+        self.pct = pct
+        self.score = score
+        self.strong = strong
+        self.missing = missing
+        self.partial = partial
+        self.role = role
+
+    def __iter__(self):
+        return iter((self.pct, self.score, self.strong, self.missing, self.partial))
+
 class CareerEngine:
     @staticmethod
     def get_skill_map(profile: StudentProfile) -> Dict[str, float]:
@@ -299,8 +319,9 @@ class CareerEngine:
         return gaps
 
     @classmethod
-    def calculate_readiness(cls, profile: StudentProfile, role_name: str) -> Tuple[int, float, List[str], List[str], List[str]]:
-        benchmarks = ROLE_BENCHMARKS.get(role_name, ROLE_BENCHMARKS.get(profile.career_goal, ROLE_BENCHMARKS["AI Engineer"]))
+    def calculate_readiness(cls, profile: StudentProfile, role_name: Optional[str] = None) -> "ReadinessResult":
+        role = role_name or profile.career_goal or "AI Engineer"
+        benchmarks = ROLE_BENCHMARKS.get(role, ROLE_BENCHMARKS.get(profile.career_goal, ROLE_BENCHMARKS["AI Engineer"]))
         user_skills = cls.get_skill_map(profile)
         
         total_weight = 0.0
@@ -337,7 +358,7 @@ class CareerEngine:
                 
         pct = int(round((earned_weight / total_weight) * 100)) if total_weight > 0 else 0
         readiness_score = round((pct / 10.0), 1)
-        return pct, readiness_score, strong, missing, partial
+        return ReadinessResult(pct, readiness_score, strong, missing, partial, role)
 
     @classmethod
     def get_career_recommendations(cls, profile: StudentProfile) -> List[CareerMatch]:
