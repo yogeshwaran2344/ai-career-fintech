@@ -630,3 +630,4 @@ class CareerEngine:
         ]
 
     recommend_projects = get_recommended_projects
+    recommend_careers = get_career_recommendations

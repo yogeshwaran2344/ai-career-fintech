@@ -342,6 +342,13 @@ export default function App() {
     );
   }
 
+  // Notifications derived calculations
+  const unreadNotifCount = (notificationsList || []).filter(n => !readNotifIds.includes(n.id)).length;
+  const filteredNotifications = (notificationsList || []).filter(n => {
+    if (notifFilter === 'ALL') return true;
+    return (n.category || '').toLowerCase() === notifFilter.toLowerCase();
+  });
+
   return (
     <div className="min-h-screen flex bg-[#FBF9F6] text-stone-800 font-sans">
       {/* Sidebar Navigation */}
