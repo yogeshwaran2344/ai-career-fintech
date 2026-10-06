@@ -12,7 +12,7 @@ from models import (
     LearningRoadmap, RecommendedProject, CertificationAffordability,
     CourseCard, DailyActionPlan, DecisionEvaluationRequest,
     DecisionEvaluationResponse, ProgressUpdatePayload, LLMIntentAnalysis,
-    UserRegisterRequest, UserLoginRequest, AuthResponse,
+    UserRegisterRequest, UserLoginRequest, AuthResponse, ProfileSetupRequest,
     SimulationRequest, SimulationResponse, PlacementReadinessBreakdown,
     SkillGraphData, JobMarketData, ResumeAnalyzeRequest, ResumeAnalysisResponse,
     DetailedProjectBlueprint, QuickPurchaseCheckRequest, QuickPurchaseCheckResponse,
@@ -86,6 +86,41 @@ def get_available_roles():
 @app.get("/api/auth/demo-users")
 def get_demo_users():
     return []
+
+@app.post("/api/auth/setup-profile", response_model=AuthResponse)
+def setup_profile_direct(req: ProfileSetupRequest):
+    name_clean = req.name.strip() or "Student"
+    user_id = f"user-{uuid.uuid4().hex[:8]}"
+    email_auto = f"{name_clean.lower().replace(' ', '_')}_{uuid.uuid4().hex[:6]}@student.ai"
+    
+    new_profile = StudentProfile(
+        id=user_id,
+        name=name_clean,
+        email=email_auto,
+        avatar=req.avatar or "👨‍💻",
+        career_goal=req.career_goal,
+        academic=req.academic,
+        skills=req.skills,
+        financial=req.financial,
+        preferences=req.preferences
+    )
+    
+    user_id, token = DatabaseManager.create_user(
+        name=name_clean,
+        email=email_auto,
+        password_plain=f"pwd-{uuid.uuid4().hex}",
+        avatar=req.avatar or "👨‍💻",
+        profile=new_profile
+    )
+    
+    return AuthResponse(
+        token=token,
+        user_id=user_id,
+        name=new_profile.name,
+        email=email_auto,
+        profile=new_profile
+    )
+
 
 @app.post("/api/auth/register", response_model=AuthResponse)
 def register_user(req: UserRegisterRequest):

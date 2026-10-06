@@ -11,14 +11,12 @@ import {
   CalendarCheck, 
   UserCircle, 
   Sparkles, 
-  LogOut, 
-  LogIn, 
-  UserPlus, 
   RotateCcw,
   Zap,
   Calendar,
   Award,
-  TrendingUp
+  TrendingUp,
+  Settings
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -28,7 +26,6 @@ export default function Sidebar({
   readiness,
   onReset,
   onOpenAuth,
-  onLogout,
   onOpenPlacementModal,
   onOpenWeeklyReview
 }) {
@@ -83,9 +80,9 @@ export default function Sidebar({
           <button
             onClick={onOpenAuth}
             className="p-1.5 text-stone-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-            title="Switch User / Login"
+            title="Edit Setup Questions"
           >
-            <UserPlus className="w-4 h-4" />
+            <Settings className="w-4 h-4" />
           </button>
         </div>
 
@@ -93,7 +90,7 @@ export default function Sidebar({
         <div className="grid grid-cols-2 gap-1.5 mb-4">
           <button
             onClick={onOpenPlacementModal}
-            className="p-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl text-left transition-colors"
+            className="p-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl text-left transition-colors cursor-pointer"
           >
             <span className="text-[9px] font-extrabold uppercase text-orange-700 block">Readiness</span>
             <span className="text-xs font-black text-stone-900">{readiness?.readiness_pct || 0}% Score</span>
@@ -101,7 +98,7 @@ export default function Sidebar({
 
           <button
             onClick={onOpenWeeklyReview}
-            className="p-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-left transition-colors"
+            className="p-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-left transition-colors cursor-pointer"
           >
             <span className="text-[9px] font-extrabold uppercase text-amber-800 block">Sunday AI</span>
             <span className="text-xs font-black text-stone-900">Weekly Review</span>
@@ -117,7 +114,7 @@ export default function Sidebar({
               <button
                 key={item.id}
                 onClick={() => setCurrentTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
                   active
                     ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/70'
@@ -142,27 +139,17 @@ export default function Sidebar({
 
       {/* Footer controls */}
       <div className="pt-3 border-t border-stone-200/60 space-y-2">
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onOpenAuth}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-700 bg-white hover:bg-stone-100 border border-stone-200 rounded-xl transition-colors shadow-2xs"
-          >
-            <LogIn className="w-3.5 h-3.5 text-orange-600" />
-            <span>Switch User</span>
-          </button>
-
-          <button
-            onClick={onLogout}
-            className="p-1.5 text-xs text-stone-500 hover:text-rose-600 hover:bg-rose-50 border border-stone-200 bg-white rounded-xl transition-colors"
-            title="Log Out"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <button
+          onClick={onOpenAuth}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-stone-700 bg-white hover:bg-stone-100 border border-stone-200 rounded-xl transition-colors shadow-2xs cursor-pointer"
+        >
+          <Settings className="w-3.5 h-3.5 text-orange-600" />
+          <span>Edit Profile / Re-run Setup</span>
+        </button>
 
         <button
           onClick={onReset}
-          className="w-full flex items-center justify-center gap-1 px-3 py-1 text-[11px] font-medium text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition-colors"
+          className="w-full flex items-center justify-center gap-1 px-3 py-1 text-[11px] font-medium text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
         >
           <RotateCcw className="w-3 h-3" />
           <span>Reset Progress Metrics</span>

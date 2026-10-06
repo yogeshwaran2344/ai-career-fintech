@@ -16,7 +16,7 @@ import PlacementScoreModal from './components/PlacementScoreModal';
 import WeeklyReviewModal from './components/WeeklyReviewModal';
 import { api, authState } from './api';
 import confetti from 'canvas-confetti';
-import { Sparkles, Bell, CheckCircle2, LogIn, UserPlus, Sliders, Award, Calendar, RotateCcw } from 'lucide-react';
+import { Sparkles, Bell, CheckCircle2, Sliders, Award, Calendar, RotateCcw, Settings, ArrowRight } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -45,7 +45,7 @@ class ErrorBoundary extends React.Component {
               this.setState({ hasError: false, error: null });
               window.location.reload();
             }}
-            className="px-4 py-2 bg-stone-900 text-white text-xs font-bold rounded-xl hover:bg-stone-800 transition-colors inline-flex items-center gap-1.5"
+            className="px-4 py-2 bg-stone-900 text-white text-xs font-bold rounded-xl hover:bg-stone-800 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reload View</span>
@@ -150,27 +150,7 @@ export default function App() {
     setProfile(userProfile);
     setIsAuthOpen(false);
     await loadEngineData();
-    showNotification(`Welcome, ${userProfile.name}! Your personalized career and financial roadmaps are active.`, 'Logged In');
-  };
-
-  const handleLogout = async () => {
-    try {
-      await api.logout();
-    } catch (err) {
-      console.error(err);
-    }
-    authState.clearToken();
-    authState.clearUser();
-    setProfile(null);
-    setReadiness(null);
-    setRecommendations([]);
-    setSkillGaps([]);
-    setRoadmap(null);
-    setProjects([]);
-    setDailyPlan(null);
-    setBudgetAnalysis(null);
-    showNotification('Logged out successfully. Please sign in or create your student profile.', 'Logged Out');
-    setIsAuthOpen(true);
+    showNotification(`Welcome, ${userProfile.name}! Your personalized career and financial roadmaps are active.`, 'Profile Ready');
   };
 
   const handleSaveProfile = async (updatedProfile) => {
@@ -246,7 +226,7 @@ export default function App() {
     );
   }
 
-  // Not logged in gate
+  // Not set up gate
   if (!profile) {
     return (
       <div className="min-h-screen bg-[#FBF9F6] flex flex-col items-center justify-center p-6 text-stone-800">
@@ -259,22 +239,23 @@ export default function App() {
               CareerWealth<span className="text-orange-600">.AI</span>
             </h1>
             <p className="text-xs text-stone-600 mt-2 leading-relaxed">
-              Autonomous Student Career & Wealth Optimization Engine. Zero hardcoded assumptions—driven 100% by your degree, your verified skills, and your live financial goals.
+              Autonomous Student Career & Wealth Optimization Engine. Direct onboarding—driven 100% by your degree, your actual skill ratings, and your live financial goals.
             </p>
           </div>
 
           <div className="space-y-3 pt-2">
             <button
               onClick={() => setIsAuthOpen(true)}
-              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-md shadow-orange-600/25 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-md shadow-orange-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <UserPlus className="w-4 h-4" />
-              <span>Create Student Account / Sign In</span>
+              <Sparkles className="w-4 h-4" />
+              <span>Get Started: Set Up Your Profile</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
           <p className="text-[11px] text-stone-400">
-            Supports B.Tech, BCA/MCA, B.Sc/M.Sc, B.Com/BBA/MBA with 20+ specialized industry career tracks.
+            Tailored tracks for B.Tech, BCA/MCA, B.Sc/M.Sc, B.Com/BBA/MBA with zero mock defaults.
           </p>
         </div>
 
@@ -298,7 +279,6 @@ export default function App() {
         readiness={readiness}
         onReset={handleResetProfile}
         onOpenAuth={() => setIsAuthOpen(true)}
-        onLogout={handleLogout}
         onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
         onOpenWeeklyReview={() => setIsWeeklyReviewOpen(true)}
       />
@@ -311,20 +291,22 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="text-base">{profile?.avatar || '🎓'}</span>
             <span className="font-bold text-stone-900">
-              Logged in as <span className="text-orange-600 font-extrabold">{profile?.name || 'Student'}</span>
+              Student: <span className="text-orange-600 font-extrabold">{profile?.name || 'User'}</span>
             </span>
             <span className="text-stone-400">•</span>
-            <span className="text-stone-500">{profile?.email || 'student@careerwealth.ai'}</span>
+            <span className="text-stone-600 font-medium">
+              {profile?.academic?.degree || 'B.Tech'} ({profile?.academic?.branch || 'General'})
+            </span>
             <span className="text-stone-400">•</span>
             <span className="bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px]">
-              {profile?.career_goal || 'Custom Track'}
+              {profile?.career_goal || 'Selected Track'}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsPlacementModalOpen(true)}
-              className="flex items-center gap-1 text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-100 border border-stone-200 px-2.5 py-1 rounded-lg transition-colors"
+              className="flex items-center gap-1 text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-100 border border-stone-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
             >
               <Award className="w-3.5 h-3.5 text-orange-600" />
               <span>Placement Readiness: {readiness?.readiness_pct ?? 0}%</span>
@@ -332,10 +314,10 @@ export default function App() {
 
             <button
               onClick={() => setIsAuthOpen(true)}
-              className="flex items-center gap-1 text-[11px] font-bold text-orange-700 hover:text-orange-900 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-1 rounded-lg transition-colors"
+              className="flex items-center gap-1 text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-100 border border-stone-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
             >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Switch User</span>
+              <Settings className="w-3.5 h-3.5 text-stone-600" />
+              <span>Edit Setup</span>
             </button>
           </div>
         </div>

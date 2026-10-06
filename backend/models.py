@@ -49,7 +49,15 @@ class StudentProfile(BaseModel):
     badges: List[str] = Field(default_factory=lambda: ["🌱 Welcome Badge"])
 
 
-# Auth models
+class ProfileSetupRequest(BaseModel):
+    name: str
+    avatar: Optional[str] = "👨‍💻"
+    career_goal: str = "AI Engineer"
+    academic: AcademicProfile = Field(default_factory=AcademicProfile)
+    skills: List[SkillItem] = Field(default_factory=list)
+    financial: FinancialProfile = Field(default_factory=FinancialProfile)
+    preferences: PreferencesProfile = Field(default_factory=PreferencesProfile)
+
 class UserRegisterRequest(BaseModel):
     email: str
     password: str

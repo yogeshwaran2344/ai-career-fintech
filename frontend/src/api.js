@@ -49,6 +49,15 @@ export const api = {
     authState.setUser(data.profile);
     return data;
   },
+  setupProfile: async (setupPayload) => {
+    const data = await authFetch(`${API_BASE}/auth/setup-profile`, {
+      method: 'POST',
+      body: JSON.stringify(setupPayload),
+    });
+    authState.setToken(data.token);
+    authState.setUser(data.profile);
+    return data;
+  },
   register: async (registerPayload) => {
     const data = await authFetch(`${API_BASE}/auth/register`, {
       method: 'POST',
