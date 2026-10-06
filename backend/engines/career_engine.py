@@ -335,7 +335,7 @@ class CareerEngine:
             else:
                 missing.append(skill_name)
                 
-        pct = int(round((earned_weight / total_weight) * 100)) if total_weight > 0 else 50
+        pct = int(round((earned_weight / total_weight) * 100)) if total_weight > 0 else 0
         readiness_score = round((pct / 10.0), 1)
         return pct, readiness_score, strong, missing, partial
 

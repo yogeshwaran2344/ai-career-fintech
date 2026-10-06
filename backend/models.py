@@ -32,21 +32,22 @@ class PreferencesProfile(BaseModel):
     free_text_intent: Optional[str] = "I want to work in AI but I'm not sure whether I should learn data science or ML engineering."
 
 class StudentProfile(BaseModel):
-    id: str = "student-1"
-    name: str = "Luke"
-    email: Optional[str] = "luke@advisor.ai"
-    avatar: Optional[str] = "👨‍💻"
+    id: str = "user-init"
+    name: str = "Student"
+    email: Optional[str] = None
+    avatar: Optional[str] = "🎓"
     career_goal: str = "AI Engineer"
     academic: AcademicProfile = Field(default_factory=AcademicProfile)
     skills: List[SkillItem] = Field(default_factory=list)
     financial: FinancialProfile = Field(default_factory=FinancialProfile)
     preferences: PreferencesProfile = Field(default_factory=PreferencesProfile)
     # Gamification
-    streak_days: int = 7
-    total_xp: int = 1450
-    user_level: int = 7
-    level_title: str = "Interview Ready"
-    badges: List[str] = ["🏅 First Project", "🔥 7-Day Streak", "💻 100 DSA Problems", "📄 Resume Ready"]
+    streak_days: int = 1
+    total_xp: int = 50
+    user_level: int = 1
+    level_title: str = "Foundation Starter"
+    badges: List[str] = Field(default_factory=lambda: ["🌱 Welcome Badge"])
+
 
 # Auth models
 class UserRegisterRequest(BaseModel):
