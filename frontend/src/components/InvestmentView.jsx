@@ -36,7 +36,9 @@ import {
   Building,
   Cpu,
   ArrowRight,
-  Download
+  Download,
+  Lock,
+  ShieldAlert
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -96,6 +98,7 @@ export default function InvestmentView({ profile }) {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [orderModalParams, setOrderModalParams] = useState(null);
   const [isSafeUpiModalOpen, setIsSafeUpiModalOpen] = useState(false);
+  const [safetyData, setSafetyData] = useState(null);
 
   // Multi-Company Basket Plans State
   const [basketAmount, setBasketAmount] = useState(2000);
@@ -222,7 +225,17 @@ export default function InvestmentView({ profile }) {
     fetchHubData();
     fetchBaskets(basketAmount);
     fetchBrokerDetails();
+    fetchSafetyData();
   }, [profile]);
+
+  const fetchSafetyData = async () => {
+    try {
+      const data = await api.getFinancialSafety();
+      setSafetyData(data);
+    } catch (err) {
+      console.error('Error loading financial safety:', err);
+    }
+  };
 
   const fetchHubData = async () => {
     try {
@@ -514,6 +527,36 @@ export default function InvestmentView({ profile }) {
           </div>
         </div>
       </div>
+
+      {/* Investment Clearance Hard State Warning */}
+      {safetyData?.investment_clearance_state === 'BLOCKED' && (
+        <div className="bg-rose-500/10 border-2 border-rose-500/40 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-rose-500/20 text-rose-600 mt-0.5 shrink-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold text-rose-950 text-xs md:text-sm">
+                  {safetyData.clearance_badge || '🔴 Investment Clearance BLOCKED'}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800">
+                  Runway: {safetyData.runway_months} mo (₹{safetyData.emergency_fund_current_inr?.toLocaleString('en-IN')} / ₹{safetyData.emergency_fund_target_inr?.toLocaleString('en-IN')})
+                </span>
+              </div>
+              <p className="text-xs text-rose-800/90 font-medium mt-0.5 leading-relaxed max-w-3xl">
+                {safetyData.clearance_reason || '🔒 Investment temporarily locked. Build emergency reserve to ₹18,000 first (current: ₹2,000, 0.33 months runway). Responsible wealth creation protects against liquidating market assets during shocks.'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveSubTab('safety')}
+            className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer transition shadow-xs whitespace-nowrap"
+          >
+            5-Gate Safety Audit →
+          </button>
+        </div>
+      )}
 
       {/* Sub-Tabs Navigation */}
       <div className="flex flex-wrap gap-1.5 p-1.5 bg-stone-100/80 rounded-2xl border border-stone-200 text-xs font-bold">
@@ -2427,6 +2470,8 @@ export default function InvestmentView({ profile }) {
         orderParams={orderModalParams}
         brokerStatus={brokerStatus}
         executionEnvironment={executionEnvironment}
+        clearanceState={safetyData?.investment_clearance_state}
+        clearanceReason={safetyData?.clearance_reason}
         onOrderExecuted={() => {
           fetchBrokerDetails();
           fetchHubData();

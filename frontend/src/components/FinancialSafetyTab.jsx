@@ -52,13 +52,13 @@ export default function FinancialSafetyTab({ profile }) {
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 min-w-[220px]">
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 min-w-[240px]">
             <span className="text-[10px] text-emerald-200 font-bold uppercase block">Investing Clearance Status</span>
-            <span className={`text-base font-black ${safety?.readiness_for_equity_investing ? 'text-emerald-300' : 'text-amber-300'}`}>
-              {safety?.readiness_for_equity_investing ? '✅ Cleared for Market Orders' : '⚠️ Gate Caution Active'}
+            <span className={`text-base font-black ${safety?.investment_clearance_state === 'CLEARED' ? 'text-emerald-300' : 'text-rose-300'}`}>
+              {safety?.clearance_badge || (safety?.readiness_for_equity_investing ? '✅ Cleared for Market Orders' : '🔴 Clearance BLOCKED')}
             </span>
             <span className="text-[10px] text-stone-300 block mt-0.5">
-              Runway: {safety?.runway_months || 0} Months of Essential Expenses
+              Runway: {safety?.runway_months || 0.33} Months | Gap: ₹{safety?.emergency_fund_gap_inr?.toLocaleString('en-IN') || '16,000'}
             </span>
           </div>
         </div>
@@ -114,11 +114,11 @@ export default function FinancialSafetyTab({ profile }) {
 
             <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm">
               <span className="text-[10px] text-stone-400 font-bold uppercase block">Essential Living Runway</span>
-              <span className="text-2xl font-black text-stone-900 mt-1 block">
+              <span className="text-2xl font-black text-amber-600 mt-1 block">
                 {safety.runway_months} Months
               </span>
               <span className="text-[10px] text-stone-500 mt-1 block">
-                Target: 3.0 to 6.0 Months essential living protection
+                Target: 3.0 Months (₹{safety.essential_monthly_expenses_inr?.toLocaleString('en-IN') || '6,000'}/mo essentials)
               </span>
             </div>
 

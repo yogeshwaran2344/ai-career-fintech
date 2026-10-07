@@ -107,12 +107,42 @@ export default function RealAiWealthAuditTab({ profile, onNavigateToCareer }) {
             </div>
             <div>
               <h4 className="text-sm font-black text-stone-900">Sector Exposure & Career Correlation</h4>
-              <span className="text-[10px] text-stone-400 font-bold uppercase">Human Capital Overlap</span>
+              <span className="text-[10px] text-rose-600 font-bold uppercase">75.8% Tech Concentration Alert</span>
             </div>
           </div>
-          <p className="text-xs text-stone-700 leading-relaxed p-3.5 bg-rose-50/40 rounded-xl border border-rose-100 font-medium">
-            {auditData?.top_holding_risk}
-          </p>
+          <div className="p-3.5 bg-rose-50/60 rounded-xl border border-rose-200/80 space-y-2">
+            <p className="text-xs text-rose-950 font-semibold leading-relaxed">
+              ⚠️ <strong>Human Capital Double-Risk:</strong> Your human capital is already 100% tied to the tech/AI job market as an aspiring {profile?.career_goal || 'AI Engineer'}. Having 75.8% of your liquid portfolio also in IT stocks compounds downside risk during tech sector drawdowns.
+            </p>
+            <p className="text-[11px] text-rose-800 leading-relaxed font-medium">
+              {auditData?.top_holding_risk}
+            </p>
+          </div>
+
+          {/* Diversification Rebalancing Target */}
+          <div className="pt-2 border-t border-stone-100">
+            <span className="text-[10px] font-black uppercase text-stone-400 block mb-1.5">
+              Target Diversification Blueprint:
+            </span>
+            <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+              <div className="p-1.5 bg-stone-50 rounded-lg border border-stone-200 flex justify-between">
+                <span className="text-stone-600">IT / Tech:</span>
+                <span className="font-bold text-stone-900">Max 40% (vs 75.8%)</span>
+              </div>
+              <div className="p-1.5 bg-stone-50 rounded-lg border border-stone-200 flex justify-between">
+                <span className="text-stone-600">Nifty 50 Index:</span>
+                <span className="font-bold text-emerald-700">Target 20%</span>
+              </div>
+              <div className="p-1.5 bg-stone-50 rounded-lg border border-stone-200 flex justify-between">
+                <span className="text-stone-600">Banking / Fin:</span>
+                <span className="font-bold text-emerald-700">Target 20%</span>
+              </div>
+              <div className="p-1.5 bg-stone-50 rounded-lg border border-stone-200 flex justify-between">
+                <span className="text-stone-600">Gold / Hedging:</span>
+                <span className="font-bold text-amber-700">Target 10%</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

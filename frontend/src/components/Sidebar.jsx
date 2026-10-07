@@ -18,7 +18,8 @@ import {
   TrendingUp,
   Settings,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Activity
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -37,6 +38,7 @@ export default function Sidebar({
       title: 'OVERVIEW',
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'financialhealth', label: 'My Financial Health', icon: Activity, badge: 'Health' },
         { id: 'copilot', label: 'AI Career Copilot', icon: Bot, badge: 'Advisor' }
       ]
     },
@@ -56,6 +58,12 @@ export default function Sidebar({
       items: [
         { id: 'finance', label: 'Finance & Budget', icon: Wallet },
         { id: 'investments', label: 'Investments & Orders', icon: TrendingUp, badge: 'Paper/Live' }
+      ]
+    },
+    {
+      title: 'SAFETY & RESILIENCE',
+      items: [
+        { id: 'safety', label: '5-Gate Safety Center', icon: ShieldCheck, badge: '5-Gate' }
       ]
     },
     {

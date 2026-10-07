@@ -1228,6 +1228,31 @@ class CareerVsInvestmentDecisionRequest(BaseModel):
     certification_cost: float = 10000.0
     career_goal: Optional[str] = None
 
+class FiveYearYearlyProjection(BaseModel):
+    year: int
+    scenario_a_career_income: float
+    scenario_b_sip_corpus: float
+    scenario_c_do_nothing_income: float
+
+class ProbabilisticSalaryUplift(BaseModel):
+    conservative_annual_inr: float = 60000.0
+    expected_annual_inr: float = 120000.0
+    optimistic_annual_inr: float = 180000.0
+    confidence_pct: int = 78
+
+class MarketScenarioReturn(BaseModel):
+    scenario_name: str
+    one_year_val_inr: float
+    three_year_val_inr: float
+    five_year_val_inr: float
+    description: str
+
+class CertificationScenarioOutcome(BaseModel):
+    scenario_name: str
+    outcome_label: str
+    salary_boost_inr: float
+    description: str
+
 class CareerOptionProjection(BaseModel):
     option_title: str
     cost_inr: float
@@ -1256,11 +1281,16 @@ class CareerVsInvestmentDecisionResponse(BaseModel):
     attribution_factors: List[Dict[str, str]]
     confidence_score: int
     sebi_scenario_disclaimer: str
+    five_year_trajectory: Optional[List[FiveYearYearlyProjection]] = None
+    probabilistic_salary: Optional[ProbabilisticSalaryUplift] = None
+    market_scenarios: Optional[List[MarketScenarioReturn]] = None
+    certification_scenarios: Optional[List[CertificationScenarioOutcome]] = None
+
 
 class FinancialSafetyCheckResponse(BaseModel):
     emergency_fund_target_inr: float
     emergency_fund_current_inr: float
-    emergency_fund_pct: int
+    emergency_fund_pct: float
     runway_months: float
     debt_level: str
     monthly_disposable_cash_flow_inr: float
@@ -1269,6 +1299,41 @@ class FinancialSafetyCheckResponse(BaseModel):
     readiness_for_equity_investing: bool
     safety_gates: List[Dict[str, Any]]
     actionable_remedy: str
+    essential_monthly_expenses_inr: Optional[float] = 6000.0
+    emergency_fund_gap_inr: Optional[float] = 16000.0
+    investment_clearance_state: Optional[str] = "BLOCKED"  # "BLOCKED", "LIMITED", "CLEARED"
+    clearance_badge: Optional[str] = "🔴 Investment Clearance BLOCKED"
+    clearance_reason: Optional[str] = ""
+    financial_health_score: Optional[int] = 64
+
+class FinancialHealthFactor(BaseModel):
+    factor: str
+    score: int
+    status: str
+    description: str
+
+class FinancialHealthSummary(BaseModel):
+    overall_health_score: int
+    health_status: str
+    rating_pill: str
+    summary_message: str
+    essential_monthly_expenses: float
+    emergency_target: float
+    emergency_current: float
+    emergency_gap: float
+    runway_months: float
+    emergency_fund_pct: float
+    monthly_income: float
+    total_expenses: float
+    monthly_surplus: float
+    upskilling_capacity: float
+    investment_capacity: float
+    clearance_state: str  # "BLOCKED", "LIMITED", "CLEARED"
+    clearance_badge: str
+    clearance_reason: str
+    factors: List[FinancialHealthFactor]
+    ai_priorities: List[str]
+
 
 
 

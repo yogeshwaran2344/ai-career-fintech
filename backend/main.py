@@ -40,7 +40,7 @@ from models import (
     PlaceBrokerOrderRequest, BrokerOrderResult,
     CreateUpiMandateRequest, UpiMandateResponse, RealAiWealthAuditResponse,
     OrdersSummaryResponse, CareerVsInvestmentDecisionRequest, CareerVsInvestmentDecisionResponse,
-    FinancialSafetyCheckResponse
+    FinancialSafetyCheckResponse, FinancialHealthSummary
 )
 from engines.career_comparator import CareerComparatorEngine
 from engines.career_engine import CareerEngine
@@ -280,7 +280,36 @@ def login_user(req: UserLoginRequest):
     if not profile:
         raise HTTPException(status_code=404, detail="Student profile not found.")
         
-    token = DatabaseManager.create_session(uid, device_info="Web App / Desktop", duration_days=7)
+    token = DatabaseManager.create_session(uid, device_info="Web App / Desktop", duration_days=30)
+    
+    return AuthResponse(
+        token=token,
+        user_id=uid,
+        name=user_row["name"],
+        email=email_clean,
+        profile=profile
+    )
+
+class UserResetPasswordRequest(BaseModel):
+    email: str
+    new_password: str
+
+@app.post("/api/auth/reset-password", response_model=AuthResponse)
+def reset_user_password(req: UserResetPasswordRequest):
+    email_clean = req.email.strip().lower()
+    user_row = DatabaseManager.get_user_by_email(email_clean)
+    if not user_row:
+        raise HTTPException(status_code=404, detail="No registered account found with this email.")
+        
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+        
+    new_hash = hash_password(req.new_password)
+    DatabaseManager.update_password_hash(user_row["id"], new_hash)
+    
+    uid = user_row["id"]
+    profile = DatabaseManager.get_profile_by_user_id(uid)
+    token = DatabaseManager.create_session(uid, device_info="Web App / Password Reset", duration_days=30)
     
     return AuthResponse(
         token=token,
@@ -340,7 +369,7 @@ def get_career_readiness(current_user: StudentProfile = Depends(get_user_from_au
 
 @app.get("/api/career/placement-breakdown", response_model=PlacementReadinessBreakdown)
 def get_placement_breakdown(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.get_placement_breakdown(current_user)
+    return AdvancedSimulationEngine.get_placement_readiness_breakdown(current_user)
 
 @app.get("/api/career/explainable-readiness", response_model=ExplainableReadinessBreakdown)
 def get_explainable_readiness(current_user: StudentProfile = Depends(get_user_from_auth)):
@@ -364,7 +393,11 @@ def get_career_projects(current_user: StudentProfile = Depends(get_user_from_aut
 
 @app.get("/api/career/project-blueprint/{project_title}", response_model=DetailedProjectBlueprint)
 def get_project_blueprint(project_title: str, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.generate_project_blueprint(project_title, current_user.career_goal)
+    blueprints = AdvancedSimulationEngine.get_detailed_project_blueprints()
+    for bp in blueprints:
+        if bp.title.lower() == project_title.lower():
+            return bp
+    return blueprints[0] if blueprints else None
 
 @app.post("/api/career/simulate", response_model=SimulationResponse)
 def simulate_career_path(req: SimulationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
@@ -376,11 +409,11 @@ def compare_career_paths(req: CareerPathCompareRequest, current_user: StudentPro
 
 @app.get("/api/career/skill-graph", response_model=SkillGraphData)
 def get_skill_graph(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.get_skill_graph_data(current_user)
+    return AdvancedSimulationEngine.get_skill_dependency_graph(current_user)
 
 @app.get("/api/career/job-market", response_model=JobMarketData)
 def get_job_market(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.get_job_market_intel(current_user)
+    return AdvancedSimulationEngine.get_job_market_benchmark(current_user)
 
 # ==================== SIMULATION COMPATIBILITY ALIASES ====================
 
@@ -390,11 +423,11 @@ def simulate_career_path_alias(req: SimulationRequest, current_user: StudentProf
 
 @app.get("/api/simulation/skill-graph", response_model=SkillGraphData)
 def get_skill_graph_alias(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.get_skill_graph_data(current_user)
+    return AdvancedSimulationEngine.get_skill_dependency_graph(current_user)
 
 @app.get("/api/simulation/job-market", response_model=JobMarketData)
 def get_job_market_alias(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.get_job_market_intel(current_user)
+    return AdvancedSimulationEngine.get_job_market_benchmark(current_user)
 
 @app.post("/api/simulation/resume-analyzer", response_model=ResumeAnalysisResponse)
 def analyze_resume_alias(req: ResumeAnalyzeRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
@@ -405,7 +438,7 @@ def analyze_resume_alias(req: ResumeAnalyzeRequest, current_user: StudentProfile
 
 @app.get("/api/simulation/placement-breakdown", response_model=PlacementReadinessBreakdown)
 def get_placement_breakdown_alias(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.get_placement_breakdown(current_user)
+    return AdvancedSimulationEngine.get_placement_readiness_breakdown(current_user)
 
 @app.get("/api/simulation/project-blueprints")
 def get_project_blueprints_alias(current_user: StudentProfile = Depends(get_user_from_auth)):
@@ -757,6 +790,10 @@ def compare_career_vs_investment(req: CareerVsInvestmentDecisionRequest, current
 def get_financial_safety_status(current_user: StudentProfile = Depends(get_user_from_auth)):
     return FinanceEngine.evaluate_financial_safety(current_user)
 
+@app.get("/api/wealth/financial-health", response_model=FinancialHealthSummary)
+def get_financial_health_status(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return FinanceEngine.get_financial_health_summary(current_user)
+
 # ==================== SAFE NPCI UPI MANDATE FLOW (ZERO-PIN) ====================
 
 @app.post("/api/payment/upi-mandate/create", response_model=UpiMandateResponse)
@@ -787,12 +824,12 @@ def evaluate_decision(req: DecisionEvaluationRequest, current_user: StudentProfi
 
 @app.get("/api/career/weekly-review", response_model=WeeklyReviewData)
 def get_weekly_review(current_user: StudentProfile = Depends(get_user_from_auth)):
-    return CareerEngine.generate_weekly_review(current_user)
+    return AdvancedSimulationEngine.get_weekly_review(current_user)
 
 @app.get("/api/career/daily-plan", response_model=DailyActionPlan)
 def get_daily_plan(date_str: Optional[str] = Query(None), current_user: StudentProfile = Depends(get_user_from_auth)):
     target_date = date_str or None
-    return CareerEngine.generate_daily_plan(current_user, target_date)
+    return ProgressEngine.generate_daily_plan(current_user, target_date)
 
 @app.post("/api/career/daily-plan/toggle-task/{task_id}")
 def toggle_daily_task(task_id: str, current_user: StudentProfile = Depends(get_user_from_auth)):

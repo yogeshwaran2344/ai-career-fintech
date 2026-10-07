@@ -73,6 +73,17 @@ export const api = {
     authState.setUser(data.profile);
     return data;
   },
+  resetPassword: async (email, new_password) => {
+    const data = await authFetch(`${API_BASE}/auth/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ email, new_password }),
+    });
+    if (data.token) {
+      authState.setToken(data.token);
+      authState.setUser(data.profile);
+    }
+    return data;
+  },
   getMe: async () => {
     const profile = await authFetch(`${API_BASE}/auth/me`);
     authState.setUser(profile);
@@ -420,6 +431,9 @@ export const api = {
   // FINANCIAL SAFETY RESILIENCE CENTER
   getFinancialSafety: async () => {
     return authFetch(`${API_BASE}/wealth/financial-safety`);
+  },
+  getFinancialHealth: async () => {
+    return authFetch(`${API_BASE}/wealth/financial-health`);
   },
 
   // NOTIFICATIONS & GAMIFICATION

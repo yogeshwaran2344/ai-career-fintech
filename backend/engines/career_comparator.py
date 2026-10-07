@@ -3,7 +3,8 @@ from models import (
     CareerPathCompareResponse, CareerPathItem, CareerRoiRequest, CareerRoiResponse,
     ExplainableReadinessBreakdown, ReadinessAttributionItem, StudentProfile,
     CareerVsInvestmentDecisionRequest, CareerVsInvestmentDecisionResponse,
-    CareerOptionProjection, InvestmentOptionProjection
+    CareerOptionProjection, InvestmentOptionProjection,
+    FiveYearYearlyProjection, ProbabilisticSalaryUplift, MarketScenarioReturn, CertificationScenarioOutcome
 )
 from engines.career_engine import CareerEngine
 
@@ -366,6 +367,33 @@ class CareerComparatorEngine:
             {"factor": "Cash Flow Asymmetry", "impact": f"Extra ₹{monthly_salary_boost:,.0f}/mo starting salary beats ₹{projected_3y_corpus - capital:,.0f} 3-year stock gain"}
         ]
 
+        five_year_trajectory = [
+            FiveYearYearlyProjection(year=1, scenario_a_career_income=1200000.0, scenario_b_sip_corpus=round(capital * 1.12, 2), scenario_c_do_nothing_income=900000.0),
+            FiveYearYearlyProjection(year=2, scenario_a_career_income=1400000.0, scenario_b_sip_corpus=round(capital * (1.12 ** 2), 2), scenario_c_do_nothing_income=980000.0),
+            FiveYearYearlyProjection(year=3, scenario_a_career_income=1650000.0, scenario_b_sip_corpus=round(capital * (1.12 ** 3), 2), scenario_c_do_nothing_income=1080000.0),
+            FiveYearYearlyProjection(year=4, scenario_a_career_income=2000000.0, scenario_b_sip_corpus=round(capital * (1.12 ** 4), 2), scenario_c_do_nothing_income=1180000.0),
+            FiveYearYearlyProjection(year=5, scenario_a_career_income=2400000.0, scenario_b_sip_corpus=round(capital * (1.12 ** 5), 2), scenario_c_do_nothing_income=1300000.0)
+        ]
+
+        probabilistic_salary = ProbabilisticSalaryUplift(
+            conservative_annual_inr=60000.0,
+            expected_annual_inr=120000.0,
+            optimistic_annual_inr=180000.0,
+            confidence_pct=78
+        )
+
+        market_scenarios = [
+            MarketScenarioReturn(scenario_name="Optimistic Market (15% CAGR)", one_year_val_inr=round(capital * 1.15, 2), three_year_val_inr=round(capital * (1.15 ** 3), 2), five_year_val_inr=round(capital * (1.15 ** 5), 2), description="Strong bull market with rapid tech earnings growth."),
+            MarketScenarioReturn(scenario_name="Expected Market (12% CAGR)", one_year_val_inr=round(capital * 1.12, 2), three_year_val_inr=round(capital * (1.12 ** 3), 2), five_year_val_inr=round(capital * (1.12 ** 5), 2), description="Historic long-term Indian Nifty 50 compounding baseline."),
+            MarketScenarioReturn(scenario_name="Poor Market (4% Inflation/Downturn)", one_year_val_inr=round(capital * 0.92, 2), three_year_val_inr=round(capital * 1.05, 2), five_year_val_inr=round(capital * 1.15, 2), description="Prolonged consolidation and equity volatility.")
+        ]
+
+        certification_scenarios = [
+            CertificationScenarioOutcome(scenario_name="Best Case", outcome_label="Tier-1 Campus Placement", salary_boost_inr=180000.0, description="Cleared premium product firm technical rounds."),
+            CertificationScenarioOutcome(scenario_name="Expected Case", outcome_label="Moderate Salary Uplift", salary_boost_inr=120000.0, description="Differentiated portfolio projects over peers."),
+            CertificationScenarioOutcome(scenario_name="Worst Case", outcome_label="No Immediate Placement Benefit", salary_boost_inr=0.0, description="Badge achieved without clearing DSA screening.")
+        ]
+
         return CareerVsInvestmentDecisionResponse(
             capital_amount=capital,
             career_option=career_option,
@@ -374,5 +402,9 @@ class CareerComparatorEngine:
             strategic_rationale=rationale,
             attribution_factors=attribution_factors,
             confidence_score=confidence,
-            sebi_scenario_disclaimer="SEBI Compliance Note: Financial return projections and salary boosts are educational scenario estimates, not assured returns or investment guarantees."
+            sebi_scenario_disclaimer="SEBI Compliance Note: Financial return projections and salary boosts are educational scenario estimates, not assured returns or investment guarantees.",
+            five_year_trajectory=five_year_trajectory,
+            probabilistic_salary=probabilistic_salary,
+            market_scenarios=market_scenarios,
+            certification_scenarios=certification_scenarios
         )

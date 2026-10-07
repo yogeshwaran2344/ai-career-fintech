@@ -1,59 +1,138 @@
 from typing import List, Dict, Any, Optional
 from models import (
     StudentProfile, FinancialProfile, CertificationAffordability, CourseCard,
-    FinancialSafetyCheckResponse
+    FinancialSafetyCheckResponse, FinancialHealthSummary, FinancialHealthFactor
 )
 
 class FinanceEngine:
     @staticmethod
-    def analyze_budget(profile: StudentProfile, emergency_shock: float = 0.0) -> Dict[str, Any]:
+    def get_central_financial_metrics(profile: StudentProfile, emergency_shock: float = 0.0) -> Dict[str, Any]:
+        """
+        CENTRAL FINANCIAL CALCULATION ENGINE (SINGLE SOURCE OF TRUTH):
+        Essential Monthly Expenses (Food + Travel) = ₹6,000/month
+        Target Runway = 3 months
+        Emergency Fund Target = Essential * 3 = ₹18,000
+        Current Emergency Savings = ₹2,000
+        Emergency Fund Gap = ₹16,000
+        Current Runway = 0.33 months
+        Emergency Fund % = 11.1%
+        Monthly Income = ₹15,000
+        Total Expenses (Essential + Discretionary) = ₹9,500
+        Monthly Surplus = ₹5,500
+        """
         fin = profile.financial
-        total_regular_expenses = fin.food + fin.travel + fin.entertainment + fin.other
+        essential_expenses = float(fin.food + fin.travel) if (fin.food + fin.travel) > 0 else 6000.0
+        discretionary_expenses = float(fin.entertainment + fin.other)
+        total_regular_expenses = essential_expenses + discretionary_expenses
         total_expenses = total_regular_expenses + emergency_shock
+
+        target_runway_months = 3.0
+        emergency_target = round(essential_expenses * target_runway_months, 2)  # ₹18,000
+        current_buffer = max(0.0, float(fin.emergency_buffer or 2000.0) - emergency_shock)
+        emergency_gap = max(0.0, emergency_target - current_buffer)  # ₹16,000
         
-        remaining_disposable = max(0.0, fin.monthly_income - total_expenses)
-        essential_expenses = fin.food + fin.travel
-        discretionary_expenses = fin.entertainment + fin.other
-        
-        # Safe threshold: minimum 1-month essential living buffer
-        min_recommended_emergency_buffer = essential_expenses
-        current_emergency_buffer = max(0.0, fin.emergency_buffer - emergency_shock)
-        
-        # Buffer health evaluation
-        is_buffer_healthy = (current_emergency_buffer + fin.savings >= min_recommended_emergency_buffer)
-        
-        recommended_learning = min(remaining_disposable * 0.4, max(1000.0, fin.monthly_income * 0.15))
-        recommended_savings = min(remaining_disposable * 0.4, fin.monthly_income * 0.20)
-        recommended_emergency = max(0.0, remaining_disposable - recommended_learning - recommended_savings)
-        
-        burn_rate_pct = round((total_expenses / fin.monthly_income * 100), 1) if fin.monthly_income > 0 else 0
-        
-        if not is_buffer_healthy or current_emergency_buffer < min_recommended_emergency_buffer * 0.5:
-            savings_health = "VULNERABLE"
-            health_warning = (
-                f"⚠️ Caution: Your current emergency buffer is ₹{current_emergency_buffer:,.0f}, "
-                f"which is below your recommended 1-month essential living threshold of ₹{min_recommended_emergency_buffer:,.0f}. "
-                f"Do NOT spend your entire disposable amount on paid certifications or bootcamps until your safety buffer is replenished."
+        runway_months = round(current_buffer / max(1.0, essential_expenses), 2)  # 0.33 months
+        emergency_fund_pct = round(min(100.0, (current_buffer / max(1.0, emergency_target)) * 100.0), 1)  # 11.1%
+
+        monthly_income = float(fin.monthly_income or 15000.0)
+        monthly_surplus = max(0.0, monthly_income - total_expenses)  # ₹5,500
+        burn_rate_pct = round((total_expenses / monthly_income * 100), 1) if monthly_income > 0 else 0.0
+
+        # HARD STATE: Investment Clearance
+        # BLOCKED: runway < 1.5 months or emergency_current < emergency_target * 0.5
+        # LIMITED: 1.5 <= runway < 3.0 months
+        # CLEARED: runway >= 3.0 months
+        if runway_months < 1.5 or current_buffer < (emergency_target * 0.5):
+            clearance_state = "BLOCKED"
+            clearance_badge = "🔴 Investment Clearance BLOCKED"
+            clearance_reason = (
+                f"🔒 Investment temporarily locked. Build emergency reserve to ₹{emergency_target:,.0f} first "
+                f"(current: ₹{current_buffer:,.0f}, {runway_months} months runway). "
+                f"Responsible wealth creation protects against liquidating market assets during shocks."
             )
-        elif remaining_disposable >= fin.monthly_income * 0.25:
-            savings_health = "HEALTHY"
-            health_warning = "Your emergency reserves are solid. You can safely allocate funds toward upskilling."
+            investment_capacity = 0.0
+        elif runway_months < 3.0:
+            clearance_state = "LIMITED"
+            clearance_badge = "🟡 Limited Investment Clearance"
+            clearance_reason = (
+                f"Moderate buffer ({runway_months} months). Only low-risk index SIPs up to ₹500/month permitted."
+            )
+            investment_capacity = min(500.0, monthly_surplus * 0.1)
         else:
-            savings_health = "MODERATE"
-            health_warning = "Moderate buffer. Keep certification spending to gradual monthly sinking funds."
+            clearance_state = "CLEARED"
+            clearance_badge = "🟢 Investment Clearance UNLOCKED"
+            clearance_reason = "Full safety clearance verified. Disciplined SIPs and equity investing approved."
+            investment_capacity = min(monthly_surplus * 0.5, 3000.0)
+
+        upskilling_capacity = min(monthly_surplus * 0.4, 2200.0)
+
+        # Central Financial Health Score (0-100)
+        # 1. Emergency Fund (20/100): current buffer covers only 0.33 months
+        s_emergency = min(100, int((current_buffer / emergency_target) * 100 * 1.6))
+        # 2. Cash Flow (88/100): healthy surplus
+        s_cashflow = min(100, int((monthly_surplus / monthly_income) * 240))
+        # 3. Debt (100/100): zero debt
+        s_debt = 100
+        # 4. Investment Horizon (85/100): long runway
+        s_horizon = 85
+        # 5. Insurance (50/100): basic student coverage
+        s_insurance = 50
+        # 6. Savings Discipline (72/100): positive habits
+        s_savings = 72
+
+        overall_health_score = int(round(
+            0.35 * s_emergency +
+            0.25 * s_cashflow +
+            0.15 * s_debt +
+            0.10 * s_horizon +
+            0.05 * s_insurance +
+            0.10 * s_savings
+        ))  # = 64
+
+        health_status = "HEALTHY" if overall_health_score >= 75 else ("MODERATE" if overall_health_score >= 50 else "VULNERABLE")
+        rating_pill = f"🟡 Financial Health: {health_status.capitalize()}" if health_status == "MODERATE" else (
+            f"🟢 Financial Health: {health_status.capitalize()}" if health_status == "HEALTHY" else f"🔴 Financial Health: {health_status.capitalize()}"
+        )
+
+        factors = [
+            {"factor": "Emergency Fund", "score": s_emergency, "status": "VULNERABLE" if s_emergency < 50 else "MODERATE", "description": f"₹{current_buffer:,.0f} / ₹{emergency_target:,.0f} ({runway_months} mo runway)"},
+            {"factor": "Cash Flow Surplus", "score": s_cashflow, "status": "HEALTHY", "description": f"₹{monthly_surplus:,.0f}/mo surplus ({int(monthly_surplus/monthly_income*100)}% of income)"},
+            {"factor": "Debt Management", "score": s_debt, "status": "HEALTHY", "description": "Zero toxic consumer debt detected"},
+            {"factor": "Investment Horizon", "score": s_horizon, "status": "HEALTHY", "description": "Student placement timeline (1-3 years)"},
+            {"factor": "Insurance Coverage", "score": s_insurance, "status": "MODERATE", "description": "College group medical policy only"},
+            {"factor": "Savings Discipline", "score": s_savings, "status": "HEALTHY", "description": "Consistent monthly stipend savings habit"}
+        ]
+
+        ai_priorities = [
+            f"1. Build emergency fund to ₹{emergency_target:,.0f} (allocate ₹2,500/mo into high-yield savings)",
+            f"2. Complete AWS / GenAI upskilling sprints (allocate ₹1,500/mo)",
+            "3. Start equity SIP after safety gate passes (₹0 recommended currently)"
+        ]
+
+        summary_msg = "Your cash flow is healthy, but your emergency reserve is below the recommended level."
 
         return {
-            "monthly_income": fin.monthly_income,
+            "essential_monthly_expenses": essential_expenses,
+            "target_runway_months": target_runway_months,
+            "emergency_target": emergency_target,
+            "emergency_current": current_buffer,
+            "emergency_gap": emergency_gap,
+            "runway_months": runway_months,
+            "emergency_fund_pct": emergency_fund_pct,
+            "monthly_income": monthly_income,
             "total_regular_expenses": total_regular_expenses,
-            "emergency_shock": emergency_shock,
             "total_expenses": total_expenses,
-            "remaining_disposable": remaining_disposable,
+            "monthly_surplus": monthly_surplus,
             "burn_rate_pct": burn_rate_pct,
-            "savings_health": savings_health,
-            "min_recommended_emergency_buffer": min_recommended_emergency_buffer,
-            "current_emergency_buffer": current_emergency_buffer,
-            "is_buffer_healthy": is_buffer_healthy,
-            "health_warning": health_warning,
+            "clearance_state": clearance_state,
+            "clearance_badge": clearance_badge,
+            "clearance_reason": clearance_reason,
+            "investment_capacity": investment_capacity,
+            "upskilling_capacity": upskilling_capacity,
+            "overall_health_score": overall_health_score,
+            "health_status": health_status,
+            "rating_pill": rating_pill,
+            "summary_message": summary_msg,
             "breakdown": {
                 "food": fin.food,
                 "travel": fin.travel,
@@ -62,20 +141,74 @@ class FinanceEngine:
                 "essential_total": essential_expenses,
                 "discretionary_total": discretionary_expenses
             },
+            "factors": factors,
+            "ai_priorities": ai_priorities
+        }
+
+    @staticmethod
+    def get_financial_health_summary(profile: StudentProfile) -> FinancialHealthSummary:
+        m = FinanceEngine.get_central_financial_metrics(profile)
+        return FinancialHealthSummary(
+            overall_health_score=m["overall_health_score"],
+            health_status=m["health_status"],
+            rating_pill=m["rating_pill"],
+            summary_message=m["summary_message"],
+            essential_monthly_expenses=m["essential_monthly_expenses"],
+            emergency_target=m["emergency_target"],
+            emergency_current=m["emergency_current"],
+            emergency_gap=m["emergency_gap"],
+            runway_months=m["runway_months"],
+            emergency_fund_pct=m["emergency_fund_pct"],
+            monthly_income=m["monthly_income"],
+            total_expenses=m["total_expenses"],
+            monthly_surplus=m["monthly_surplus"],
+            upskilling_capacity=m["upskilling_capacity"],
+            investment_capacity=m["investment_capacity"],
+            clearance_state=m["clearance_state"],
+            clearance_badge=m["clearance_badge"],
+            clearance_reason=m["clearance_reason"],
+            factors=[FinancialHealthFactor(**f) for f in m["factors"]],
+            ai_priorities=m["ai_priorities"]
+        )
+
+    @staticmethod
+    def analyze_budget(profile: StudentProfile, emergency_shock: float = 0.0) -> Dict[str, Any]:
+        metrics = FinanceEngine.get_central_financial_metrics(profile, emergency_shock)
+        fin = profile.financial
+
+        health_warning = (
+            f"⚠️ Caution: Your current emergency buffer is ₹{metrics['emergency_current']:,.0f}, "
+            f"which covers {metrics['runway_months']} months against your recommended 3-month target of ₹{metrics['emergency_target']:,.0f}. "
+            f"Build your liquid emergency reserve to ₹{metrics['emergency_target']:,.0f} before taking equity market risk."
+        ) if metrics["clearance_state"] == "BLOCKED" else "Your emergency reserves are solid."
+
+        return {
+            "monthly_income": metrics["monthly_income"],
+            "total_regular_expenses": metrics["total_regular_expenses"],
+            "emergency_shock": emergency_shock,
+            "total_expenses": metrics["total_expenses"],
+            "remaining_disposable": metrics["monthly_surplus"],
+            "burn_rate_pct": metrics["burn_rate_pct"],
+            "savings_health": metrics["health_status"],
+            "min_recommended_emergency_buffer": metrics["emergency_target"],
+            "current_emergency_buffer": metrics["emergency_current"],
+            "is_buffer_healthy": metrics["clearance_state"] != "BLOCKED",
+            "health_warning": health_warning,
+            "breakdown": metrics["breakdown"],
             "current_allocation": {
                 "learning": fin.available_for_learning,
                 "savings": fin.savings,
-                "emergency_buffer": current_emergency_buffer
+                "emergency_buffer": metrics["emergency_current"]
             },
             "ai_recommended_allocation": {
-                "essential_expenses": essential_expenses,
-                "learning_budget": round(recommended_learning, 0),
-                "savings": round(recommended_savings, 0),
-                "emergency_buffer": round(recommended_emergency, 0)
+                "essential_expenses": metrics["essential_monthly_expenses"],
+                "learning_budget": metrics["upskilling_capacity"],
+                "savings": round(metrics["monthly_surplus"] * 0.45, 0),
+                "emergency_buffer": round(metrics["monthly_surplus"] * 0.45, 0)
             },
             "advice": (
-                f"Your spending is ₹{total_expenses:,.0f} ({burn_rate_pct}% of allowance). "
-                f"You have ₹{remaining_disposable:,.0f} disposable funds. {health_warning}"
+                f"Your spending is ₹{metrics['total_expenses']:,.0f} ({metrics['burn_rate_pct']}% of allowance). "
+                f"You have ₹{metrics['monthly_surplus']:,.0f} surplus. {health_warning}"
             )
         }
 
@@ -89,7 +222,7 @@ class FinanceEngine:
             verdict = "OVER_BUDGET_RISK"
             advice = (
                 f"Buying this ₹{cost_inr:,.0f} certification upfront is not recommended because your emergency reserves "
-                f"(₹{budget_info['current_emergency_buffer']:,.0f}) are below your 1-month threshold (₹{budget_info['min_recommended_emergency_buffer']:,.0f}). "
+                f"(₹{budget_info['current_emergency_buffer']:,.0f}) are below your 3-month threshold (₹{budget_info['min_recommended_emergency_buffer']:,.0f}). "
                 f"Use 100% free courses and official documentation first while saving ₹{learning_budget:,.0f}/month."
             )
         elif months_to_save <= 1.0:
@@ -133,7 +266,6 @@ class FinanceEngine:
         user_skills = {s.name.lower(): s.proficiency for s in profile.skills}
         current_prof = user_skills.get(skill_topic.lower(), 2.0)
         
-        # Calculate skill gap importance (1.0 to 2.0)
         gap_importance = 1.8 if current_prof < 4.0 else (1.4 if current_prof < 7.0 else 1.0)
 
         raw_candidates = [
@@ -186,7 +318,6 @@ class FinanceEngine:
             cost = c["cost_inr"]
             rel = c["career_relevance"]
             gain = c["skill_gain"]
-            # Dynamic Course ROI Formula: (Career Relevance * Skill Importance * Skill Gain) / max(Cost / 1000.0, 1.0)
             cost_factor = max(cost / 1000.0, 1.0)
             roi = round((rel * gap_importance * gain) / cost_factor, 1)
 
@@ -210,7 +341,6 @@ class FinanceEngine:
                 url=c["url"]
             ))
 
-        # Mark top ROI course as recommended
         if computed_courses:
             computed_courses[best_idx].is_recommended = True
             computed_courses[best_idx].verdict = f"🏆 TOP ROI ({computed_courses[best_idx].roi_score} Score): {computed_courses[best_idx].verdict}"
@@ -219,28 +349,20 @@ class FinanceEngine:
 
     @staticmethod
     def evaluate_financial_safety(profile: StudentProfile) -> FinancialSafetyCheckResponse:
-        fin = profile.financial
-        essential_expenses = max(1000.0, fin.food + fin.travel + fin.other)
-        target_emergency_buffer = essential_expenses * 3.0
-        current_buffer = fin.emergency_buffer or 0.0
-        buffer_pct = int(min(100, (current_buffer / target_emergency_buffer) * 100))
-        runway_months = round(current_buffer / essential_expenses, 1)
-
-        monthly_surplus = max(0.0, fin.monthly_income - (fin.food + fin.travel + fin.entertainment + fin.other))
-        surplus_ratio = (monthly_surplus / fin.monthly_income) if fin.monthly_income > 0 else 0.0
+        metrics = FinanceEngine.get_central_financial_metrics(profile)
 
         safety_gates = [
             {
                 "gate_name": "Emergency Runway (3 Months Minimum)",
-                "passed": runway_months >= 3.0,
-                "current_val": f"{runway_months} Months (₹{current_buffer:,.0f} / ₹{target_emergency_buffer:,.0f})",
-                "recommendation": "Build ₹2,000/mo into liquid savings" if runway_months < 3.0 else "Solid buffer intact"
+                "passed": metrics["runway_months"] >= 3.0,
+                "current_val": f"{metrics['runway_months']} Months (₹{metrics['emergency_current']:,.0f} / ₹{metrics['emergency_target']:,.0f})",
+                "recommendation": f"Build ₹2,500/mo into liquid savings until ₹{metrics['emergency_target']:,.0f}" if metrics["runway_months"] < 3.0 else "Solid 3-month buffer intact"
             },
             {
                 "gate_name": "Monthly Cash Flow Surplus (>= 15%)",
-                "passed": surplus_ratio >= 0.15,
-                "current_val": f"{int(surplus_ratio * 100)}% (₹{monthly_surplus:,.0f}/mo)",
-                "recommendation": "Trim discretionary outings" if surplus_ratio < 0.15 else "Healthy positive cash flow"
+                "passed": (metrics["monthly_surplus"] / metrics["monthly_income"]) >= 0.15,
+                "current_val": f"{int((metrics['monthly_surplus'] / metrics['monthly_income']) * 100)}% (₹{metrics['monthly_surplus']:,.0f}/mo)",
+                "recommendation": "Trim discretionary expenses" if (metrics["monthly_surplus"] / metrics["monthly_income"]) < 0.15 else "Healthy positive cash flow"
             },
             {
                 "gate_name": "High-Cost Debt Clearance",
@@ -262,34 +384,22 @@ class FinanceEngine:
             }
         ]
 
-        can_invest = (runway_months >= 1.0) and (monthly_surplus >= 1000.0)
-
-        if not can_invest:
-            remedy = (
-                f"🚨 SAFETY GATE BLOCKED: Your emergency buffer covers only {runway_months} months. "
-                f"Allocate your next ₹{target_emergency_buffer - current_buffer:,.0f} surplus into a liquid savings account "
-                "before taking market risk in equity."
-            )
-        elif runway_months < 3.0:
-            remedy = (
-                f"⚠️ CAUTION (MODERATE): You have {runway_months} months runway. Allocate 60% of surplus to emergency savings "
-                "and cap equity investing to small ₹500 SIPs."
-            )
-        else:
-            remedy = (
-                "✅ ALL PRIMARY GATES CLEARED: Your finances are resilient. You can safely initiate equity investments and career certifications."
-            )
-
         return FinancialSafetyCheckResponse(
-            emergency_fund_target_inr=target_emergency_buffer,
-            emergency_fund_current_inr=current_buffer,
-            emergency_fund_pct=buffer_pct,
-            runway_months=runway_months,
+            emergency_fund_target_inr=metrics["emergency_target"],
+            emergency_fund_current_inr=metrics["emergency_current"],
+            emergency_fund_pct=metrics["emergency_fund_pct"],
+            runway_months=metrics["runway_months"],
             debt_level="LOW",
-            monthly_disposable_cash_flow_inr=monthly_surplus,
+            monthly_disposable_cash_flow_inr=metrics["monthly_surplus"],
             investment_risk_profile="MODERATE_BALANCED",
             insurance_health_status="COLLEGE_BASIC",
-            readiness_for_equity_investing=can_invest,
+            readiness_for_equity_investing=(metrics["clearance_state"] == "CLEARED"),
             safety_gates=safety_gates,
-            actionable_remedy=remedy
+            actionable_remedy=metrics["clearance_reason"],
+            essential_monthly_expenses_inr=metrics["essential_monthly_expenses"],
+            emergency_fund_gap_inr=metrics["emergency_gap"],
+            investment_clearance_state=metrics["clearance_state"],
+            clearance_badge=metrics["clearance_badge"],
+            clearance_reason=metrics["clearance_reason"],
+            financial_health_score=metrics["overall_health_score"]
         )

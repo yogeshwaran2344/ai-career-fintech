@@ -137,7 +137,7 @@ export default function DecisionCopilotView({ profile, readiness }) {
               AI Decision Copilot & Strategic Allocator <Sparkles className="w-5 h-5 text-orange-400" />
             </h1>
             <p className="text-xs text-stone-300 mt-1 max-w-2xl leading-relaxed">
-              Never choose blindly between career growth, emergency savings, and investments. The Decision Engine analyzes your live readiness ({readiness?.readiness_pct || 44}%) against your cash flow to produce mathematically sound capital allocations.
+              Never choose blindly between career growth, emergency savings, and investments. The Decision Engine analyzes your live readiness ({readiness?.readiness_pct || 44}%) against your cash flow to produce data-driven allocation recommendations. Projections are estimates, not guaranteed returns.
             </p>
           </div>
 

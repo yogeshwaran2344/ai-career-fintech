@@ -11,7 +11,16 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 
-export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrderExecuted, brokerStatus, executionEnvironment = 'PAPER' }) {
+export default function BrokerOrderModal({ 
+  isOpen, 
+  onClose, 
+  orderParams, 
+  onOrderExecuted, 
+  brokerStatus, 
+  executionEnvironment = 'PAPER',
+  clearanceState,
+  clearanceReason
+}) {
   const [transactionType, setTransactionType] = useState(orderParams?.type || 'BUY');
   const [orderType, setOrderType] = useState('MARKET'); // 'MARKET' or 'LIMIT'
   const [product, setProduct] = useState('CNC'); // 'CNC' (Delivery) or 'MIS' (Intraday)
@@ -372,6 +381,18 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
                 </span>
               </div>
 
+              {clearanceState === 'BLOCKED' && transactionType === 'BUY' && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-start gap-2.5">
+                  <span className="text-base mt-0.5">🔒</span>
+                  <div>
+                    <span className="font-black text-rose-950 block">Investment Clearance BLOCKED</span>
+                    <span className="text-[11px] text-rose-800 leading-tight block mt-0.5">
+                      {clearanceReason || 'Build emergency reserve to ₹18,000 first (current: ₹2,000, 0.33 mo runway). Responsible wealth creation protects against liquidating market assets during shocks.'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"
@@ -382,13 +403,20 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
                 </button>
                 <button
                   type="submit"
+                  disabled={clearanceState === 'BLOCKED' && transactionType === 'BUY'}
                   className={`flex-1 py-2.5 text-white rounded-xl text-xs font-black shadow-md transition flex items-center justify-center gap-2 cursor-pointer ${
-                    transactionType === 'BUY'
+                    clearanceState === 'BLOCKED' && transactionType === 'BUY'
+                      ? 'bg-stone-300 text-stone-500 cursor-not-allowed shadow-none'
+                      : transactionType === 'BUY'
                       ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
                       : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/25'
                   }`}
                 >
-                  <span>Review Order →</span>
+                  {clearanceState === 'BLOCKED' && transactionType === 'BUY' ? (
+                    <span>🔒 Order Locked by Safety Gate</span>
+                  ) : (
+                    <span>Review Order →</span>
+                  )}
                 </button>
               </div>
             </form>

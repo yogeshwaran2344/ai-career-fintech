@@ -12,6 +12,8 @@ import DecisionCopilotView from './components/DecisionCopilotView';
 import TodayPlanView from './components/TodayPlanView';
 import ProfileView from './components/ProfileView';
 import ApplicationTrackerView from './components/ApplicationTrackerView';
+import FinancialHealthView from './components/FinancialHealthView';
+import FinancialSafetyTab from './components/FinancialSafetyTab';
 import AuthModal from './components/AuthModal';
 import PlacementScoreModal from './components/PlacementScoreModal';
 import WeeklyReviewModal from './components/WeeklyReviewModal';
@@ -137,27 +139,41 @@ export default function App() {
     try {
       setLoading(true);
       const token = authState.getToken();
+      const cachedUser = authState.getUser();
+
       if (!token) {
         setProfile(null);
         setIsAuthOpen(true);
         setLoading(false);
         return;
       }
-      const userProfile = await api.getMe();
-      if (userProfile && userProfile.name) {
-        setProfile(userProfile);
-        await loadEngineData();
-      } else {
-        authState.clearToken();
-        authState.clearUser();
-        setProfile(null);
-        setIsAuthOpen(true);
+
+      // Optimistically restore cached profile so user doesn't see blank screen
+      if (cachedUser && cachedUser.name) {
+        setProfile(cachedUser);
+        setIsAuthOpen(false);
       }
-    } catch (err) {
-      authState.clearToken();
-      authState.clearUser();
-      setProfile(null);
-      setIsAuthOpen(true);
+
+      try {
+        const userProfile = await api.getMe();
+        if (userProfile && userProfile.name) {
+          setProfile(userProfile);
+          setIsAuthOpen(false);
+          await loadEngineData();
+        }
+      } catch (err) {
+        console.warn('API getMe check:', err.message);
+        const errMsg = (err.message || '').toLowerCase();
+        if (errMsg.includes('401') || errMsg.includes('unauthorized') || errMsg.includes('session expired') || errMsg.includes('invalid token')) {
+          authState.clearToken();
+          authState.clearUser();
+          setProfile(null);
+          setIsAuthOpen(true);
+        } else if (cachedUser && cachedUser.name) {
+          // Keep session active with cached profile during network retries
+          await loadEngineData().catch(() => {});
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -382,6 +398,10 @@ export default function App() {
             <span className="bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px]">
               {profile?.career_goal || 'Selected Track'}
             </span>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-800 border-emerald-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>🟢 PAPER TRADING (Simulated Environment)</span>
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -597,6 +617,19 @@ export default function App() {
               setCurrentTab={setCurrentTab}
               onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
               onOpenWeeklyReview={() => setIsWeeklyReviewOpen(true)}
+            />
+          )}
+
+          {currentTab === 'financialhealth' && (
+            <FinancialHealthView
+              profile={profile}
+              onNavigate={(tab) => setCurrentTab(tab)}
+            />
+          )}
+
+          {currentTab === 'safety' && (
+            <FinancialSafetyTab
+              profile={profile}
             />
           )}
 

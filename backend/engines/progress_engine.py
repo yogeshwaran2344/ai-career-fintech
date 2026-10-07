@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from models import StudentProfile, DailyActionPlan, DailyTask, SkillItem
 from engines.career_engine import CareerEngine
 from database import DatabaseManager

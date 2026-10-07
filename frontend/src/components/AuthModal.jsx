@@ -236,6 +236,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
+  // Reset password state
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetSuccessMsg, setResetSuccessMsg] = useState('');
+
   // Questionnaire / Registration Data
   const [formData, setFormData] = useState({
     // User credentials
@@ -310,7 +316,39 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
     }
   };
 
+  // Handle Password Reset
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setResetSuccessMsg('');
+    if (!resetEmail.trim() || !resetEmail.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    if (!resetPassword || resetPassword.length < 6) {
+      setErrorMsg('New password must be at least 6 characters.');
+      return;
+    }
+    if (resetPassword !== resetConfirmPassword) {
+      setErrorMsg('Passwords do not match.');
+      return;
+    }
 
+    try {
+      setIsSubmitting(true);
+      const res = await api.resetPassword(resetEmail.trim().toLowerCase(), resetPassword);
+      setResetSuccessMsg('Password successfully updated! Logging you in...');
+      confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+      setTimeout(() => {
+        onAuthSuccess(res.profile);
+        if (onClose) onClose();
+      }, 600);
+    } catch (err) {
+      setErrorMsg(err.message || 'Unable to update password. Please verify the email.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Step 0 of Sign Up: Validate basic identity and move to Questionnaire Step 1
   const handleSignUpStart = (e) => {
@@ -518,7 +556,21 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
             </div>
 
             <div>
-              <label className="text-xs font-bold text-stone-700 block mb-1">Password</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-bold text-stone-700">Password</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('RESET_PASSWORD');
+                    setErrorMsg('');
+                    setResetSuccessMsg('');
+                    setResetEmail(loginEmail);
+                  }}
+                  className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer"
+                >
+                  Forgot / Reset Password?
+                </button>
+              </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
                 <input
@@ -544,10 +596,96 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
             <div className="pt-3 border-t border-stone-200 text-center">
               <button
                 type="button"
-                onClick={() => { setAuthMode('REGISTER'); setErrorMsg(''); }}
+                onClick={() => { setAuthMode('REGISTER'); setErrorMsg(''); setResetSuccessMsg(''); }}
                 className="text-xs text-stone-700 hover:text-stone-900 font-bold underline cursor-pointer"
               >
                 New to Elevare? Create an account & calibrate your career →
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* ============================================================== */}
+        {/* VIEW: RESET PASSWORD */}
+        {/* ============================================================== */}
+        {authMode === 'RESET_PASSWORD' && (
+          <form onSubmit={handleResetPasswordSubmit} className="p-6 space-y-4">
+            <div className="bg-orange-50/60 border border-orange-200/80 rounded-2xl p-3 text-xs text-orange-950 font-medium">
+              🔑 Enter your account email and choose a new password. You will be signed in immediately without losing any saved data.
+            </div>
+
+            {resetSuccessMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>{resetSuccessMsg}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-bold text-stone-700 block mb-1">Account Email</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                <input
+                  type="email"
+                  required
+                  placeholder="student@university.edu"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="w-full text-xs font-semibold pl-9 pr-3 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">New Password (Min 6 chars)</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    value={resetPassword}
+                    onChange={(e) => setResetPassword(e.target.value)}
+                    className="w-full text-xs font-semibold pl-9 pr-3 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">Confirm New Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    value={resetConfirmPassword}
+                    onChange={(e) => setResetConfirmPassword(e.target.value)}
+                    className="w-full text-xs font-semibold pl-9 pr-3 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-orange-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black shadow-md shadow-orange-600/25 transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>{isSubmitting ? 'Updating Password...' : 'Save New Password & Sign In'}</span>
+            </button>
+
+            <div className="pt-3 border-t border-stone-200 text-center">
+              <button
+                type="button"
+                onClick={() => { setAuthMode('LOGIN'); setErrorMsg(''); setResetSuccessMsg(''); }}
+                className="text-xs text-stone-700 hover:text-stone-900 font-bold underline cursor-pointer"
+              >
+                ← Back to Regular Sign In
               </button>
             </div>
           </form>

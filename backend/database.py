@@ -384,7 +384,7 @@ class DatabaseManager:
         profile.avatar = avatar
         pass_hash = hash_password(password_plain)
         token = f"token-{uuid.uuid4().hex}"
-        expires_at = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
+        expires_at = (datetime.datetime.utcnow() + datetime.timedelta(days=30)).isoformat()
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -405,7 +405,15 @@ class DatabaseManager:
         return user_id, token
 
     @staticmethod
-    def create_session(user_id: str, device_info: str = "Desktop Browser", ip_address: str = "127.0.0.1", duration_days: int = 7) -> str:
+    def update_password_hash(user_id: str, new_hash: str):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user_id))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def create_session(user_id: str, device_info: str = "Desktop Browser", ip_address: str = "127.0.0.1", duration_days: int = 30) -> str:
         token = f"token-{uuid.uuid4().hex}"
         expires_at = (datetime.datetime.utcnow() + datetime.timedelta(days=duration_days)).isoformat()
         conn = get_db_connection()
