@@ -167,7 +167,7 @@ export default function SafeUpiMandateModal({ isOpen, onClose, onFundsDeposited,
                   <span>Zero-PIN Security Guarantee</span>
                 </div>
                 <p className="text-[10px] text-stone-500">
-                  CareerWealth <strong>never</strong> prompts for or stores your confidential UPI PIN. You will receive an official NPCI collect request on your mobile device.
+                  Elevare <strong>never</strong> prompts for or stores your confidential UPI PIN. You will receive an official NPCI collect request on your mobile device.
                 </p>
               </div>
 

@@ -78,14 +78,14 @@ export default function Sidebar({
         {/* Brand Header */}
         <div className="flex items-center justify-between px-2 py-3 mb-3 border-b border-stone-200/60">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-orange-600 via-amber-500 to-rose-500 flex items-center justify-center text-white shadow-md shadow-orange-500/20 text-lg">
-              🚀
+            <div className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center font-black text-sm tracking-tight shadow-sm border border-stone-800">
+              E
             </div>
             <div>
-              <div className="font-black text-base text-stone-900 tracking-tight flex items-center gap-1">
-                CareerWealth<span className="text-orange-600 font-black">.AI</span>
+              <div className="font-extrabold text-base text-stone-900 tracking-tight">
+                Elevare
               </div>
-              <p className="text-[10px] text-stone-500 font-medium">Student Intelligence Platform</p>
+              <p className="text-[10px] text-stone-500 font-medium tracking-wide">Career &amp; Capital Intelligence</p>
             </div>
           </div>
         </div>

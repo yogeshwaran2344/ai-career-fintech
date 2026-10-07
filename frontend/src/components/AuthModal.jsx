@@ -426,7 +426,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
                 </span>
               </div>
               <h2 className="text-xl font-black tracking-tight mt-1">
-                {authMode === 'LOGIN' ? 'Welcome Back to CareerWealth.AI' : authMode === 'REGISTER' ? 'Create Your Student Account' : 'Build Your Career & Wealth Twin'}
+                {authMode === 'LOGIN' ? 'Welcome Back to Elevare' : authMode === 'REGISTER' ? 'Create Your Student Account' : 'Build Your Career & Wealth Twin'}
               </h2>
               <p className="text-xs text-stone-300 mt-0.5">
                 {authMode === 'LOGIN' 
@@ -535,19 +535,19 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black shadow-md shadow-orange-600/25 transition cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3 bg-stone-900 hover:bg-black text-white rounded-xl text-xs font-black shadow-md transition cursor-pointer flex items-center justify-center gap-2"
             >
               <LogIn className="w-4 h-4" />
-              <span>{isSubmitting ? 'Verifying Account...' : 'Sign In to CareerWealth'}</span>
+              <span>{isSubmitting ? 'Verifying Account...' : 'Sign In to Elevare'}</span>
             </button>
 
             <div className="pt-3 border-t border-stone-200 text-center">
               <button
                 type="button"
                 onClick={() => { setAuthMode('REGISTER'); setErrorMsg(''); }}
-                className="text-xs text-orange-600 hover:text-orange-700 font-bold underline cursor-pointer"
+                className="text-xs text-stone-700 hover:text-stone-900 font-bold underline cursor-pointer"
               >
-                New to CareerWealth? Create an account & calibrate your career →
+                New to Elevare? Create an account & calibrate your career →
               </button>
             </div>
           </form>

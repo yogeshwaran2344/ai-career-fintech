@@ -20,10 +20,14 @@ import {
   ChevronRight,
   TrendingDown,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Briefcase,
+  Flame,
+  CheckCheck,
+  HelpCircle,
+  X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import GamificationHUD from './GamificationHUD';
 
 export default function DashboardView({ 
   profile, 
@@ -37,15 +41,15 @@ export default function DashboardView({
 }) {
   const [isWhyModalOpen, setIsWhyModalOpen] = useState(false);
 
-  // Digital Twin quick sandbox state
+  // Projection model parameters
   const [selectedSkillLeap, setSelectedSkillLeap] = useState('AWS & Cloud Architecture');
   const [selectedMonthlyInvest, setSelectedMonthlyInvest] = useState(5000);
 
   const handleTaskToggle = (taskId) => {
     onToggleTask(taskId);
     confetti({
-      particleCount: 50,
-      spread: 60,
+      particleCount: 40,
+      spread: 50,
       origin: { y: 0.8 }
     });
   };
@@ -54,7 +58,7 @@ export default function DashboardView({
   const strongSkills = readiness?.strong_skills || [];
   const missingSkills = readiness?.missing_skills || [];
 
-  // Calculate Financial Health Score (0-100)
+  // Discretionary capital & financial runway
   const disposable = budgetAnalysis?.remaining_disposable ?? (profile?.financial?.monthly_income - profile?.financial?.monthly_expenses || 4000);
   const income = budgetAnalysis?.monthly_income ?? (profile?.financial?.monthly_income || 15000);
   const savingsHealth = budgetAnalysis?.savings_health || 'HEALTHY';
@@ -67,12 +71,12 @@ export default function DashboardView({
 
   // Trajectory Assessment
   const trajectoryStatus = actualReadinessPct >= 65 && financialHealthPct >= 65
-    ? { label: '↑ Accelerating', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
+    ? { label: 'Accelerating', color: 'text-emerald-700 bg-emerald-50/80 border-emerald-200' }
     : actualReadinessPct >= 40
-      ? { label: '↑ Improving', color: 'text-orange-700 bg-orange-50 border-orange-200' }
-      : { label: '⚡ Action Needed', color: 'text-amber-700 bg-amber-50 border-amber-200' };
+      ? { label: 'On Track', color: 'text-stone-800 bg-stone-100 border-stone-200' }
+      : { label: 'Action Required', color: 'text-amber-800 bg-amber-50 border-amber-200' };
 
-  // 3-Year Projection multipliers based on quick twin inputs
+  // 3-Year Projection multipliers based on target track
   const currentEstLpa = 6.5;
   const projectedLpa = selectedSkillLeap.includes('AWS') 
     ? 14.8 
@@ -85,325 +89,312 @@ export default function DashboardView({
   const n = 36;
   const projectedCorpus = Math.round(selectedMonthlyInvest * ((Math.pow(1 + r, n) - 1) / r) * (1 + r));
 
+  const todayFormatted = new Date().toLocaleDateString('en-IN', { 
+    weekday: 'long', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto pb-8">
       
       {/* =========================================================================
-          SECTION 1: "WHERE AM I NOW?" (5-SECOND CLARITY SNAPSHOT)
+          EXECUTIVE HEADER
           ========================================================================= */}
-      <div className="bg-white rounded-3xl p-6 border border-stone-200 shadow-sm relative overflow-hidden">
+      <div className="bg-white rounded-2xl p-6 border border-stone-200/80 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-stone-100 gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black tracking-widest uppercase text-stone-400">
-                CAREERWEALTH AI PLATFORM
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
+                Overview
               </span>
-              <span className="text-[10px] bg-orange-100 text-orange-800 font-extrabold px-2 py-0.5 rounded-full">
-                LIVE TELEMETRY
+              <span className="text-stone-300">•</span>
+              <span className="text-[11px] font-medium text-stone-500">
+                {todayFormatted}
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-black text-stone-900 mt-1 tracking-tight">
-              Where Am I Now?
+            <h1 className="text-2xl md:text-3xl font-extrabold text-stone-900 tracking-tight">
+              Good morning, {profile?.name ? profile.name.split(' ')[0] : 'there'}
             </h1>
-            <p className="text-xs text-stone-500 font-medium mt-0.5">
-              Unified status for <strong className="text-stone-800">{profile?.name}</strong> • Target: <span className="text-orange-600 font-bold">{profile?.career_goal}</span>
+            <p className="text-xs text-stone-600 mt-1">
+              Tracking your progression toward <strong className="text-stone-900 font-semibold">{profile?.career_goal || 'Engineering Placement'}</strong> with synchronized capital allocation.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className={`text-xs font-black px-3 py-1.5 rounded-xl border flex items-center gap-1.5 shadow-2xs ${trajectoryStatus.color}`}>
-              <span>Overall Trajectory:</span>
-              <strong className="underline decoration-2">{trajectoryStatus.label}</strong>
+            <span className={`text-xs font-semibold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 shadow-2xs ${trajectoryStatus.color}`}>
+              <span className="text-stone-500 font-normal">Trajectory:</span>
+              <strong className="font-bold">{trajectoryStatus.label}</strong>
             </span>
           </div>
         </div>
 
         {/* 3 Core Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-5">
-          {/* 1. Career Readiness */}
-          <div className="p-4 bg-stone-50/80 rounded-2xl border border-stone-200/80 hover:border-orange-300 transition-all">
+          
+          {/* 1. Placement Readiness */}
+          <div className="p-4 bg-stone-50/70 rounded-xl border border-stone-200/70 hover:border-stone-300 transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
-                Career Readiness
+              <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider">
+                Placement Readiness
               </span>
               <button
                 onClick={onOpenPlacementModal}
-                className="text-[10px] font-bold text-orange-600 hover:text-orange-700 bg-orange-50 px-2 py-0.5 rounded cursor-pointer"
+                className="text-[11px] font-semibold text-stone-700 hover:text-stone-900 transition-colors cursor-pointer"
               >
-                Inspect 7 Factors →
+                Factors →
               </button>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-stone-900">{actualReadinessPct}%</span>
-              <span className="text-xs text-stone-500 font-bold">vs 75% target</span>
+              <span className="text-3xl font-extrabold text-stone-900">{actualReadinessPct}%</span>
+              <span className="text-xs text-stone-500 font-medium">Target: 75%</span>
             </div>
-            <div className="w-full bg-stone-200 rounded-full h-2 mt-2.5 overflow-hidden">
+            <div className="w-full bg-stone-200 rounded-full h-1.5 mt-2.5 overflow-hidden">
               <div 
-                className="bg-orange-500 h-full rounded-full transition-all duration-700" 
+                className="bg-stone-900 h-full rounded-full transition-all duration-700" 
                 style={{ width: `${actualReadinessPct}%` }}
               ></div>
             </div>
-            <p className="text-[11px] text-stone-500 mt-2 font-medium">
-              Primary Gap: <strong className="text-stone-800">{missingSkills[0] || 'Technical Stack'}</strong>
+            <p className="text-[11px] text-stone-500 mt-2">
+              Primary bottleneck: <strong className="text-stone-800 font-semibold">{missingSkills[0] || 'Technical Stack'}</strong>
             </p>
           </div>
 
-          {/* 2. Financial Health */}
-          <div className="p-4 bg-stone-50/80 rounded-2xl border border-stone-200/80 hover:border-blue-300 transition-all">
+          {/* 2. Monthly Discretionary Capital */}
+          <div className="p-4 bg-stone-50/70 rounded-xl border border-stone-200/70 hover:border-stone-300 transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
-                Financial Health
+              <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider">
+                Monthly Discretionary
               </span>
               <button
                 onClick={() => setCurrentTab('finance')}
-                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer"
+                className="text-[11px] font-semibold text-stone-700 hover:text-stone-900 transition-colors cursor-pointer"
               >
-                Budget Intel →
+                Ledger →
               </button>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-stone-900">{financialHealthPct}%</span>
-              <span className="text-xs text-emerald-700 font-bold">
-                {savingsHealth === 'HEALTHY' ? 'Resilient' : 'Safe Runway'}
-              </span>
+              <span className="text-3xl font-extrabold text-stone-900">₹{disposable.toLocaleString()}</span>
+              <span className="text-xs text-stone-500 font-medium">Surplus</span>
             </div>
-            <div className="w-full bg-stone-200 rounded-full h-2 mt-2.5 overflow-hidden">
+            <div className="w-full bg-stone-200 rounded-full h-1.5 mt-2.5 overflow-hidden">
               <div 
-                className="bg-blue-600 h-full rounded-full transition-all duration-700" 
+                className="bg-emerald-600 h-full rounded-full transition-all duration-700" 
                 style={{ width: `${financialHealthPct}%` }}
               ></div>
             </div>
-            <p className="text-[11px] text-stone-500 mt-2 font-medium">
-              Monthly Surplus: <strong className="text-stone-800">₹{disposable.toLocaleString()}</strong>
+            <p className="text-[11px] text-stone-500 mt-2">
+              Runway status: <strong className="text-stone-800 font-semibold">{savingsHealth === 'HEALTHY' ? '6+ months living buffer' : '3 months runway'}</strong>
             </p>
           </div>
 
-          {/* 3. Overall Trajectory Momentum */}
-          <div className="p-4 bg-stone-50/80 rounded-2xl border border-stone-200/80 hover:border-emerald-300 transition-all">
+          {/* 3. Expected Compensation Target */}
+          <div className="p-4 bg-stone-50/70 rounded-xl border border-stone-200/70 hover:border-stone-300 transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
-                Active Momentum
+              <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider">
+                Target Compensation
               </span>
-              <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
-                Streak: {profile?.streak_days || 1} Days
-              </span>
+              <button
+                onClick={() => setCurrentTab('simulation')}
+                className="text-[11px] font-semibold text-stone-700 hover:text-stone-900 transition-colors cursor-pointer"
+              >
+                Model →
+              </button>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-emerald-700">+{profile?.total_xp || 50}</span>
-              <span className="text-xs text-stone-500 font-bold">XP Gained</span>
+              <span className="text-3xl font-extrabold text-stone-900">₹{projectedLpa} LPA</span>
+              <span className="text-xs text-emerald-700 font-semibold">
+                +{Math.round(((projectedLpa - currentEstLpa) / currentEstLpa) * 100)}%
+              </span>
             </div>
-            <div className="w-full bg-stone-200 rounded-full h-2 mt-2.5 overflow-hidden">
+            <div className="w-full bg-stone-200 rounded-full h-1.5 mt-2.5 overflow-hidden">
               <div 
-                className="bg-emerald-500 h-full rounded-full transition-all duration-700" 
-                style={{ width: `${Math.min(100, (profile?.total_xp || 50) / 2)}%` }}
+                className="bg-blue-600 h-full rounded-full transition-all duration-700" 
+                style={{ width: `${Math.min(100, Math.round((projectedLpa / 20) * 100))}%` }}
               ></div>
             </div>
-            <p className="text-[11px] text-stone-500 mt-2 font-medium">
-              Level {profile?.user_level || 1} Student • {profile?.badges?.length || 1} Badges Unlocked
+            <p className="text-[11px] text-stone-500 mt-2">
+              Baseline: <strong className="text-stone-800 font-semibold">₹{currentEstLpa} LPA campus average</strong>
             </p>
           </div>
         </div>
       </div>
 
-      {/* Gamification Level & Streak Bar */}
-      <GamificationHUD profile={profile} />
-
       {/* =========================================================================
-          SECTION 2: "WHAT SHOULD I DO TODAY?" (YOUR NEXT BEST ACTIONS)
+          SECTION 2: TODAY'S HIGH-IMPACT PRIORITIES
           ========================================================================= */}
-      <div className="bg-gradient-to-r from-stone-900 via-stone-850 to-orange-950 text-white rounded-3xl p-6 shadow-xl border border-stone-800 relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 relative z-10">
+      <div className="bg-white rounded-2xl p-6 border border-stone-200/80 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-stone-100 gap-2">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="bg-orange-500/30 text-orange-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-orange-400/30">
-                Decision Layer
-              </span>
-              <span className="text-[11px] text-stone-400 font-bold">Prioritized Daily Impact</span>
-            </div>
-            <h2 className="text-xl md:text-2xl font-black text-white mt-1">
-              What Should I Do Today? (Next Best Actions)
+            <h2 className="text-base font-bold text-stone-900">
+              Today's High-Impact Priorities
             </h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Ranked action items derived to unblock recruitment filters and financial safety gates.
+            </p>
           </div>
 
           <button
             type="button"
             onClick={() => setIsWhyModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-orange-200 transition cursor-pointer"
+            className="text-xs font-semibold text-stone-600 hover:text-stone-900 flex items-center gap-1 cursor-pointer w-fit"
           >
-            <span>💡 Why am I seeing this?</span>
+            <HelpCircle className="w-3.5 h-3.5 text-stone-400" />
+            <span>Why these priorities?</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 relative z-10">
-          {/* Action 1 */}
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-4">
+          
+          {/* Priority 1 */}
+          <div className="p-4 rounded-xl border border-stone-200 bg-white hover:border-stone-400 transition-all flex flex-col justify-between space-y-3">
             <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-orange-400 tracking-wider">
-                  🎯 Assessment
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  Skill Assessment
                 </span>
-                <span className="text-[10px] bg-orange-500/30 text-orange-200 px-2 py-0.5 rounded-full font-bold">
-                  +8 readiness
+                <span className="text-[10px] font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded">
+                  +8 pts readiness
                 </span>
               </div>
-              <h4 className="text-sm font-black text-white mt-1">
+              <h3 className="text-sm font-bold text-stone-900 leading-snug">
                 Complete {missingSkills[0] || 'SQL & Python'} Assessment
-              </h4>
-              <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                Direct benchmark screening test for {profile?.career_goal}. Verifies proficiency and lifts placement readiness index.
+              </h3>
+              <p className="text-xs text-stone-600 mt-1.5 leading-relaxed">
+                Direct benchmark screening test for {profile?.career_goal || 'target role'}. Verifies capability score for recruiter shortlists.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setCurrentTab('today')}
-              className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+              className="w-full py-2 bg-stone-900 hover:bg-black text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
-              <span>Take Assessment</span>
+              <span>Start Assessment</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Action 2 */}
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
+          {/* Priority 2 */}
+          <div className="p-4 rounded-xl border border-stone-200 bg-white hover:border-stone-400 transition-all flex flex-col justify-between space-y-3">
             <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider">
-                  💼 Outbound
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  Applications
                 </span>
-                <span className="text-[10px] bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-full font-bold">
-                  +12 opportunity
+                <span className="text-[10px] font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded">
+                  +12 pts pipeline
                 </span>
               </div>
-              <h4 className="text-sm font-black text-white mt-1">
-                Apply to 3 Matching Roles
-              </h4>
-              <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                High-match opportunities aligned with your profile. Log them directly in your Application Tracker funnel.
+              <h3 className="text-sm font-bold text-stone-900 leading-snug">
+                Review 3 Matching Openings
+              </h3>
+              <p className="text-xs text-stone-600 mt-1.5 leading-relaxed">
+                Hand-matched roles with verified compensation ranges aligned with your active stack.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setCurrentTab('applications')}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+              className="w-full py-2 bg-stone-900 hover:bg-black text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
-              <span>Track Pipeline</span>
+              <span>Open Pipeline</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Action 3 */}
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
+          {/* Priority 3 */}
+          <div className="p-4 rounded-xl border border-stone-200 bg-white hover:border-stone-400 transition-all flex flex-col justify-between space-y-3">
             <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">
-                  💰 Sinking Fund
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  Capital Safety
                 </span>
-                <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">
-                  +4 financial health
+                <span className="text-[10px] font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded">
+                  Reserve Gate 1
                 </span>
               </div>
-              <h4 className="text-sm font-black text-white mt-1">
-                Save ₹2,000 Toward Goal
-              </h4>
-              <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                Fortifies your 3-month living buffer, satisfying SEBI Gate 1 before capital is deployed into market assets.
+              <h3 className="text-sm font-bold text-stone-900 leading-snug">
+                Allocate ₹2,000 to Emergency Fund
+              </h3>
+              <p className="text-xs text-stone-600 mt-1.5 leading-relaxed">
+                Fortifies your living reserve to maintain 3-6 months buffer before equity market deployment.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setCurrentTab('finance')}
-              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+              className="w-full py-2 bg-stone-900 hover:bg-black text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
-              <span>Deposit Savings</span>
+              <span>Deposit Reserve</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Action 4 */}
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex flex-col justify-between space-y-3">
+          {/* Priority 4 */}
+          <div className="p-4 rounded-xl border border-stone-200 bg-white hover:border-stone-400 transition-all flex flex-col justify-between space-y-3">
             <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-purple-400 tracking-wider">
-                  🧠 Capstone
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  Architecture Milestone
                 </span>
-                <span className="text-[10px] bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded-full font-bold">
-                  +6 skill score
+                <span className="text-[10px] font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded">
+                  +6 pts stack
                 </span>
               </div>
-              <h4 className="text-sm font-black text-white mt-1">
-                Finish AWS / Microservices Project
-              </h4>
-              <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-                Containerize endpoints and deploy live on cloud infrastructure with production metrics on your resume.
+              <h3 className="text-sm font-bold text-stone-900 leading-snug">
+                Deploy Microservices Capstone
+              </h3>
+              <p className="text-xs text-stone-600 mt-1.5 leading-relaxed">
+                Containerize FastAPI endpoints and deploy live on cloud infrastructure with latency telemetry.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setCurrentTab('career')}
-              className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+              className="w-full py-2 bg-stone-900 hover:bg-black text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
-              <span>View Blueprint</span>
+              <span>View Specification</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
+
         </div>
       </div>
 
       {/* =========================================================================
-          SECTION 3: "WHERE AM I GOING?" (CAREER + WEALTH DIGITAL TWIN TRAJECTORY)
+          SECTION 3: 3-YEAR CAREER & CAPITAL HORIZON
           ========================================================================= */}
-      <div className="advisor-card p-6 border-2 border-stone-200 hover:border-orange-300 transition-all space-y-5">
+      <div className="bg-white rounded-2xl p-6 border border-stone-200/80 shadow-xs space-y-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-stone-100 gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="bg-purple-100 text-purple-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                🌟 Signature Platform Feature
-              </span>
-              <span className="text-xs text-stone-500 font-bold">3-Year Predictive Projection</span>
-            </div>
-            <h2 className="text-xl md:text-2xl font-black text-stone-900 mt-1">
-              Where Am I Going? (Career + Wealth Digital Twin)
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+              Horizon Modeling
+            </span>
+            <h2 className="text-base font-bold text-stone-900 mt-0.5">
+              3-Year Career &amp; Capital Projection
             </h2>
             <p className="text-xs text-stone-600 mt-0.5">
-              Simulate: <em>"What happens if I acquire high-impact skills and invest ₹{selectedMonthlyInvest.toLocaleString()}/month?"</em>
+              Simulated relationship between specialized skill acquisition and systematic monthly compounding.
             </p>
           </div>
 
           <button
             onClick={() => setCurrentTab('simulation')}
-            className="px-4 py-2.5 bg-stone-900 hover:bg-black text-white text-xs font-bold rounded-xl flex items-center gap-2 transition cursor-pointer flex-shrink-0 shadow-md"
+            className="px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition cursor-pointer flex-shrink-0"
           >
-            <span>Open Full Twin Sandbox</span>
-            <ArrowRight className="w-4 h-4 text-orange-400" />
+            <span>Open Simulation Model</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Visual Bridge Diagram */}
-        <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 font-mono text-xs text-stone-700 hidden sm:block">
-          <div className="flex items-center justify-between text-xs font-bold">
-            <span className="text-orange-700">Career: {profile?.career_goal} + {selectedSkillLeap}</span>
-            <span className="text-stone-400">───╮</span>
-          </div>
-          <div className="flex items-center justify-center my-0.5">
-            <span className="bg-stone-900 text-white px-3 py-1 rounded-lg text-[11px] font-sans font-bold shadow-xs">
-              🤖 Unified AI Digital Twin Engine
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-xs font-bold">
-            <span className="text-emerald-700">Wealth: ₹{selectedMonthlyInvest.toLocaleString()}/mo Compounding SIP</span>
-            <span className="text-stone-400">───╯</span>
-          </div>
-        </div>
-
-        {/* Interactive Sandbox Controls & Immediate Outcomes */}
+        {/* Interactive Sandbox Controls & Outcomes */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1">
+          
           {/* Left 5 Cols: Quick Variables */}
-          <div className="lg:col-span-5 space-y-3.5 bg-stone-50/70 p-4 rounded-2xl border border-stone-200">
+          <div className="lg:col-span-5 space-y-4 bg-stone-50/70 p-4 rounded-xl border border-stone-200/70">
             <div>
-              <label className="text-xs font-bold text-stone-700 block mb-1.5">
-                Target Skill Leap:
+              <label className="text-xs font-semibold text-stone-700 block mb-1.5">
+                Focus Specialization:
               </label>
               <div className="space-y-1.5">
                 {[
@@ -414,21 +405,21 @@ export default function DashboardView({
                   <button
                     key={skill}
                     onClick={() => setSelectedSkillLeap(skill)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between cursor-pointer ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition flex items-center justify-between cursor-pointer ${
                       selectedSkillLeap === skill
-                        ? 'bg-stone-900 text-white shadow-xs'
+                        ? 'bg-stone-900 text-white shadow-2xs font-semibold'
                         : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
                     }`}
                   >
                     <span>{skill}</span>
-                    {selectedSkillLeap === skill && <Check className="w-3.5 h-3.5 text-orange-400" />}
+                    {selectedSkillLeap === skill && <Check className="w-3.5 h-3.5 text-stone-300" />}
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-bold text-stone-700 block mb-1.5">
+              <label className="text-xs font-semibold text-stone-700 block mb-1.5">
                 Monthly Systematic Investment (SIP):
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -436,9 +427,9 @@ export default function DashboardView({
                   <button
                     key={amt}
                     onClick={() => setSelectedMonthlyInvest(amt)}
-                    className={`py-2 rounded-xl text-xs font-bold transition text-center cursor-pointer ${
+                    className={`py-2 rounded-lg text-xs font-semibold transition text-center cursor-pointer ${
                       selectedMonthlyInvest === amt
-                        ? 'bg-emerald-600 text-white shadow-xs'
+                        ? 'bg-stone-900 text-white shadow-2xs'
                         : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
                     }`}
                   >
@@ -450,56 +441,54 @@ export default function DashboardView({
           </div>
 
           {/* Right 7 Cols: Projected 3-Year Trajectory */}
-          <div className="lg:col-span-7 grid grid-cols-2 gap-3">
+          <div className="lg:col-span-7 grid grid-cols-2 gap-3.5">
+            
             {/* Projected Salary */}
-            <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-2xl flex flex-col justify-between">
+            <div className="p-4 bg-stone-50/70 border border-stone-200/80 rounded-xl flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-bold text-orange-800 uppercase tracking-wider block">
-                  3-Yr Salary Trajectory
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  Projected Compensation
                 </span>
-                <div className="text-2xl font-black text-stone-900 mt-1">
+                <div className="text-2xl font-extrabold text-stone-900 mt-1">
                   ₹{projectedLpa} LPA
                 </div>
-                <p className="text-[11px] text-stone-600 mt-1">
-                  Up from ₹{currentEstLpa} LPA baseline (+{Math.round(((projectedLpa - currentEstLpa) / currentEstLpa) * 100)}% earnings lift).
+                <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                  +{Math.round(((projectedLpa - currentEstLpa) / currentEstLpa) * 100)}% lift above standard campus benchmarks.
                 </p>
               </div>
-              <span className="text-[10px] font-bold text-orange-700 bg-white px-2 py-0.5 rounded border border-orange-200 w-fit mt-2">
-                Verified Recruiter Benchmark
+              <span className="text-[10px] font-semibold text-stone-600 bg-white px-2 py-0.5 rounded border border-stone-200 w-fit mt-3">
+                Recruiter Benchmark Verified
               </span>
             </div>
 
             {/* Projected Wealth */}
-            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex flex-col justify-between">
+            <div className="p-4 bg-stone-50/70 border border-stone-200/80 rounded-xl flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
-                  3-Yr Wealth Corpus
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  Projected Liquid Corpus
                 </span>
-                <div className="text-2xl font-black text-stone-900 mt-1">
+                <div className="text-2xl font-extrabold text-stone-900 mt-1">
                   ₹{projectedCorpus.toLocaleString()}
                 </div>
-                <p className="text-[11px] text-stone-600 mt-1">
-                  Accumulated portfolio @ 12% CAGR across index & diversified funds.
+                <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                  Modeled at conservative 12% CAGR across broad index instruments.
                 </p>
               </div>
-              <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 w-fit mt-2">
-                ₹{(selectedMonthlyInvest * 36).toLocaleString()} Capital Invested
+              <span className="text-[10px] font-semibold text-stone-600 bg-white px-2 py-0.5 rounded border border-stone-200 w-fit mt-3">
+                ₹{(selectedMonthlyInvest * 36).toLocaleString()} Principal Base
               </span>
             </div>
 
-            {/* Opportunity Cost Verdict */}
-            <div className="col-span-2 p-3 bg-stone-900 text-white rounded-xl flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-base">⚡</span>
-                <span className="text-[11px]">
-                  <strong>Opportunity Cost Verdict:</strong> Investing in this upskilling leap pays for itself within <strong>0.7 months</strong> of salary increase.
-                </span>
-              </div>
+            {/* Opportunity Cost Insight Note */}
+            <div className="col-span-2 p-3 bg-stone-50 border border-stone-200 rounded-lg flex items-center justify-between text-xs">
+              <span className="text-stone-700 leading-normal">
+                <strong>Payback Horizon:</strong> Upskilling investment pays for itself within <strong>0.7 months</strong> of placement compensation.
+              </span>
               <button
                 onClick={() => setCurrentTab('simulation')}
-                className="text-orange-400 font-bold hover:underline flex items-center gap-1 text-[11px] flex-shrink-0 cursor-pointer"
+                className="text-stone-900 font-bold hover:underline flex items-center gap-1 text-[11px] flex-shrink-0 cursor-pointer ml-3"
               >
-                <span>Full What-If</span>
+                <span>Full Projection</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>
@@ -508,100 +497,94 @@ export default function DashboardView({
       </div>
 
       {/* =========================================================================
-          SECTION 4: QUICK ACCESS ENGINE CARDS
+          SECTION 4: CORE WORKSPACE SHORTCUTS
           ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <button
           onClick={() => setCurrentTab('simulation')}
-          className="advisor-card p-4 text-left flex flex-col justify-between group hover:border-orange-400 hover:shadow-orange-500/10 cursor-pointer"
+          className="bg-white p-4 text-left rounded-xl border border-stone-200 hover:border-stone-400 hover:shadow-xs transition-all flex flex-col justify-between group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <Sliders className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center mb-3">
+            <Sliders className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-xs font-bold text-stone-900 group-hover:text-orange-600">What-If Simulator</h3>
-              <span className="text-[9px] bg-orange-100 text-orange-800 font-extrabold px-1 rounded">Twin</span>
-            </div>
-            <p className="text-[11px] text-stone-500 mt-0.5">Test study time & budget variable scenarios.</p>
+            <h3 className="text-xs font-bold text-stone-900 group-hover:text-stone-950">What-If Simulator</h3>
+            <p className="text-xs text-stone-500 mt-0.5">Model weekly study hours &amp; budget trade-offs.</p>
           </div>
-          <div className="mt-3 flex items-center gap-1 text-[11px] font-bold text-orange-600">
-            <span>Simulate Now</span>
-            <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+          <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-stone-700">
+            <span>Launch Model</span>
+            <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
 
         <button
           onClick={() => setCurrentTab('skillgraph')}
-          className="advisor-card p-4 text-left flex flex-col justify-between group hover:border-orange-400 hover:shadow-orange-500/10 cursor-pointer"
+          className="bg-white p-4 text-left rounded-xl border border-stone-200 hover:border-stone-400 hover:shadow-xs transition-all flex flex-col justify-between group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <GitFork className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center mb-3">
+            <GitFork className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-stone-900 group-hover:text-amber-600">Skill Graph Tree</h3>
-            <p className="text-[11px] text-stone-500 mt-0.5">Topological prerequisite DAG & unblocking paths.</p>
+            <h3 className="text-xs font-bold text-stone-900 group-hover:text-stone-950">Skill Architecture</h3>
+            <p className="text-xs text-stone-500 mt-0.5">Topological prerequisite DAG &amp; unblocking paths.</p>
           </div>
-          <div className="mt-3 flex items-center gap-1 text-[11px] font-bold text-amber-600">
-            <span>View Graph</span>
-            <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+          <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-stone-700">
+            <span>Inspect Graph</span>
+            <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
 
         <button
           onClick={() => setCurrentTab('resume')}
-          className="advisor-card p-4 text-left flex flex-col justify-between group hover:border-orange-400 hover:shadow-orange-500/10 cursor-pointer"
+          className="bg-white p-4 text-left rounded-xl border border-stone-200 hover:border-stone-400 hover:shadow-xs transition-all flex flex-col justify-between group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <FileText className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center mb-3">
+            <FileText className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-stone-900 group-hover:text-blue-600">Resume & ATS Polisher</h3>
-            <p className="text-[11px] text-stone-500 mt-0.5">Scan ATS Score & Polish XYZ impact bullets.</p>
+            <h3 className="text-xs font-bold text-stone-900 group-hover:text-stone-950">Resume &amp; ATS Intel</h3>
+            <p className="text-xs text-stone-500 mt-0.5">Evaluate keyword match score and recruiter bullets.</p>
           </div>
-          <div className="mt-3 flex items-center gap-1 text-[11px] font-bold text-blue-600">
+          <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-stone-700">
             <span>Analyze Resume</span>
-            <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
 
         <button
           onClick={() => setCurrentTab('applications')}
-          className="advisor-card p-4 text-left flex flex-col justify-between group hover:border-orange-400 hover:shadow-orange-500/10 cursor-pointer"
+          className="bg-white p-4 text-left rounded-xl border border-stone-200 hover:border-stone-400 hover:shadow-xs transition-all flex flex-col justify-between group cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <CalendarCheck className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center mb-3">
+            <Briefcase className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-xs font-bold text-stone-900 group-hover:text-emerald-600">Application Funnel</h3>
-              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-extrabold px-1 rounded">Funnel</span>
-            </div>
-            <p className="text-[11px] text-stone-500 mt-0.5">Track outreach from Applied to Final Offer.</p>
+            <h3 className="text-xs font-bold text-stone-900 group-hover:text-stone-950">Application Pipeline</h3>
+            <p className="text-xs text-stone-500 mt-0.5">Track candidate funnel from Applied to Final Offer.</p>
           </div>
-          <div className="mt-3 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+          <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-stone-700">
             <span>Open Pipeline</span>
-            <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
       </div>
 
       {/* =========================================================================
-          SECTION 5: TODAY'S PLAN CHECKLIST WIDGET
+          SECTION 5: DAILY EXECUTION QUEUE
           ========================================================================= */}
-      <div className="advisor-card p-6 space-y-4">
+      <div className="bg-white rounded-2xl p-6 border border-stone-200/80 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-stone-100 pb-3">
           <div className="flex items-center gap-2">
-            <CalendarCheck className="w-5 h-5 text-orange-600" />
-            <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-              Today's Daily Action Sprints ({dailyPlan?.tasks?.length || 4} Tasks)
+            <CalendarCheck className="w-4 h-4 text-stone-700" />
+            <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+              Focus Queue ({dailyPlan?.tasks?.length || 4} Tasks)
             </h3>
           </div>
           <button 
             onClick={() => setCurrentTab('today')}
-            className="text-xs font-bold text-orange-600 hover:text-orange-700"
+            className="text-xs font-semibold text-stone-600 hover:text-stone-900 cursor-pointer"
           >
-            Open Full Focus Timer →
+            Open Focus Timer →
           </button>
         </div>
         
@@ -613,23 +596,23 @@ export default function DashboardView({
               className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
                 task.completed 
                   ? 'bg-stone-50 border-stone-200 opacity-60' 
-                  : 'bg-white border-stone-200 hover:border-orange-300'
+                  : 'bg-white border-stone-200 hover:border-stone-400'
               }`}
             >
               <div className="flex items-center gap-3">
                 <button className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
-                  task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-stone-300'
+                  task.completed ? 'bg-stone-900 border-stone-900 text-white' : 'border-stone-300'
                 }`}>
-                  {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  {task.completed && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
                 </button>
                 <div>
                   <h4 className={`text-xs font-bold ${task.completed ? 'line-through text-stone-500' : 'text-stone-900'}`}>
                     {task.subject}: {task.topic}
                   </h4>
-                  <p className="text-[11px] text-stone-500">{task.why_today}</p>
+                  <p className="text-[11px] text-stone-500 mt-0.5">{task.why_today}</p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-lg">
+              <span className="text-xs font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md">
                 {task.duration_minutes} min
               </span>
             </div>
@@ -637,50 +620,66 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* "Why Am I Seeing This?" Explainability Modal */}
+      {/* "Why Am I Seeing This?" Methodology Modal */}
       {isWhyModalOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-stone-200 space-y-4">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-orange-600">Explainable AI Attribution</span>
-                <h3 className="text-base font-black text-stone-900">Why Are You Seeing These Next Best Actions?</h3>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  Elevare Intelligence Engine
+                </span>
+                <h3 className="text-base font-bold text-stone-900">
+                  Priority Selection Methodology
+                </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsWhyModalOpen(false)}
-                className="p-1.5 text-stone-400 hover:text-stone-800 rounded-lg cursor-pointer"
+                className="p-1 text-stone-400 hover:text-stone-800 rounded-lg cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <p className="text-xs text-stone-600 leading-relaxed">
-              CareerWealth.AI uses zero generic advice. Every action is derived mathematically from your active profile envelope:
+              Elevare ranks daily action items using quantitative scoring derived from your active academic, skill, and financial envelope:
             </p>
 
             <div className="space-y-2.5 text-xs">
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
-                <span className="text-base">📊</span>
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200/80 flex items-start gap-3">
+                <div className="w-6 h-6 rounded-md bg-stone-200 flex items-center justify-center font-bold text-stone-700 text-xs flex-shrink-0">
+                  1
+                </div>
                 <div>
-                  <strong className="text-stone-900 block">Placement Readiness Gap ({actualReadinessPct}%)</strong>
-                  <span className="text-stone-500 text-[11px]">Your target role ({profile?.career_goal}) requires ~75% readiness. Action 1 targets your highest-weight missing skill ({missingSkills[0] || 'Technical Stack'}).</span>
+                  <strong className="text-stone-900 block font-bold">Placement Readiness Index ({actualReadinessPct}%)</strong>
+                  <span className="text-stone-600 text-[11px] leading-relaxed block mt-0.5">
+                    Your target track ({profile?.career_goal || 'role'}) requires ~75% readiness for campus shortlisting. Priority 1 directly addresses your top missing prerequisite ({missingSkills[0] || 'Technical Stack'}).
+                  </span>
                 </div>
               </div>
 
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
-                <span className="text-base">💼</span>
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200/80 flex items-start gap-3">
+                <div className="w-6 h-6 rounded-md bg-stone-200 flex items-center justify-center font-bold text-stone-700 text-xs flex-shrink-0">
+                  2
+                </div>
                 <div>
-                  <strong className="text-stone-900 block">Application Funnel Velocity</strong>
-                  <span className="text-stone-500 text-[11px]">Consistent top-of-funnel outreach reduces time-to-offer by 4.2 weeks. Action 2 advances your pipeline across target companies.</span>
+                  <strong className="text-stone-900 block font-bold">Pipeline Velocity</strong>
+                  <span className="text-stone-600 text-[11px] leading-relaxed block mt-0.5">
+                    Consistent top-of-funnel outreach reduces time-to-offer by 4.2 weeks. Priority 2 advances candidate pipeline stages across matching roles.
+                  </span>
                 </div>
               </div>
 
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
-                <span className="text-base">🛡️</span>
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200/80 flex items-start gap-3">
+                <div className="w-6 h-6 rounded-md bg-stone-200 flex items-center justify-center font-bold text-stone-700 text-xs flex-shrink-0">
+                  3
+                </div>
                 <div>
-                  <strong className="text-stone-900 block">SEBI 5-Gate Prerequisite Checklist</strong>
-                  <span className="text-stone-500 text-[11px]">Students should never trade equity without a 3-month expense runway. Action 3 locks in capital safety before market risk.</span>
+                  <strong className="text-stone-900 block font-bold">Prerequisite Capital Runway</strong>
+                  <span className="text-stone-600 text-[11px] leading-relaxed block mt-0.5">
+                    Students should avoid market volatility without a 3-month living expense reserve. Priority 3 preserves capital resilience prior to equity investment.
+                  </span>
                 </div>
               </div>
             </div>
@@ -688,7 +687,7 @@ export default function DashboardView({
             <button
               type="button"
               onClick={() => setIsWhyModalOpen(false)}
-              className="w-full py-2.5 bg-stone-900 hover:bg-black text-white rounded-xl text-xs font-black transition cursor-pointer"
+              className="w-full py-2.5 bg-stone-900 hover:bg-black text-white rounded-xl text-xs font-semibold transition cursor-pointer"
             >
               Understood, Back to Dashboard
             </button>

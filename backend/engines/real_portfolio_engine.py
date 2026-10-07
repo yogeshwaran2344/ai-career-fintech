@@ -86,7 +86,7 @@ class RealPortfolioEngine:
             cash_margin_available=available_cash,
             holdings=holding_items,
             last_synced_ist=ist_now,
-            regulatory_footnote="Holdings custody and settlement powered by registered Broker Depository Participant (CDSL/NSDL). CareerWealth displays non-custodial synchronized portfolio analytics."
+            regulatory_footnote="Holdings custody and settlement powered by registered Broker Depository Participant (CDSL/NSDL). Elevare displays non-custodial synchronized portfolio analytics."
         )
 
     @staticmethod
@@ -108,5 +108,5 @@ class RealPortfolioEngine:
             account_id=conn.get("account_id"),
             is_sandbox=bool(conn.get("is_sandbox")),
             last_synced_at=str(conn.get("last_synced_at")),
-            custody_disclaimer=f"Active tokenized connection with {conn.get('broker_name')}. No trading PINs or bank passwords are held by CareerWealth."
+            custody_disclaimer=f"Active tokenized connection with {conn.get('broker_name')}. No trading PINs or bank passwords are held by Elevare."
         )

@@ -181,7 +181,7 @@ export default function BrokerConnectModal({ isOpen, onClose, brokerStatus, onCo
                 <span>Zero-Credential Security Policy</span>
               </div>
               <p className="text-[10px] text-stone-500 leading-relaxed">
-                CareerWealth complies strictly with SEBI circulars. We <strong>NEVER</strong> ask for, view, or store your trading passwords, MPINs, or bank credentials. Authentication is performed via secure OAuth token exchange.
+                Elevare complies strictly with SEBI circulars. We <strong>NEVER</strong> ask for, view, or store your trading passwords, MPINs, or bank credentials. Authentication is performed via secure OAuth token exchange.
               </p>
             </div>
 

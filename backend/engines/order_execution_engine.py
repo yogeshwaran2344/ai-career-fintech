@@ -172,7 +172,7 @@ class OrderExecutionEngine:
             f"NPCI Collect Request initiated for ₹{req.amount_inr:,.2f} to {req.vpa}. "
             "Please open your authorized UPI application (Google Pay / PhonePe / BHIM) "
             "to authorize the debit using your confidential UPI MPIN. "
-            "CareerWealth NEVER collects or has access to your UPI PIN."
+            "Elevare NEVER collects or has access to your UPI PIN."
         )
 
         return UpiMandateResponse(

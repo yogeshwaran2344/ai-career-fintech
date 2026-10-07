@@ -213,7 +213,7 @@ export default function BrokerOrderModal({ isOpen, onClose, orderParams, onOrder
               <div className="p-3 bg-stone-100 rounded-xl text-[11px] text-stone-600 space-y-1 font-sans">
                 <p>• <strong>Custody Account:</strong> {brokerStatus?.broker_name || 'SEBI Sandbox Demat'} ({brokerStatus?.account_id || 'DEMO-GUEST'})</p>
                 <p>• <strong>Market Warning:</strong> Market prices can fluctuate dynamically before exchange matching.</p>
-                <p>• <strong>Zero Silent Trades:</strong> CareerWealth requires your explicit authorization before routing any trade.</p>
+                <p>• <strong>Zero Silent Trades:</strong> Elevare requires your explicit authorization before routing any trade.</p>
               </div>
 
               <div className="pt-2 flex items-center justify-between gap-3">

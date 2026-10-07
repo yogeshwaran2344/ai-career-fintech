@@ -607,7 +607,7 @@ export default function InvestmentView({ profile }) {
             <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 text-xs text-blue-900 space-y-1">
               <span className="font-bold block">Zero-Credential Security Architecture:</span>
               <p className="text-[11px] text-blue-800 leading-relaxed">
-                CareerWealth complies strictly with SEBI circulars on third-party trading software. We never request, capture, or store your Demat passwords, MPINs, or bank authorization details. Execution is processed via encrypted broker session tokens.
+                Elevare complies strictly with SEBI circulars on third-party trading software. We never request, capture, or store your Demat passwords, MPINs, or bank authorization details. Execution is processed via encrypted broker session tokens.
               </p>
             </div>
           </div>

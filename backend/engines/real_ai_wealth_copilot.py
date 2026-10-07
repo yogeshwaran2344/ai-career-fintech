@@ -72,7 +72,7 @@ class RealAiWealthCopilot:
             )
 
         disclaimer = (
-            "⚠️ Regulatory Compliance Notice: CareerWealth provides algorithmic analytics and educational decision tools. "
+            "⚠️ Regulatory Compliance Notice: Elevare provides algorithmic analytics and educational decision tools. "
             "This analysis does not constitute personalized investment advice under SEBI (Investment Advisers) Regulations, 2013. "
             "All securities orders are routed and executed directly through your registered SEBI-licensed broker."
         )

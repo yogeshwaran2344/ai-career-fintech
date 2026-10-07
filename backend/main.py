@@ -69,8 +69,8 @@ from database import (
 )
 
 app = FastAPI(
-    title="CareerWealth.AI Intelligence Platform API",
-    description="Adaptive AI Career & Wealth Optimization Platform with Strict Authentication, Digital Twin 2.0, and Real Decision Simulators",
+    title="Elevare Intelligence Platform API",
+    description="Adaptive Career & Wealth Intelligence Platform with Strict Authentication, Strategic Projections, and Real Decision Simulators",
     version="3.0.0"
 )
 
@@ -117,19 +117,19 @@ def get_user_from_auth(
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "service": "CareerWealth.AI Platform", "database": "SQLite Persistent", "version": "3.0.0"}
+    return {"status": "healthy", "service": "Elevare Platform", "database": "SQLite Persistent", "version": "3.0.0"}
 
 @app.get("/llms.txt", response_class=PlainTextResponse)
 def get_llms_txt():
     """
     Standard machine-readable manifest for AI chatbots, agents, and LLMs (llms.txt standard).
     """
-    return """# CareerWealth AI Platform
+    return """# Elevare Platform
 
-> AI-Powered Integrated Career Copilot & Regulated Indian Fintech Wealth Engine for Engineering & University Students.
+> Integrated Career & Wealth Intelligence Platform for University Students and Young Professionals.
 
 ## Overview
-CareerWealth AI connects student human capital development (skill roadmaps, ATS resume optimization, AI mock interviews, GitHub code analysis, and placement readiness) with financial intelligence (SEBI-aligned 5-gate safety check, Career ROI vs Stock Investment comparator, simulated Paper Trading vs Live Regulated Broker OMS execution, and safe NPCI UPI mandate management).
+Elevare connects human capital development (skill roadmaps, ATS resume optimization, mock interviews, GitHub code analysis, and placement readiness) with financial intelligence (SEBI-aligned 5-gate safety check, Career ROI vs Stock Investment comparator, simulated Paper Trading vs Live Regulated Broker OMS execution, and safe NPCI UPI mandate management).
 
 ## Core Capabilities & Engines
 
@@ -159,7 +159,7 @@ CareerWealth AI connects student human capital development (skill roadmaps, ATS 
 @app.get("/api/manifest")
 def get_api_manifest():
     return {
-        "platform": "CareerWealth AI",
+        "platform": "Elevare Platform",
         "version": "3.0.0",
         "description": "Unified Career Intelligence & Regulated Fintech Engine",
         "openapi_schema": "/openapi.json",
