@@ -965,8 +965,14 @@ def get_study_abroad_overview(current_user: StudentProfile = Depends(get_user_fr
     all_countries = StudyAbroadEngine.get_all_countries()
     required_exams = StudyAbroadEngine.get_required_exams_for_selection(target_countries, target_program)
     practice_papers = StudyAbroadEngine.get_practice_papers()
-    shortlisted = StudyAbroadEngine.get_shortlisted_universities(target_countries, user_cgpa, checklists)
-    cost_rois = StudyAbroadEngine.calculate_cost_roi_estimates(shortlisted, monthly_surplus, current_savings)
+    shortlisted = StudyAbroadEngine.get_shortlisted_universities(["ALL"], user_cgpa, checklists)
+    target_unis = [
+        u for u in shortlisted
+        if any(c.upper() in [u.country.upper(), "USA" if u.country == "USA" else "", "DEU" if u.country == "Germany" else "", "CAN" if u.country == "Canada" else "", "GBR" if u.country == "United Kingdom" else ""] for c in target_countries)
+    ]
+    if not target_unis:
+        target_unis = shortlisted[:8]
+    cost_rois = StudyAbroadEngine.calculate_cost_roi_estimates(target_unis, monthly_surplus, current_savings)
     roadmap = StudyAbroadEngine.generate_master_roadmap(target_countries, target_program, target_intake)
 
     profile_summary = {
@@ -1105,24 +1111,19 @@ def start_exam_mock_test(req: StartMockExamRequest, current_user: StudentProfile
 
 @app.post("/api/study-abroad/exam/mock/submit", response_model=MockExamEvaluationResponse)
 def submit_exam_mock_test(req: SubmitMockExamRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    # Build list of questions from answers submitted
+    # Retrieve the full set of questions for this mock exam
     questions: List[ExamQuestion] = []
-    for qid in req.answers.keys():
-        match = next((q for q in SEED_QUESTIONS_BANK if q["id"] == qid), None)
-        if match:
-            questions.append(ExamQuestion(**match))
+    if req.questions and len(req.questions) > 0:
+        questions = req.questions
+    else:
+        cached_bp = ExamBankEngine.get_active_mock_blueprint(req.mock_id)
+        if cached_bp:
+            for sec in cached_bp.sections:
+                questions.extend(sec.questions)
         else:
-            questions.append(ExamQuestion(
-                id=qid,
-                exam=req.exam,
-                section="QUANTITATIVE" if "quant" in qid or "q_" in qid else "VERBAL",
-                topic="Comprehensive Core",
-                difficulty="Medium",
-                question=f"Mock Exam Question {qid}",
-                options=["A", "B", "C", "D"],
-                correct_option=0,
-                explanation="Official ETS Mock Examination Solution Framework."
-            ))
+            fresh_bp = ExamBankEngine.create_full_mock_blueprint(exam=req.exam)
+            for sec in fresh_bp.sections:
+                questions.extend(sec.questions)
 
     evaluation = ExamBankEngine.evaluate_mock_exam(
         mock_id=req.mock_id,
@@ -1132,23 +1133,45 @@ def submit_exam_mock_test(req: SubmitMockExamRequest, current_user: StudentProfi
         time_spent_seconds=req.time_spent_seconds
     )
 
+    # Record all attempted questions in database
+    for q in questions:
+        if q.id in req.answers:
+            user_pick = req.answers[q.id]
+            is_corr = (user_pick == q.correct_option)
+            DatabaseManager.record_exam_attempt(
+                user_id=current_user.id,
+                set_or_mock_id=req.mock_id,
+                question_id=q.id,
+                exam=req.exam,
+                section=q.section,
+                topic=q.topic,
+                difficulty=q.difficulty,
+                user_choice=user_pick,
+                correct_choice=q.correct_option,
+                is_correct=is_corr,
+                time_spent_seconds=30
+            )
+            if not is_corr:
+                DatabaseManager.add_to_mistake_bank(current_user.id, q.dict(), user_pick)
+
     # Record Mock History in DB
+    existing_mocks = DatabaseManager.get_user_mock_history(current_user.id, req.exam)
     DatabaseManager.record_mock_history(
         user_id=current_user.id,
-        mock_title=f"Mock #{len(DatabaseManager.get_user_mock_history(current_user.id, req.exam)) + 1}",
+        mock_title=f"{req.exam} Diagnostic Mock #{len(existing_mocks) + 1}",
         exam=req.exam,
         quant_score=evaluation.quant_scaled_score,
         verbal_score=evaluation.verbal_scaled_score,
         total_score=evaluation.total_scaled_score,
         accuracy_pct=evaluation.overall_accuracy_pct,
-        raw_data={"weakest": evaluation.weakest_topics, "strongest": evaluation.strongest_topics}
+        raw_data={
+            "weakest": evaluation.weakest_topics,
+            "strongest": evaluation.strongest_topics,
+            "attempted": evaluation.attempted_count,
+            "unanswered": evaluation.unanswered_count,
+            "total_questions": evaluation.total_questions
+        }
     )
-
-    # Record mistakes in Mistake Bank
-    for q in questions:
-        user_pick = req.answers.get(q.id)
-        if user_pick != q.correct_option:
-            DatabaseManager.add_to_mistake_bank(current_user.id, q.dict(), user_pick)
 
     return evaluation
 
@@ -1171,40 +1194,41 @@ def get_exam_analytics(exam: str = "GRE", current_user: StudentProfile = Depends
         for h in history_rows
     ]
 
-    # If no mocks yet, provide baseline trajectory
-    if not mock_history:
-        mock_history = [
-            MockScoreHistoryItem(id="m1", mock_title="Diagnostic Mock #1", date="2026-09-15", quant_score=150, verbal_score=145, total_score=295, accuracy_pct=64.0, estimated_target_gap=30),
-            MockScoreHistoryItem(id="m2", mock_title="Sectional Mock #2", date="2026-09-28", quant_score=156, verbal_score=149, total_score=305, accuracy_pct=72.0, estimated_target_gap=20),
-            MockScoreHistoryItem(id="m3", mock_title="Adaptive Full Mock #3", date="2026-10-05", quant_score=162, verbal_score=152, total_score=314, accuracy_pct=78.5, estimated_target_gap=11)
-        ]
-
-    total_attempts = max(stats.get("total_attempts", 0), 142)
-    total_correct = max(stats.get("total_correct", 0), 108)
-    overall_acc = round((total_correct / max(total_attempts, 1)) * 100.0, 1)
+    total_attempts = stats.get("total_attempts", 0)
+    total_correct = stats.get("total_correct", 0)
+    overall_acc = round((total_correct / max(total_attempts, 1)) * 100.0, 1) if total_attempts > 0 else 0.0
 
     topic_radar = [
-        TopicPerformance(topic=r.get("topic", "Algebra"), total=r.get("total", 30), correct=r.get("correct", 26), accuracy_pct=round((r.get("correct", 26)/max(r.get("total", 30), 1))*100, 1), status="STRONG")
+        TopicPerformance(
+            topic=r.get("topic", "General"),
+            total=r.get("total", 0),
+            correct=r.get("correct", 0),
+            accuracy_pct=round((r.get("correct", 0) / max(r.get("total", 1), 1)) * 100, 1),
+            status="STRONG" if (r.get("correct", 0) / max(r.get("total", 1), 1)) >= 0.75 else ("AVERAGE" if (r.get("correct", 0) / max(r.get("total", 1), 1)) >= 0.50 else "WEAK")
+        )
         for r in stats.get("topic_stats", [])
     ]
-    if not topic_radar:
-        topic_radar = [
-            TopicPerformance(topic="Algebra", total=45, correct=41, accuracy_pct=91.1, status="STRONG"),
-            TopicPerformance(topic="Geometry", total=32, correct=26, accuracy_pct=81.3, status="STRONG"),
-            TopicPerformance(topic="Data Analysis", total=28, correct=21, accuracy_pct=75.0, status="AVERAGE"),
-            TopicPerformance(topic="Probability", total=35, correct=20, accuracy_pct=57.1, status="WEAK"),
-            TopicPerformance(topic="Reading Comprehension", total=40, correct=24, accuracy_pct=60.0, status="AVERAGE"),
-            TopicPerformance(topic="Text Completion", total=35, correct=27, accuracy_pct=77.1, status="STRONG")
-        ]
 
-    best_score = max([m.total_score for m in mock_history], default=314)
-    delta = mock_history[-1].total_score - mock_history[0].total_score if len(mock_history) > 1 else 19
+    best_score = max([m.total_score for m in mock_history], default=0)
+    delta = mock_history[-1].total_score - mock_history[0].total_score if len(mock_history) > 1 else 0
+
+    if mock_history:
+        best_quant = max([m.quant_score for m in mock_history])
+        best_verbal = max([m.verbal_score for m in mock_history])
+        best_quant_acc = round(((best_quant - 130) / 40.0) * 100.0, 1) if best_quant > 130 else 0.0
+        best_verbal_acc = round(((best_verbal - 130) / 40.0) * 100.0, 1) if best_verbal > 130 else 0.0
+    else:
+        best_quant_acc = 0.0
+        best_verbal_acc = 0.0
+
+    gap = max(0, 325 - best_score) if best_score > 0 else 65
+    predicted_days = max(14, int(gap * 1.5))
 
     badges = [
         {"title": "100+ Questions Solved", "icon": "📚", "unlocked": total_attempts >= 100, "desc": "Demonstrated persistent question bank mastery"},
-        {"title": "Quant Master (85%+)", "icon": "⚡", "unlocked": True, "desc": "Achieved 85%+ accuracy on advanced Quantitative problems"},
-        {"title": "5-Mock Diagnostic Streak", "icon": "🔥", "unlocked": len(mock_history) >= 3, "desc": "Completed structured full-length timed examinations"},
-        {"title": "Mistake Eradicator", "icon": "🎯", "unlocked": True, "desc": "Successfully revisited and resolved flagged mistakes"}
+        {"title": "Quant Master (85%+)", "icon": "⚡", "unlocked": best_quant_acc >= 85.0 and total_attempts >= 20, "desc": "Achieved 85%+ accuracy on advanced Quantitative problems"},
+        {"title": "5-Mock Diagnostic Streak", "icon": "🔥", "unlocked": len(mock_history) >= 5, "desc": "Completed structured full-length timed examinations"},
+        {"title": "Mistake Eradicator", "icon": "🎯", "unlocked": stats.get("unresolved_mistakes", 0) == 0 and total_attempts >= 10, "desc": "Successfully revisited and resolved flagged mistakes"}
     ]
 
     return ExamAnalyticsSummary(
@@ -1213,14 +1237,14 @@ def get_exam_analytics(exam: str = "GRE", current_user: StudentProfile = Depends
         overall_accuracy_pct=overall_acc,
         total_mocks_completed=len(mock_history),
         best_mock_score=best_score,
-        best_quant_accuracy_pct=88.5,
-        best_verbal_accuracy_pct=76.0,
+        best_quant_accuracy_pct=best_quant_acc,
+        best_verbal_accuracy_pct=best_verbal_acc,
         unresolved_mistakes_count=stats.get("unresolved_mistakes", 0),
         mock_history=mock_history,
         topic_radar=topic_radar,
         gamified_badges=badges,
         score_improvement_delta=delta,
-        predicted_target_days=42
+        predicted_target_days=predicted_days
     )
 
 @app.get("/api/study-abroad/exam/mistake-bank", response_model=MistakeBankResponse)
@@ -1253,34 +1277,6 @@ def get_user_mistake_bank(exam: Optional[str] = "GRE", topic: Optional[str] = No
                 last_attempted_at=r["updated_at"]
             )
         )
-
-    # Seed initial items if empty so user experiences the Mistake Bank immediately
-    if not items:
-        seed_mistakes = [
-            ("gre_q_prob_01", "Probability", "A fair six-sided die is rolled twice. What is the probability that the product of the two rolled numbers is a multiple of 6?", ["15/36", "17/36", "19/36", "23/36"], 0, 1, "Carefully identify cross pairs (2,3) and (4,3) without double-counting."),
-            ("gre_q_geom_02", "Geometry", "In the xy-plane, the line L passes through points (2, k) and (6, 14). If line L is perpendicular to the line 2x + 3y = 9, what is the value of k?", ["6", "8", "10", "12"], 1, 0, "Perpendicular slope is negative reciprocal: -1/(-2/3) = 3/2.")
-        ]
-        for qid, t, q, opts, corr, user_pick, exp in seed_mistakes:
-            items.append(
-                MistakeBankItem(
-                    id=f"mb_{qid}",
-                    question_id=qid,
-                    exam=exam or "GRE",
-                    section="QUANTITATIVE",
-                    topic=t,
-                    difficulty="Hard",
-                    question=q,
-                    options=opts,
-                    correct_option=corr,
-                    user_choice=user_pick,
-                    explanation=exp,
-                    concept_tested=f"Advanced {t} Optimization",
-                    mistake_count=2,
-                    resolved=False,
-                    last_attempted_at=str(datetime.datetime.now())[:19]
-                )
-            )
-            topic_counts[t] = topic_counts.get(t, 0) + 1
 
     return MistakeBankResponse(
         total_unresolved=len(items),

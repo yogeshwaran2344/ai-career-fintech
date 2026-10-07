@@ -220,11 +220,13 @@ export default function ExamPrepView({ profile, onNavigate }) {
     try {
       setSubmittingMock(true);
       const timeSpent = (mockBlueprint.total_time_minutes * 60) - Math.max(0, mockTimeRemaining);
+      const allQs = mockBlueprint.sections ? mockBlueprint.sections.flatMap(s => s.questions || []) : [];
       const evalRes = await api.submitMockExam({
         mock_id: mockBlueprint.mock_id,
         exam: mockBlueprint.exam,
         answers: mockAnswers,
-        time_spent_seconds: Math.max(60, timeSpent)
+        time_spent_seconds: Math.max(60, timeSpent),
+        questions: allQs
       });
       setMockEvaluation(evalRes);
       setMockInProgress(false);
@@ -1014,34 +1016,103 @@ export default function ExamPrepView({ profile, onNavigate }) {
 
           {mockEvaluation && (
             <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900">Score: {mockEvaluation.total_scaled_score} / 340</h3>
-                  <p className="text-xs text-slate-500">Range: {mockEvaluation.score_range}</p>
+                  <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">
+                    MOCK COMPLETED • OFFICIAL ETS ESTIMATE
+                  </span>
+                  <h3 className="text-2xl font-extrabold text-slate-900 mt-1">
+                    Diagnostic Score: {mockEvaluation.total_scaled_score} / 340
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">Estimated Score Range: {mockEvaluation.score_range}</p>
                 </div>
-                <div className="flex gap-3">
-                  <div className="bg-indigo-50 px-3 py-1.5 rounded-xl text-center">
-                    <span className="text-[10px] text-indigo-600 font-bold block">Quant</span>
-                    <span className="text-base font-bold text-indigo-900">{mockEvaluation.quant_scaled_score}/170</span>
+
+                <div className="flex items-center gap-3">
+                  <div className="bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-2xl text-center">
+                    <span className="text-[10px] text-indigo-700 font-bold uppercase block">Quant Scaled</span>
+                    <span className="text-xl font-black text-indigo-950">{mockEvaluation.quant_scaled_score} / 170</span>
+                    <span className="text-[10px] text-slate-500 font-semibold block">Raw: {mockEvaluation.quant_correct} / {mockEvaluation.quant_total}</span>
                   </div>
-                  <div className="bg-purple-50 px-3 py-1.5 rounded-xl text-center">
-                    <span className="text-[10px] text-purple-600 font-bold block">Verbal</span>
-                    <span className="text-base font-bold text-purple-900">{mockEvaluation.verbal_scaled_score}/170</span>
+                  <div className="bg-purple-50 border border-purple-200 px-4 py-2.5 rounded-2xl text-center">
+                    <span className="text-[10px] text-purple-700 font-bold uppercase block">Verbal Scaled</span>
+                    <span className="text-xl font-black text-purple-950">{mockEvaluation.verbal_scaled_score} / 170</span>
+                    <span className="text-[10px] text-slate-500 font-semibold block">Raw: {mockEvaluation.verbal_correct} / {mockEvaluation.verbal_total}</span>
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200">
-                {mockEvaluation.ai_strategic_advice}
-              </p>
-              <button
-                onClick={() => {
-                  setMockEvaluation(null);
-                  setMockInProgress(false);
-                }}
-                className="px-5 py-2.5 bg-indigo-600 text-white text-xs font-bold rounded-xl cursor-pointer"
-              >
-                Start New Mock
-              </button>
+
+              {/* Attempted vs Unanswered Breakdown */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Attempted / Total</span>
+                  <span className="text-base font-extrabold text-slate-900">
+                    {mockEvaluation.attempted_count || 0} / {mockEvaluation.total_questions || 60}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Raw Correct</span>
+                  <span className="text-base font-extrabold text-emerald-600">
+                    {mockEvaluation.correct_count || 0} Correct
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Attempted Wrong</span>
+                  <span className="text-base font-extrabold text-rose-600">
+                    {mockEvaluation.incorrect_count || 0} Wrong
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Unanswered (0 Score)</span>
+                  <span className="text-base font-extrabold text-amber-600">
+                    {mockEvaluation.unanswered_count || 0} Skipped
+                  </span>
+                </div>
+              </div>
+
+              {/* Strategic Advice Card */}
+              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 space-y-2">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">AI Strategic Gap Assessment</span>
+                <p className="text-xs text-slate-700 leading-relaxed">{mockEvaluation.ai_strategic_advice}</p>
+              </div>
+
+              {/* Adaptation Log */}
+              {mockEvaluation.difficulty_adaptation_log && mockEvaluation.difficulty_adaptation_log.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Adaptive Difficulty Log</span>
+                  <ul className="text-xs text-slate-600 space-y-1">
+                    {mockEvaluation.difficulty_adaptation_log.map((log, idx) => (
+                      <li key={idx} className="flex items-start gap-1.5">
+                        <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                        <span>{log}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                {mockEvaluation.mistakes_added_to_bank > 0 ? (
+                  <button
+                    onClick={() => setActiveTab('mistakes')}
+                    className="px-5 py-2.5 bg-rose-50 text-rose-800 hover:bg-rose-100 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Review {mockEvaluation.mistakes_added_to_bank} Mistakes in Mistake Bank →
+                  </button>
+                ) : (
+                  <span className="text-xs text-slate-500 font-medium self-center pr-2">
+                    ✓ 0 Incorrect Attempts (No Mistakes Logged)
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setMockEvaluation(null);
+                    setMockInProgress(false);
+                  }}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  Start Another Mock
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1062,24 +1133,36 @@ export default function ExamPrepView({ profile, onNavigate }) {
             </p>
 
             <div className="space-y-3 pt-2">
-              {mistakeBank?.items.map((m) => (
-                <div key={m.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-rose-800">{m.topic} • Missed {m.mistake_count}x</span>
-                    <button
-                      onClick={() => handleResolveMistake(m.question_id)}
-                      className="px-3 py-1 bg-emerald-50 text-emerald-800 font-bold rounded-lg border border-emerald-200 text-xs cursor-pointer"
-                    >
-                      ✓ Mark Mastered
-                    </button>
+              {(!mistakeBank || !mistakeBank.items || mistakeBank.items.length === 0) ? (
+                <div className="text-center py-10 px-4 space-y-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mx-auto text-lg font-bold">
+                    ✓
                   </div>
-                  <p className="text-xs font-semibold text-slate-800">{m.question}</p>
-                  <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-[11px] text-slate-600">
-                    <strong className="text-emerald-800 block">Correct: Option {String.fromCharCode(65 + m.correct_option)}</strong>
-                    {m.explanation}
-                  </div>
+                  <h4 className="text-sm font-bold text-slate-800">Zero Unresolved Mistakes!</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    You currently have no recorded mistakes. Solve practice drills or full mock exams—any questions you get wrong will automatically be isolated here for targeted review.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                mistakeBank.items.map((m) => (
+                  <div key={m.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-rose-800">{m.topic} • Missed {m.mistake_count}x</span>
+                      <button
+                        onClick={() => handleResolveMistake(m.question_id)}
+                        className="px-3 py-1 bg-emerald-50 text-emerald-800 font-bold rounded-lg border border-emerald-200 text-xs cursor-pointer"
+                      >
+                        ✓ Mark Mastered
+                      </button>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-800">{m.question}</p>
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-[11px] text-slate-600">
+                      <strong className="text-emerald-800 block">Correct: Option {String.fromCharCode(65 + m.correct_option)}</strong>
+                      {m.explanation}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

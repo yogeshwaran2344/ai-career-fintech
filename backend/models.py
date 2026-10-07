@@ -1400,6 +1400,8 @@ class ShortlistedUniversity(BaseModel):
     post_ms_avg_starting_salary_inr: float
     roi_payback_years: float
     official_portal_url: str
+    direct_application_url: Optional[str] = None
+    exam_form_url: Optional[str] = None
     application_deadline: str
     application_fee_inr: float
     is_stem_certified: bool
@@ -1575,6 +1577,7 @@ class SubmitMockExamRequest(BaseModel):
     exam: str
     answers: Dict[str, int]  # question_id -> chosen_option
     time_spent_seconds: int
+    questions: Optional[List[ExamQuestion]] = None
     section_breakdown: Optional[Dict[str, Any]] = None
 
 class MockScoreHistoryItem(BaseModel):
@@ -1590,6 +1593,15 @@ class MockScoreHistoryItem(BaseModel):
 class MockExamEvaluationResponse(BaseModel):
     mock_id: str
     exam: str
+    total_questions: int = 60
+    attempted_count: int = 0
+    correct_count: int = 0
+    incorrect_count: int = 0
+    unanswered_count: int = 0
+    quant_correct: int = 0
+    quant_total: int = 30
+    verbal_correct: int = 0
+    verbal_total: int = 30
     overall_accuracy_pct: float
     quant_accuracy_pct: float
     verbal_accuracy_pct: float

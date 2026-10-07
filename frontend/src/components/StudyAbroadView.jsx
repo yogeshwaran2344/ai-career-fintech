@@ -37,7 +37,8 @@ import {
   Trophy,
   Sliders,
   AlertTriangle,
-  FolderOpen
+  FolderOpen,
+  Search
 } from 'lucide-react';
 import { api } from '../api';
 
@@ -122,8 +123,10 @@ export default function StudyAbroadView({ profile, onNavigate }) {
   const [sopActiveSubtab, setSopActiveSubtab] = useState('sop');
   const [copiedKey, setCopiedKey] = useState(null);
 
-  // University tier filter
+  // University tier and country filters
   const [tierFilter, setTierFilter] = useState('ALL');
+  const [countryFilter, setCountryFilter] = useState('ALL');
+  const [uniSearchQuery, setUniSearchQuery] = useState('');
 
   // Fetch initial data
   const fetchOverview = async () => {
@@ -295,11 +298,13 @@ export default function StudyAbroadView({ profile, onNavigate }) {
     try {
       setSubmittingMock(true);
       const timeSpent = (mockBlueprint.total_time_minutes * 60) - Math.max(0, mockTimeRemaining);
+      const allQs = mockBlueprint.sections ? mockBlueprint.sections.flatMap(s => s.questions || []) : [];
       const evalRes = await api.submitMockExam({
         mock_id: mockBlueprint.mock_id,
         exam: mockBlueprint.exam,
         answers: mockAnswers,
-        time_spent_seconds: Math.max(60, timeSpent)
+        time_spent_seconds: Math.max(60, timeSpent),
+        questions: allQs
       });
       setMockEvaluation(evalRes);
       setMockInProgress(false);
@@ -438,9 +443,17 @@ export default function StudyAbroadView({ profile, onNavigate }) {
     profile_summary
   } = data;
 
+  const availableCountries = Array.from(new Set(shortlisted_universities.map((u) => u.country))).sort();
+
   const filteredUnis = shortlisted_universities.filter((u) => {
-    if (tierFilter === 'ALL') return true;
-    return u.tier === tierFilter;
+    const matchesTier = tierFilter === 'ALL' || u.tier === tierFilter;
+    const matchesCountry = countryFilter === 'ALL' || u.country.toUpperCase() === countryFilter.toUpperCase();
+    const q = uniSearchQuery.trim().toLowerCase();
+    const matchesSearch = !q ||
+      u.university_name.toLowerCase().includes(q) ||
+      u.country.toLowerCase().includes(q) ||
+      u.program_name.toLowerCase().includes(q);
+    return matchesTier && matchesCountry && matchesSearch;
   });
 
   return (
@@ -1070,7 +1083,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
                 <div>
                   <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">
-                    MOCK COMPLETED • OFFICIAL ESTIMATE
+                    MOCK COMPLETED • OFFICIAL ETS ESTIMATE
                   </span>
                   <h3 className="text-2xl font-extrabold text-slate-900 mt-1">
                     Diagnostic Score: {mockEvaluation.total_scaled_score} / 340
@@ -1079,14 +1092,44 @@ export default function StudyAbroadView({ profile, onNavigate }) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-2xl text-center">
+                  <div className="bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-2xl text-center">
                     <span className="text-[10px] text-indigo-700 font-bold uppercase block">Quant Scaled</span>
                     <span className="text-xl font-black text-indigo-950">{mockEvaluation.quant_scaled_score} / 170</span>
+                    <span className="text-[10px] text-slate-500 font-semibold block">Raw: {mockEvaluation.quant_correct} / {mockEvaluation.quant_total}</span>
                   </div>
-                  <div className="bg-purple-50 border border-purple-200 px-4 py-2 rounded-2xl text-center">
+                  <div className="bg-purple-50 border border-purple-200 px-4 py-2.5 rounded-2xl text-center">
                     <span className="text-[10px] text-purple-700 font-bold uppercase block">Verbal Scaled</span>
                     <span className="text-xl font-black text-purple-950">{mockEvaluation.verbal_scaled_score} / 170</span>
+                    <span className="text-[10px] text-slate-500 font-semibold block">Raw: {mockEvaluation.verbal_correct} / {mockEvaluation.verbal_total}</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Attempted vs Unanswered Breakdown */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Attempted / Total</span>
+                  <span className="text-base font-extrabold text-slate-900">
+                    {mockEvaluation.attempted_count || 0} / {mockEvaluation.total_questions || 60}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Raw Correct</span>
+                  <span className="text-base font-extrabold text-emerald-600">
+                    {mockEvaluation.correct_count || 0} Correct
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Attempted Wrong</span>
+                  <span className="text-base font-extrabold text-rose-600">
+                    {mockEvaluation.incorrect_count || 0} Wrong
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Unanswered (0 Score)</span>
+                  <span className="text-base font-extrabold text-amber-600">
+                    {mockEvaluation.unanswered_count || 0} Skipped
+                  </span>
                 </div>
               </div>
 
@@ -1110,12 +1153,18 @@ export default function StudyAbroadView({ profile, onNavigate }) {
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  onClick={() => setActiveTab('mistakes')}
-                  className="px-5 py-2.5 bg-rose-50 text-rose-800 hover:bg-rose-100 text-xs font-bold rounded-xl transition cursor-pointer"
-                >
-                  Review {mockEvaluation.mistakes_added_to_bank} Mistakes in Mistake Bank →
-                </button>
+                {mockEvaluation.mistakes_added_to_bank > 0 ? (
+                  <button
+                    onClick={() => setActiveTab('mistakes')}
+                    className="px-5 py-2.5 bg-rose-50 text-rose-800 hover:bg-rose-100 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Review {mockEvaluation.mistakes_added_to_bank} Mistakes in Mistake Bank →
+                  </button>
+                ) : (
+                  <span className="text-xs text-slate-500 font-medium self-center pr-2">
+                    ✓ 0 Incorrect Attempts (No Mistakes Logged)
+                  </span>
+                )}
                 <button
                   onClick={() => {
                     setMockEvaluation(null);
@@ -1258,45 +1307,57 @@ export default function StudyAbroadView({ profile, onNavigate }) {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {analyticsData.mock_history.map((m, idx) => (
-                    <div key={m.id} className="bg-slate-50 rounded-2xl p-4 border border-slate-200/60 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-bold text-slate-900">{m.mock_title}</span>
-                        <span className="text-slate-400 font-medium">{m.date}</span>
+                {analyticsData.mock_history.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    No full-length mock examinations recorded yet. Take a diagnostic mock to map your score growth trajectory.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {analyticsData.mock_history.map((m, idx) => (
+                      <div key={m.id} className="bg-slate-50 rounded-2xl p-4 border border-slate-200/60 space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-slate-900">{m.mock_title}</span>
+                          <span className="text-slate-400 font-medium">{m.date}</span>
+                        </div>
+                        <div className="text-xl font-extrabold text-indigo-600">{m.total_score} / 340</div>
+                        <div className="flex justify-between text-[11px] text-slate-600">
+                          <span>Quant: {m.quant_score}</span>
+                          <span>Verbal: {m.verbal_score}</span>
+                          <span className="text-emerald-700 font-semibold">{m.accuracy_pct}% Acc</span>
+                        </div>
                       </div>
-                      <div className="text-xl font-extrabold text-indigo-600">{m.total_score} / 340</div>
-                      <div className="flex justify-between text-[11px] text-slate-600">
-                        <span>Quant: {m.quant_score}</span>
-                        <span>Verbal: {m.verbal_score}</span>
-                        <span className="text-emerald-700 font-semibold">{m.accuracy_pct}% Acc</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Topic Radar Breakdown */}
               <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
                 <h4 className="text-base font-bold text-slate-900">Topic-Wise Accuracy Breakdown</h4>
-                <div className="space-y-3">
-                  {analyticsData.topic_radar.map((top, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-bold text-slate-800">{top.topic}</span>
-                        <span className="font-bold text-slate-900">{top.accuracy_pct}% ({top.correct}/{top.total})</span>
+                {analyticsData.topic_radar.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    No topic-wise practice questions completed yet. Solve custom practice sets above to build your performance radar.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {analyticsData.topic_radar.map((top, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="font-bold text-slate-800">{top.topic}</span>
+                          <span className="font-bold text-slate-900">{top.accuracy_pct}% ({top.correct}/{top.total})</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              top.status === 'STRONG' ? 'bg-emerald-500' : top.status === 'AVERAGE' ? 'bg-amber-500' : 'bg-rose-500'
+                            }`}
+                            style={{ width: `${top.accuracy_pct}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            top.status === 'STRONG' ? 'bg-emerald-500' : top.status === 'AVERAGE' ? 'bg-amber-500' : 'bg-rose-500'
-                          }`}
-                          style={{ width: `${top.accuracy_pct}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Gamified Badges */}
@@ -1572,6 +1633,48 @@ export default function StudyAbroadView({ profile, onNavigate }) {
                 })}
               </div>
             </div>
+
+            {/* Required Standardized Tests & Direct Examination Portals */}
+            {required_exams && required_exams.length > 0 && (
+              <div className="space-y-4 pt-5 border-t border-slate-100">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-indigo-600" />
+                    Required Standardized Examinations & Official Registration Forms
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Direct access to official examination portals, online registration booking forms, and score requirements.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {required_exams.map((exam, idx) => (
+                    <div key={idx} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-between space-y-3">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-slate-900">{exam.exam_name}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 whitespace-nowrap">
+                            {exam.badge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-700 font-semibold">Target: {exam.target_score}</p>
+                        <p className="text-[10px] text-slate-500">{exam.recommended_deadline}</p>
+                      </div>
+
+                      <a
+                        href={exam.official_portal_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition cursor-pointer shadow-sm"
+                      >
+                        <span>Fill Examination Form</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1581,85 +1684,204 @@ export default function StudyAbroadView({ profile, onNavigate }) {
       {/* ============================================================== */}
       {activeTab === 'universities' && (
         <div className="space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">Curated University Portfolio & Admission Checklist</h3>
-              <p className="text-xs text-slate-500">
-                Classified by admission selectivity relative to your profile ({profile_summary.cgpa?.toFixed(2)} CGPA).
-              </p>
+          {/* Header & Controls */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-indigo-600" />
+                  Global University Portfolio & Direct Application Portals
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Showing {filteredUnis.length} of {shortlisted_universities.length} institutions across {availableCountries.length} countries. Click direct application links to start admission registration.
+                </p>
+              </div>
+
+              {/* Tier Filter Tabs */}
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start md:self-auto">
+                {['ALL', 'AMBITIOUS', 'TARGET', 'SAFE'].map((tier) => (
+                  <button
+                    key={tier}
+                    onClick={() => setTierFilter(tier)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      tierFilter === tier ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {tier === 'ALL' ? 'All Tiers' : tier}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
-              {['ALL', 'AMBITIOUS', 'TARGET', 'SAFE'].map((tier) => (
+            {/* Search Bar & Country Filter Bar */}
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={uniSearchQuery}
+                  onChange={(e) => setUniSearchQuery(e.target.value)}
+                  placeholder="Search institutions, degrees, or country (e.g. Stanford, TUM, Oxford, Singapore, AI)..."
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Horizontal Country Filter Chips */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
                 <button
-                  key={tier}
-                  onClick={() => setTierFilter(tier)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    tierFilter === tier ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  onClick={() => setCountryFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
+                    countryFilter === 'ALL'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  {tier === 'ALL' ? 'All Tiers' : tier}
+                  🌍 All Countries ({shortlisted_universities.length})
                 </button>
-              ))}
+                {availableCountries.map((c) => {
+                  const count = shortlisted_universities.filter((u) => u.country === c).length;
+                  const flag = shortlisted_universities.find((u) => u.country === c)?.flag || '🎓';
+                  const isSelected = countryFilter === c;
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => setCountryFilter(c)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{flag}</span>
+                      <span>{c}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          <div className="space-y-6">
-            {filteredUnis.map((uni) => (
-              <div key={uni.id} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xl">{uni.flag}</span>
-                      <h4 className="text-base font-bold text-slate-900">{uni.university_name}</h4>
-                      <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-indigo-100 text-indigo-800">
-                        {uni.tier}
-                      </span>
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-md">
-                        QS #{uni.qs_world_ranking}
+          {/* Universities List */}
+          {filteredUnis.length === 0 ? (
+            <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 space-y-2">
+              <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+              <h4 className="text-sm font-bold text-slate-800">No institutions matched your filter</h4>
+              <p className="text-xs text-slate-500">Try adjusting your search keywords, tier, or country selection.</p>
+              <button
+                onClick={() => { setCountryFilter('ALL'); setTierFilter('ALL'); setUniSearchQuery(''); }}
+                className="mt-2 px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl cursor-pointer"
+              >
+                Reset Filters
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredUnis.map((uni) => (
+                <div key={uni.id} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xl">{uni.flag}</span>
+                        <h4 className="text-base font-bold text-slate-900">{uni.university_name}</h4>
+                        <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-indigo-100 text-indigo-800">
+                          {uni.tier}
+                        </span>
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-md">
+                          QS #{uni.qs_world_ranking}
+                        </span>
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-md border border-emerald-200">
+                          {uni.country}
+                        </span>
+                      </div>
+                      <p className="text-xs text-indigo-700 font-semibold mt-0.5">{uni.program_name}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-start flex-wrap">
+                      <a
+                        href={uni.direct_application_url || uni.official_portal_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition cursor-pointer shadow-sm"
+                      >
+                        <span>Direct Application Form</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+
+                      {uni.exam_form_url && (
+                        <a
+                          href={uni.exam_form_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold rounded-xl transition cursor-pointer"
+                          title="Direct Exam Registration / Booking Form"
+                        >
+                          <span>
+                            {uni.gre_requirement?.toLowerCase().includes('mandat') || uni.gre_requirement?.toLowerCase().includes('requir')
+                              ? 'Book GRE Form'
+                              : uni.country === 'Germany'
+                              ? 'APS / Exam Form'
+                              : 'Book Exam Form'}
+                          </span>
+                          <ExternalLink className="w-3.5 h-3.5 text-amber-600" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/60">
+                      <span className="text-[10px] text-slate-500 font-semibold block uppercase">Annual Tuition</span>
+                      <span className="text-xs font-bold text-slate-900">
+                        ₹{(uni.annual_tuition_inr / 100000).toFixed(1)} Lakhs
                       </span>
                     </div>
-                    <p className="text-xs text-indigo-700 font-semibold">{uni.program_name}</p>
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/60">
+                      <span className="text-[10px] text-slate-500 font-semibold block uppercase">Living Cost / Yr</span>
+                      <span className="text-xs font-bold text-slate-900">
+                        ₹{(uni.annual_living_inr / 100000).toFixed(1)} Lakhs
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/60">
+                      <span className="text-[10px] text-slate-500 font-semibold block uppercase">Min CGPA</span>
+                      <span className="text-xs font-bold text-indigo-700">{uni.min_cgpa_cutoff.toFixed(1)}+ / 10.0</span>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/60">
+                      <span className="text-[10px] text-slate-500 font-semibold block uppercase">Post-MS CTC</span>
+                      <span className="text-xs font-bold text-emerald-700">
+                        ₹{(uni.post_ms_avg_starting_salary_inr / 100000).toFixed(1)} Lakhs/yr
+                      </span>
+                    </div>
                   </div>
 
-                  <a
-                    href={uni.official_portal_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition cursor-pointer self-start"
-                  >
-                    <span>Official Portal</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/60">
-                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">Annual Tuition</span>
-                    <span className="text-xs font-bold text-slate-900">
-                      ₹{(uni.annual_tuition_inr / 100000).toFixed(1)} Lakhs
-                    </span>
-                  </div>
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/60">
-                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">Living Cost / Yr</span>
-                    <span className="text-xs font-bold text-slate-900">
-                      ₹{(uni.annual_living_inr / 100000).toFixed(1)} Lakhs
-                    </span>
-                  </div>
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/60">
-                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">Min CGPA</span>
-                    <span className="text-xs font-bold text-indigo-700">{uni.min_cgpa_cutoff.toFixed(1)}+ / 10.0</span>
-                  </div>
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/60">
-                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">Post-MS CTC</span>
-                    <span className="text-xs font-bold text-emerald-700">
-                      ₹{(uni.post_ms_avg_starting_salary_inr / 100000).toFixed(1)} Lakhs/yr
-                    </span>
+                  {/* Program Metadata Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span><strong>GRE:</strong> {uni.gre_requirement}</span>
+                      <span>•</span>
+                      <span><strong>IELTS:</strong> {uni.ielts_requirement}+</span>
+                      <span>•</span>
+                      <span><strong>Deadline:</strong> {uni.application_deadline}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-700 font-semibold">
+                        App Fee: {uni.application_fee_inr === 0 ? 'Free (€0)' : `₹${uni.application_fee_inr.toLocaleString()}`}
+                      </span>
+                      {uni.is_stem_certified && (
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-semibold border border-blue-200">
+                          STEM Certified (3-Yr Post Study)
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
