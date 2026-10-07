@@ -1332,7 +1332,156 @@ class FinancialHealthSummary(BaseModel):
     clearance_badge: str
     clearance_reason: str
     factors: List[FinancialHealthFactor]
-    ai_priorities: List[str]
+
+# ==================== STUDY ABROAD & MASTERS COPILOT MODELS ====================
+
+class StudyAbroadCountry(BaseModel):
+    id: str
+    name: str
+    flag: str
+    currency: str
+    avg_tuition_annual_inr: float
+    avg_living_annual_inr: float
+    psw_visa_years: str
+    common_exams: List[str]
+    english_tests: List[str]
+    key_advantages: List[str]
+    intake_seasons: List[str]
+
+class ExamPlanSection(BaseModel):
+    name: str
+    weight: str
+    target_score: str
+    status: str
+    key_topics: List[str]
+
+class ExamPlanItem(BaseModel):
+    exam_name: str
+    badge: str
+    is_mandatory: bool
+    target_score: str
+    recommended_deadline: str
+    sections: List[ExamPlanSection]
+    official_portal_url: str
+    free_study_resource_links: List[Dict[str, str]]
+
+class PracticePaperQuestion(BaseModel):
+    id: str
+    question: str
+    options: List[str]
+    correct_option: int
+    explanation: str
+
+class PracticePaperItem(BaseModel):
+    id: str
+    exam: str  # GRE, IELTS, TOEFL
+    title: str
+    category: str  # QUANTITATIVE, VERBAL, WRITING_AWA, FULL_MOCK
+    difficulty: str  # Medium, Hard, Realistic Exam
+    time_limit_minutes: int
+    question_count: int
+    source_attribution: str  # "ETS Official Sample", "Cambridge Official Guide", "Elevare Open Educational"
+    questions: List[PracticePaperQuestion]
+
+class ShortlistedUniversity(BaseModel):
+    id: str
+    university_name: str
+    country: str
+    flag: str
+    program_name: str
+    tier: str  # AMBITIOUS, TARGET, SAFE
+    qs_world_ranking: int
+    annual_tuition_usd: float
+    annual_tuition_inr: float
+    annual_living_inr: float
+    min_cgpa_cutoff: float
+    gre_requirement: str  # Required (320+), Recommended, Waived
+    ielts_requirement: float
+    post_ms_avg_starting_salary_inr: float
+    roi_payback_years: float
+    official_portal_url: str
+    application_deadline: str
+    application_fee_inr: float
+    is_stem_certified: bool
+    checklist: Dict[str, bool] = Field(default_factory=lambda: {
+        "account_created": False,
+        "program_selected": False,
+        "transcripts_uploaded": False,
+        "sop_submitted": False,
+        "lor_submitted": False,
+        "scores_reported": False,
+        "application_paid": False
+    })
+
+class StudyAbroadCostRoiEstimate(BaseModel):
+    university_name: str
+    country: str
+    flag: str
+    program_name: str
+    tuition_2y_inr: float
+    living_2y_inr: float
+    visa_insurance_travel_inr: float
+    exam_app_fees_inr: float
+    total_estimated_budget_inr: float
+    total_estimated_budget_usd: float
+    funding_plan: Dict[str, float]
+    estimated_monthly_emi_inr: float
+    projected_post_ms_salary_inr: float
+    payback_period_years: float
+    affordability_index: str  # AFFORDABLE, HIGH_LEVERAGE, STRETCH
+    financial_engine_synergy_note: str
+
+class SopLorGenerationRequest(BaseModel):
+    target_university: str
+    target_program: str
+    specific_research_interest: Optional[str] = "Deep Learning Systems & Distributed AI"
+    target_professor_or_lab: Optional[str] = "AI & Autonomous Systems Lab"
+
+class SopLorGenerationResponse(BaseModel):
+    target_university: str
+    target_program: str
+    sop_title: str
+    sop_text: str
+    lor_prof_title: str
+    lor_prof_text: str
+    lor_hod_text: str
+    tailored_skills_highlighted: List[str]
+    tailored_projects_highlighted: List[str]
+
+class StudyAbroadRoadmapPhase(BaseModel):
+    phase_title: str
+    timeline_months: str
+    key_milestones: List[str]
+    action_items: List[str]
+
+class StudyAbroadMasterRoadmap(BaseModel):
+    target_intake: str
+    target_countries: List[str]
+    target_program: str
+    phases: List[StudyAbroadRoadmapPhase]
+
+class StudyAbroadOverviewResponse(BaseModel):
+    target_countries: List[str]
+    target_program: str
+    target_intake: str
+    profile_summary: Dict[str, Any]
+    all_countries_catalog: List[StudyAbroadCountry]
+    required_exams: List[ExamPlanItem]
+    practice_papers: List[PracticePaperItem]
+    shortlisted_universities: List[ShortlistedUniversity]
+    cost_roi_comparisons: List[StudyAbroadCostRoiEstimate]
+    roadmap: StudyAbroadMasterRoadmap
+
+class UpdateStudyAbroadSelectionRequest(BaseModel):
+    target_countries: List[str]
+    target_program: Optional[str] = None
+    target_intake: Optional[str] = None
+
+class UpdateUniversityChecklistRequest(BaseModel):
+    university_id: str
+    checklist_key: str
+    completed: bool
+
 
 
 

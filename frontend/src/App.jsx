@@ -14,6 +14,7 @@ import ProfileView from './components/ProfileView';
 import ApplicationTrackerView from './components/ApplicationTrackerView';
 import FinancialHealthView from './components/FinancialHealthView';
 import FinancialSafetyTab from './components/FinancialSafetyTab';
+import StudyAbroadView from './components/StudyAbroadView';
 import AuthModal from './components/AuthModal';
 import PlacementScoreModal from './components/PlacementScoreModal';
 import WeeklyReviewModal from './components/WeeklyReviewModal';
@@ -686,6 +687,13 @@ export default function App() {
           {currentTab === 'investments' && (
             <InvestmentView
               profile={profile}
+            />
+          )}
+
+          {currentTab === 'studyabroad' && (
+            <StudyAbroadView
+              profile={profile}
+              onNavigate={(tab) => setCurrentTab(tab)}
             />
           )}
 

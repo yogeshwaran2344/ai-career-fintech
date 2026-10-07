@@ -31,7 +31,8 @@ const authFetch = async (url, options = {}) => {
   }
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
-    if (res.status === 401) {
+    const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/reset-password') || url.includes('/auth/setup-profile');
+    if (res.status === 401 && !isAuthAttempt) {
       authState.clearToken();
       authState.clearUser();
       if (typeof window !== 'undefined') {
@@ -453,6 +454,37 @@ export const api = {
   },
   getSessions: async () => {
     return authFetch(`${API_BASE}/auth/sessions`);
+  },
+
+  // STUDY ABROAD & MASTERS COPILOT
+  getStudyAbroadOverview: async () => {
+    return authFetch(`${API_BASE}/study-abroad/overview`);
+  },
+  updateStudyAbroadSelection: async (targetCountries, targetProgram, targetIntake) => {
+    return authFetch(`${API_BASE}/study-abroad/selection`, {
+      method: 'POST',
+      body: JSON.stringify({
+        target_countries: targetCountries,
+        target_program: targetProgram,
+        target_intake: targetIntake
+      })
+    });
+  },
+  updateStudyAbroadChecklist: async (universityId, checklistKey, completed) => {
+    return authFetch(`${API_BASE}/study-abroad/checklist`, {
+      method: 'POST',
+      body: JSON.stringify({
+        university_id: universityId,
+        checklist_key: checklistKey,
+        completed: completed
+      })
+    });
+  },
+  generateSopLor: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/generate-sop-lor`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   }
 };
 

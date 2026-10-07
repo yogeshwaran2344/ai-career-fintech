@@ -290,6 +290,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
 
   useEffect(() => {
     if (initialMode) setAuthMode(initialMode);
+    try {
+      const savedEmail = localStorage.getItem('advisor_last_email') || '';
+      if (savedEmail) {
+        setLoginEmail(savedEmail);
+        setResetEmail(savedEmail);
+      }
+    } catch {}
   }, [initialMode, isOpen]);
 
   if (!isOpen) return null;
@@ -305,12 +312,16 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
 
     try {
       setIsSubmitting(true);
-      const res = await api.login(loginEmail.trim().toLowerCase(), loginPassword);
+      const cleanEmail = loginEmail.trim().toLowerCase();
+      const res = await api.login(cleanEmail, loginPassword);
+      try {
+        localStorage.setItem('advisor_last_email', cleanEmail);
+      } catch {}
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
       onAuthSuccess(res.profile);
       if (onClose) onClose();
     } catch (err) {
-      setErrorMsg(err.message || 'Invalid email or password. Please try again.');
+      setErrorMsg(err.message || 'Invalid email or password. Please try again or use Reset Password.');
     } finally {
       setIsSubmitting(false);
     }
@@ -481,10 +492,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
 
           {/* Mode Switcher Tabs (Only when not in multi-step questionnaire) */}
           {authMode !== 'QUESTIONNAIRE' && (
-            <div className="flex gap-2 mt-4 relative z-10">
+            <div className="flex flex-wrap gap-2 mt-4 relative z-10">
               <button
                 type="button"
-                onClick={() => { setAuthMode('LOGIN'); setErrorMsg(''); }}
+                onClick={() => { setAuthMode('LOGIN'); setErrorMsg(''); setResetSuccessMsg(''); }}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
                   authMode === 'LOGIN' ? 'bg-orange-500 text-white shadow-md' : 'bg-white/10 text-stone-300 hover:bg-white/20'
                 }`}
@@ -494,13 +505,28 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
               </button>
               <button
                 type="button"
-                onClick={() => { setAuthMode('REGISTER'); setErrorMsg(''); }}
+                onClick={() => { setAuthMode('REGISTER'); setErrorMsg(''); setResetSuccessMsg(''); }}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
                   authMode === 'REGISTER' ? 'bg-orange-500 text-white shadow-md' : 'bg-white/10 text-stone-300 hover:bg-white/20'
                 }`}
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>Create New Account</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { 
+                  setAuthMode('RESET_PASSWORD'); 
+                  setErrorMsg(''); 
+                  setResetSuccessMsg('');
+                  setResetEmail(loginEmail || formData.email || '');
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
+                  authMode === 'RESET_PASSWORD' ? 'bg-orange-500 text-white shadow-md' : 'bg-white/10 text-stone-300 hover:bg-white/20'
+                }`}
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Reset Password</span>
               </button>
             </div>
           )}
@@ -527,11 +553,26 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
           )}
         </div>
 
-        {/* Error Alert Box */}
+        {/* Error Alert Box with 1-click Reset Link */}
         {errorMsg && (
-          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-800 text-xs">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
-            <span>{errorMsg}</span>
+          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-rose-800 text-xs">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+              <span>{errorMsg}</span>
+            </div>
+            {authMode === 'LOGIN' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('RESET_PASSWORD');
+                  setErrorMsg('');
+                  setResetEmail(loginEmail);
+                }}
+                className="px-2.5 py-1 bg-rose-200 hover:bg-rose-300 text-rose-900 font-bold rounded-lg text-[11px] cursor-pointer self-start sm:self-auto shrink-0 transition"
+              >
+                Reset Password →
+              </button>
+            )}
           </div>
         )}
 

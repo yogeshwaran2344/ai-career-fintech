@@ -19,7 +19,8 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
-  Activity
+  Activity,
+  Globe
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -58,6 +59,12 @@ export default function Sidebar({
       items: [
         { id: 'finance', label: 'Finance & Budget', icon: Wallet },
         { id: 'investments', label: 'Investments & Orders', icon: TrendingUp, badge: 'Paper/Live' }
+      ]
+    },
+    {
+      title: 'GLOBAL & HIGHER ED',
+      items: [
+        { id: 'studyabroad', label: 'Study Abroad & MS', icon: Globe, badge: 'Copilot' }
       ]
     },
     {

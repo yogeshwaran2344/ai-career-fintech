@@ -294,6 +294,19 @@ def init_database():
         )
     """)
 
+    # 16. User Study Abroad & Masters Copilot State
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_study_abroad_state (
+            user_id TEXT PRIMARY KEY,
+            target_countries_json TEXT DEFAULT '["USA", "DEU", "CAN"]',
+            target_program TEXT DEFAULT 'MS in Artificial Intelligence / Computer Science',
+            target_intake TEXT DEFAULT 'Fall 2027',
+            checklists_json TEXT DEFAULT '{}',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -338,7 +351,9 @@ class DatabaseManager:
                 pass
         
         user_id = row["user_id"]
-        cursor.execute("UPDATE sessions SET last_active_at = CURRENT_TIMESTAMP WHERE token = ?", (token,))
+        # Slide expiration forward by 90 days on active use so active users never get logged out
+        new_exp = (datetime.datetime.utcnow() + datetime.timedelta(days=90)).isoformat()
+        cursor.execute("UPDATE sessions SET last_active_at = CURRENT_TIMESTAMP, expires_at = ? WHERE token = ?", (new_exp, token))
         conn.commit()
 
         cursor.execute("SELECT profile_json FROM profiles WHERE user_id = ?", (user_id,))
@@ -413,7 +428,7 @@ class DatabaseManager:
         conn.close()
 
     @staticmethod
-    def create_session(user_id: str, device_info: str = "Desktop Browser", ip_address: str = "127.0.0.1", duration_days: int = 30) -> str:
+    def create_session(user_id: str, device_info: str = "Desktop Browser", ip_address: str = "127.0.0.1", duration_days: int = 90) -> str:
         token = f"token-{uuid.uuid4().hex}"
         expires_at = (datetime.datetime.utcnow() + datetime.timedelta(days=duration_days)).isoformat()
         conn = get_db_connection()
@@ -883,6 +898,108 @@ class DatabaseManager:
         conn.commit()
         conn.close()
         return updated
+
+    # Study Abroad & Masters Copilot State Management
+    @staticmethod
+    def get_study_abroad_state(user_id: str) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_study_abroad_state WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            default_countries = ["USA", "DEU", "CAN"]
+            default_program = "MS in Artificial Intelligence / Computer Science"
+            default_intake = "Fall 2027"
+            cursor.execute("""
+                INSERT OR IGNORE INTO user_study_abroad_state 
+                (user_id, target_countries_json, target_program, target_intake, checklists_json)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, json.dumps(default_countries), default_program, default_intake, "{}"))
+            conn.commit()
+            cursor.execute("SELECT * FROM user_study_abroad_state WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+        
+        data = dict(row) if row else {
+            "user_id": user_id,
+            "target_countries_json": '["USA", "DEU", "CAN"]',
+            "target_program": "MS in Artificial Intelligence / Computer Science",
+            "target_intake": "Fall 2027",
+            "checklists_json": "{}"
+        }
+        conn.close()
+
+        try:
+            target_countries = json.loads(data.get("target_countries_json") or '["USA", "DEU", "CAN"]')
+        except Exception:
+            target_countries = ["USA", "DEU", "CAN"]
+
+        try:
+            checklists = json.loads(data.get("checklists_json") or "{}")
+        except Exception:
+            checklists = {}
+
+        return {
+            "user_id": user_id,
+            "target_countries": target_countries,
+            "target_program": data.get("target_program") or "MS in Artificial Intelligence / Computer Science",
+            "target_intake": data.get("target_intake") or "Fall 2027",
+            "checklists": checklists
+        }
+
+    @staticmethod
+    def save_study_abroad_selection(
+        user_id: str,
+        target_countries: List[str],
+        target_program: Optional[str] = None,
+        target_intake: Optional[str] = None
+    ) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id FROM user_study_abroad_state WHERE user_id = ?", (user_id,))
+        if not cursor.fetchone():
+            cursor.execute("""
+                INSERT INTO user_study_abroad_state (user_id, target_countries_json, target_program, target_intake, checklists_json)
+                VALUES (?, ?, ?, ?, '{}')
+            """, (user_id, json.dumps(target_countries), target_program or "MS in Artificial Intelligence / Computer Science", target_intake or "Fall 2027"))
+        else:
+            updates = ["target_countries_json = ?", "updated_at = CURRENT_TIMESTAMP"]
+            params = [json.dumps(target_countries)]
+            if target_program:
+                updates.append("target_program = ?")
+                params.append(target_program)
+            if target_intake:
+                updates.append("target_intake = ?")
+                params.append(target_intake)
+            params.append(user_id)
+            cursor.execute(f"UPDATE user_study_abroad_state SET {', '.join(updates)} WHERE user_id = ?", tuple(params))
+        conn.commit()
+        conn.close()
+        return DatabaseManager.get_study_abroad_state(user_id)
+
+    @staticmethod
+    def update_university_checklist_item(
+        user_id: str,
+        university_id: str,
+        checklist_key: str,
+        completed: bool
+    ) -> Dict[str, Any]:
+        state = DatabaseManager.get_study_abroad_state(user_id)
+        checklists = state.get("checklists", {})
+        if university_id not in checklists:
+            checklists[university_id] = {}
+        checklists[university_id][checklist_key] = completed
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE user_study_abroad_state 
+            SET checklists_json = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE user_id = ?
+        """, (json.dumps(checklists), user_id))
+        conn.commit()
+        conn.close()
+        return checklists
+
 
 
 
