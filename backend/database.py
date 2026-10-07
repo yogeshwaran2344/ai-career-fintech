@@ -307,6 +307,63 @@ def init_database():
         )
     """)
 
+    # 17. User Exam Question Attempts Ledger
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_exam_attempts (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            set_or_mock_id TEXT NOT NULL,
+            question_id TEXT NOT NULL,
+            exam TEXT NOT NULL,
+            section TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            difficulty TEXT NOT NULL,
+            user_choice INTEGER,
+            correct_choice INTEGER NOT NULL,
+            is_correct INTEGER NOT NULL,
+            time_spent_seconds INTEGER DEFAULT 60,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    # 18. User Mock Exam History
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_mock_history (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            mock_title TEXT NOT NULL,
+            exam TEXT NOT NULL,
+            quant_score INTEGER NOT NULL,
+            verbal_score INTEGER NOT NULL,
+            total_score INTEGER NOT NULL,
+            accuracy_pct REAL NOT NULL,
+            raw_data_json TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    # 19. User Exam Mistake Bank
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_mistake_bank (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            question_id TEXT NOT NULL,
+            exam TEXT NOT NULL,
+            section TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            difficulty TEXT NOT NULL,
+            question_json TEXT NOT NULL,
+            user_choice INTEGER,
+            mistake_count INTEGER DEFAULT 1,
+            resolved INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, question_id)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -999,6 +1056,172 @@ class DatabaseManager:
         conn.commit()
         conn.close()
         return checklists
+
+    # ==================== EXAM PREPARATION ENGINE METHODS ====================
+    @staticmethod
+    def record_exam_attempt(
+        user_id: str,
+        set_or_mock_id: str,
+        question_id: str,
+        exam: str,
+        section: str,
+        topic: str,
+        difficulty: str,
+        user_choice: Optional[int],
+        correct_choice: int,
+        is_correct: bool,
+        time_spent_seconds: int = 60
+    ):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        attempt_id = str(uuid.uuid4())
+        cursor.execute("""
+            INSERT INTO user_exam_attempts 
+            (id, user_id, set_or_mock_id, question_id, exam, section, topic, difficulty, user_choice, correct_choice, is_correct, time_spent_seconds)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (attempt_id, user_id, set_or_mock_id, question_id, exam, section, topic, difficulty, user_choice, correct_choice, 1 if is_correct else 0, time_spent_seconds))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def add_to_mistake_bank(
+        user_id: str,
+        question_dict: Dict[str, Any],
+        user_choice: Optional[int]
+    ):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        qid = question_dict.get("id", str(uuid.uuid4()))
+        cursor.execute("SELECT id, mistake_count FROM user_mistake_bank WHERE user_id = ? AND question_id = ?", (user_id, qid))
+        row = cursor.fetchone()
+        if row:
+            cursor.execute("""
+                UPDATE user_mistake_bank 
+                SET mistake_count = mistake_count + 1, user_choice = ?, resolved = 0, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ? AND question_id = ?
+            """, (user_choice, user_id, qid))
+        else:
+            mid = str(uuid.uuid4())
+            cursor.execute("""
+                INSERT INTO user_mistake_bank 
+                (id, user_id, question_id, exam, section, topic, difficulty, question_json, user_choice, mistake_count, resolved)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
+            """, (
+                mid, user_id, qid,
+                question_dict.get("exam", "GRE"),
+                question_dict.get("section", "QUANTITATIVE"),
+                question_dict.get("topic", "General"),
+                question_dict.get("difficulty", "Medium"),
+                json.dumps(question_dict),
+                user_choice
+            ))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def resolve_mistake(user_id: str, question_id: str):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE user_mistake_bank SET resolved = 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND question_id = ?", (user_id, question_id))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get_user_mistake_bank(user_id: str, exam: Optional[str] = None, topic: Optional[str] = None) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = "SELECT * FROM user_mistake_bank WHERE user_id = ? AND resolved = 0"
+        params = [user_id]
+        if exam:
+            query += " AND exam = ?"
+            params.append(exam)
+        if topic and topic != "All":
+            query += " AND topic = ?"
+            params.append(topic)
+        query += " ORDER BY updated_at DESC"
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+        conn.close()
+        results = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["question_obj"] = json.loads(d.get("question_json", "{}"))
+            except Exception:
+                d["question_obj"] = {}
+            results.append(d)
+        return results
+
+    @staticmethod
+    def record_mock_history(
+        user_id: str,
+        mock_title: str,
+        exam: str,
+        quant_score: int,
+        verbal_score: int,
+        total_score: int,
+        accuracy_pct: float,
+        raw_data: Optional[Dict[str, Any]] = None
+    ) -> str:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        hist_id = str(uuid.uuid4())
+        cursor.execute("""
+            INSERT INTO user_mock_history
+            (id, user_id, mock_title, exam, quant_score, verbal_score, total_score, accuracy_pct, raw_data_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (hist_id, user_id, mock_title, exam, quant_score, verbal_score, total_score, accuracy_pct, json.dumps(raw_data or {})))
+        conn.commit()
+        conn.close()
+        return hist_id
+
+    @staticmethod
+    def get_user_mock_history(user_id: str, exam: Optional[str] = None) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = "SELECT * FROM user_mock_history WHERE user_id = ?"
+        params = [user_id]
+        if exam:
+            query += " AND exam = ?"
+            params.append(exam)
+        query += " ORDER BY created_at ASC"
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def get_exam_analytics_stats(user_id: str, exam: str = "GRE") -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                COUNT(*) as total_attempts,
+                SUM(is_correct) as total_correct
+            FROM user_exam_attempts 
+            WHERE user_id = ? AND exam = ?
+        """, (user_id, exam))
+        summary = dict(cursor.fetchone() or {})
+
+        cursor.execute("""
+            SELECT topic, COUNT(*) as total, SUM(is_correct) as correct
+            FROM user_exam_attempts
+            WHERE user_id = ? AND exam = ?
+            GROUP BY topic
+        """, (user_id, exam))
+        topic_rows = [dict(r) for r in cursor.fetchall()]
+
+        cursor.execute("SELECT COUNT(*) as unresolved FROM user_mistake_bank WHERE user_id = ? AND exam = ? AND resolved = 0", (user_id, exam))
+        row = cursor.fetchone()
+        mistake_cnt = row["unresolved"] if row else 0
+
+        conn.close()
+        return {
+            "total_attempts": summary.get("total_attempts") or 0,
+            "total_correct": summary.get("total_correct") or 0,
+            "topic_stats": topic_rows,
+            "unresolved_mistakes": mistake_cnt or 0
+        }
 
 
 

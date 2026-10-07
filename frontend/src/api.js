@@ -485,6 +485,63 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+  },
+
+  // ADVANCED EXAM PREPARATION ENGINE
+  generatePracticeSet: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/exam/generate-set`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  submitPracticeSet: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/exam/submit-set`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  startMockExam: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/exam/mock/start`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  submitMockExam: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/exam/mock/submit`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  getExamAnalytics: async (exam = 'GRE') => {
+    return authFetch(`${API_BASE}/study-abroad/exam/analytics?exam=${encodeURIComponent(exam)}`);
+  },
+  getMistakeBank: async (exam = 'GRE', topic = null) => {
+    let url = `${API_BASE}/study-abroad/exam/mistake-bank?exam=${encodeURIComponent(exam)}`;
+    if (topic && topic !== 'All') url += `&topic=${encodeURIComponent(topic)}`;
+    return authFetch(url);
+  },
+  resolveMistake: async (questionId) => {
+    return authFetch(`${API_BASE}/study-abroad/exam/resolve-mistake/${encodeURIComponent(questionId)}`, {
+      method: 'POST',
+    });
+  },
+  evaluateWriting: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/exam/evaluate-writing`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  evaluateSpeaking: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/exam/evaluate-speaking`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  getMastersReadinessScore: async () => {
+    return authFetch(`${API_BASE}/study-abroad/exam/readiness-score`);
+  },
+  getStudyAbroadPrepBudget: async () => {
+    return authFetch(`${API_BASE}/study-abroad/exam/prep-budget`);
   }
 };
 

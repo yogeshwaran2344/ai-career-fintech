@@ -1482,6 +1482,221 @@ class UpdateUniversityChecklistRequest(BaseModel):
     checklist_key: str
     completed: bool
 
+# ==================== ADVANCED EXAM PREPARATION ENGINE MODELS ====================
+
+class ExamQuestion(BaseModel):
+    id: str
+    exam: str  # GRE, IELTS, TOEFL, GMAT
+    section: str  # QUANTITATIVE, VERBAL, DATA_INSIGHTS, READING, LISTENING
+    topic: str  # Arithmetic, Algebra, Geometry, Probability, Text Completion, etc.
+    difficulty: str  # Easy, Medium, Hard
+    question: str
+    options: List[str]
+    correct_option: int
+    explanation: str
+    mistake_analysis: Optional[str] = "Carefully identify boundary conditions or misread variable assumptions."
+    concept_tested: Optional[str] = "Core Analytical Logic"
+
+class GeneratePracticeSetRequest(BaseModel):
+    exam: str = "GRE"
+    section: Optional[str] = "QUANTITATIVE"
+    topic: Optional[str] = "All Topics"
+    difficulty: Optional[str] = "All"
+    question_count: int = 10
+    time_limit_minutes: Optional[int] = 15
+
+class PracticeSetResponse(BaseModel):
+    set_id: str
+    exam: str
+    section: str
+    topic: str
+    difficulty: str
+    time_limit_minutes: int
+    questions: List[ExamQuestion]
+
+class SubmitPracticeSetRequest(BaseModel):
+    set_id: str
+    exam: str
+    section: str
+    answers: Dict[str, int]  # question_id -> user_chosen_option_index
+    time_spent_seconds: int = 600
+
+class QuestionResult(BaseModel):
+    question_id: str
+    question: str
+    options: List[str]
+    user_choice: Optional[int]
+    correct_choice: int
+    is_correct: bool
+    explanation: str
+    mistake_analysis: str
+    concept_tested: str
+    difficulty: str
+    topic: str
+
+class TopicPerformance(BaseModel):
+    topic: str
+    total: int
+    correct: int
+    accuracy_pct: float
+    status: str  # STRONG, AVERAGE, WEAK
+
+class PracticeSetEvaluationResponse(BaseModel):
+    set_id: str
+    exam: str
+    total_questions: int
+    correct_count: int
+    accuracy_pct: float
+    average_time_per_question_sec: float
+    results: List[QuestionResult]
+    topic_breakdown: List[TopicPerformance]
+    weak_areas: List[str]
+    ai_feedback: str
+
+class MockExamSectionDef(BaseModel):
+    section_id: str
+    name: str
+    time_minutes: int
+    questions: List[ExamQuestion]
+
+class MockExamBlueprint(BaseModel):
+    mock_id: str
+    title: str
+    exam: str
+    total_time_minutes: int
+    sections: List[MockExamSectionDef]
+
+class StartMockExamRequest(BaseModel):
+    exam: str = "GRE"
+    mock_mode: str = "FULL_TIMED"  # FULL_TIMED, ADAPTIVE, SECTIONAL
+
+class SubmitMockExamRequest(BaseModel):
+    mock_id: str
+    exam: str
+    answers: Dict[str, int]  # question_id -> chosen_option
+    time_spent_seconds: int
+    section_breakdown: Optional[Dict[str, Any]] = None
+
+class MockScoreHistoryItem(BaseModel):
+    id: str
+    mock_title: str
+    date: str
+    quant_score: int
+    verbal_score: int
+    total_score: int
+    accuracy_pct: float
+    estimated_target_gap: int
+
+class MockExamEvaluationResponse(BaseModel):
+    mock_id: str
+    exam: str
+    overall_accuracy_pct: float
+    quant_accuracy_pct: float
+    verbal_accuracy_pct: float
+    quant_scaled_score: int  # 130 - 170 for GRE
+    verbal_scaled_score: int  # 130 - 170 for GRE
+    total_scaled_score: int  # 260 - 340 for GRE (or 0-9 band for IELTS)
+    score_range: str
+    target_score: int
+    target_gap: int
+    difficulty_adaptation_log: List[str]
+    topic_performance: List[TopicPerformance]
+    weakest_topics: List[str]
+    strongest_topics: List[str]
+    ai_strategic_advice: str
+    mistakes_added_to_bank: int
+
+class MistakeBankItem(BaseModel):
+    id: str
+    question_id: str
+    exam: str
+    section: str
+    topic: str
+    difficulty: str
+    question: str
+    options: List[str]
+    correct_option: int
+    user_choice: Optional[int]
+    explanation: str
+    concept_tested: str
+    mistake_count: int
+    resolved: bool
+    last_attempted_at: str
+
+class MistakeBankResponse(BaseModel):
+    total_unresolved: int
+    topic_counts: Dict[str, int]
+    items: List[MistakeBankItem]
+
+class WritingEvaluationRequest(BaseModel):
+    exam: str = "GRE"  # GRE (Issue/Argument) or IELTS (Task 2)
+    prompt_type: str = "ISSUE_TASK"
+    topic_prompt: str
+    essay_text: str
+
+class WritingEvaluationResponse(BaseModel):
+    exam: str
+    estimated_score_or_band: str  # e.g., "4.5 / 6.0" for GRE or "6.5 / 9.0" for IELTS
+    rubric_scores: Dict[str, float]  # Task Response, Coherence, Lexical, Grammar
+    strengths: List[str]
+    areas_for_improvement: List[str]
+    band_8_rewrite_sample: str
+    ai_critique: str
+
+class SpeakingEvaluationRequest(BaseModel):
+    exam: str = "IELTS"
+    cue_card_topic: str
+    transcript_text: str
+    speech_duration_seconds: int = 120
+
+class SpeakingEvaluationResponse(BaseModel):
+    exam: str
+    estimated_band: float  # e.g. 7.0
+    rubric_scores: Dict[str, float]  # Fluency, Pronunciation, Lexical, Grammar
+    detected_fillers_and_pauses: int
+    feedback_notes: List[str]
+    sample_high_band_response: str
+
+class ExamAnalyticsSummary(BaseModel):
+    exam: str
+    total_questions_solved: int
+    overall_accuracy_pct: float
+    total_mocks_completed: int
+    best_mock_score: int
+    best_quant_accuracy_pct: float
+    best_verbal_accuracy_pct: float
+    unresolved_mistakes_count: int
+    mock_history: List[MockScoreHistoryItem]
+    topic_radar: List[TopicPerformance]
+    gamified_badges: List[Dict[str, Any]]
+    score_improvement_delta: int
+    predicted_target_days: int
+
+class MastersOverallReadiness(BaseModel):
+    overall_readiness_pct: int
+    academics_score: int
+    english_test_score: int
+    gre_gmat_score: int
+    projects_experience_score: int
+    research_publications_score: int
+    finance_runway_score: int
+    application_docs_score: int
+    bottlenecks: List[str]
+    priority_action_plan: List[str]
+
+class StudyAbroadPrepBudget(BaseModel):
+    gre_test_fee_inr: float
+    ielts_test_fee_inr: float
+    university_apps_fee_inr: float
+    transcripts_evaluation_fee_inr: float
+    visa_sevis_fee_inr: float
+    flight_travel_prep_inr: float
+    total_prep_budget_inr: float
+    current_saved_inr: float
+    savings_gap_inr: float
+    dedicated_jar_name: str
+
+
 
 
 
