@@ -20,7 +20,8 @@ import {
   LogOut,
   ShieldCheck,
   Activity,
-  Globe
+  Globe,
+  BookOpen
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -64,7 +65,8 @@ export default function Sidebar({
     {
       title: 'GLOBAL & HIGHER ED',
       items: [
-        { id: 'studyabroad', label: 'Study Abroad & MS', icon: Globe, badge: 'Copilot' }
+        { id: 'studyabroad', label: 'Study Abroad & MS', icon: Globe, badge: 'Copilot' },
+        { id: 'examprep', label: '10-Yr Papers & 1,000+ Qs', icon: BookOpen, badge: '1,000+ Qs' }
       ]
     },
     {

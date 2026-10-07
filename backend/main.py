@@ -48,7 +48,8 @@ from models import (
     PracticeSetEvaluationResponse, MockExamBlueprint, StartMockExamRequest, SubmitMockExamRequest,
     MockExamEvaluationResponse, MockScoreHistoryItem, MistakeBankResponse, MistakeBankItem, WritingEvaluationRequest,
     WritingEvaluationResponse, SpeakingEvaluationRequest, SpeakingEvaluationResponse,
-    ExamAnalyticsSummary, MastersOverallReadiness, StudyAbroadPrepBudget, TopicPerformance
+    ExamAnalyticsSummary, MastersOverallReadiness, StudyAbroadPrepBudget, TopicPerformance,
+    PreviousYearPaper, PreviousYearPapersListResponse
 )
 from engines.career_comparator import CareerComparatorEngine
 from engines.career_engine import CareerEngine
@@ -1319,6 +1320,22 @@ def get_masters_readiness_score(current_user: StudentProfile = Depends(get_user_
 @app.get("/api/study-abroad/exam/prep-budget", response_model=StudyAbroadPrepBudget)
 def get_study_abroad_prep_budget(current_user: StudentProfile = Depends(get_user_from_auth)):
     return ExamBankEngine.get_prep_budget()
+
+@app.get("/api/study-abroad/exam/previous-papers", response_model=PreviousYearPapersListResponse)
+def list_previous_year_papers(exam: Optional[str] = None, year: Optional[int] = None, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return ExamBankEngine.get_previous_year_papers(exam=exam, year=year)
+
+@app.get("/api/study-abroad/exam/previous-papers/{paper_id}", response_model=PreviousYearPaper)
+def get_previous_year_paper(paper_id: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    paper = ExamBankEngine.get_previous_paper_by_id(paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="Previous year paper not found.")
+    return paper
+
+@app.get("/api/study-abroad/exam/question-bank-stats")
+def get_question_bank_statistics(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return ExamBankEngine.get_question_bank_statistics()
+
 
 
 # ==================== STATIC FRONTEND SERVING (UNIFIED RENDER DEPLOYMENT) ====================

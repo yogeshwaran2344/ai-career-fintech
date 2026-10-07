@@ -1696,6 +1696,24 @@ class StudyAbroadPrepBudget(BaseModel):
     savings_gap_inr: float
     dedicated_jar_name: str
 
+class PreviousYearPaper(BaseModel):
+    id: str
+    year: int
+    exam: str  # GRE, IELTS, TOEFL, GMAT
+    title: str
+    difficulty: str
+    duration_minutes: int
+    question_count: int
+    sections_summary: List[str]
+    source_attribution: str
+    questions: List[ExamQuestion]
+
+class PreviousYearPapersListResponse(BaseModel):
+    total_papers: int
+    years_covered: List[int]
+    papers: List[PreviousYearPaper]
+
+
 
 
 

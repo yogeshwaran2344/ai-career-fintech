@@ -542,6 +542,18 @@ export const api = {
   },
   getStudyAbroadPrepBudget: async () => {
     return authFetch(`${API_BASE}/study-abroad/exam/prep-budget`);
+  },
+  getPreviousYearPapers: async (exam = null, year = null) => {
+    let url = `${API_BASE}/study-abroad/exam/previous-papers?`;
+    if (exam && exam !== 'ALL') url += `exam=${encodeURIComponent(exam)}&`;
+    if (year) url += `year=${encodeURIComponent(year)}&`;
+    return authFetch(url);
+  },
+  getPreviousYearPaperById: async (paperId) => {
+    return authFetch(`${API_BASE}/study-abroad/exam/previous-papers/${encodeURIComponent(paperId)}`);
+  },
+  getQuestionBankStats: async () => {
+    return authFetch(`${API_BASE}/study-abroad/exam/question-bank-stats`);
   }
 };
 
