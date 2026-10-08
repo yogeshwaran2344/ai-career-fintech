@@ -1845,6 +1845,276 @@ class StudyAbroadEngine:
         return exams
 
     @classmethod
+    def get_university_scholarships(cls, university_name: str, country: str) -> List[Dict[str, Any]]:
+        c_upper = country.upper()
+        if "USA" in c_upper or "UNITED STATES" in c_upper:
+            return [
+                {
+                    "name": "Knight-Hennessy Scholars / Fellowship",
+                    "coverage": "Full Tuition + $35,000/yr Living Stipend",
+                    "eligibility": "Global multidisciplinary master's candidates with leadership index",
+                    "deadline": "October 11",
+                    "apply_url": "https://knight-hennessy.stanford.edu/"
+                },
+                {
+                    "name": "Fulbright-Nehru Master's Fellowship",
+                    "coverage": "100% Tuition + J-1 Visa + Return Airfare + Living Allowance",
+                    "eligibility": "Indian graduates with min 3 years professional work experience",
+                    "deadline": "May 15",
+                    "apply_url": "https://www.usief.org.in/Fulbright-Nehru-Fellowships.aspx"
+                },
+                {
+                    "name": "Graduate Research & Teaching Assistantship (GRA/GTA)",
+                    "coverage": "Full / 50% Tuition Waiver + $2,400 - $3,200/mo Monthly Stipend",
+                    "eligibility": "Departmental merit based on academic profile and research matching",
+                    "deadline": "Rolling with Admission",
+                    "apply_url": "https://grad.gatech.edu/financial-support"
+                }
+            ]
+        elif "GERMANY" in c_upper or "DEU" in c_upper:
+            return [
+                {
+                    "name": "DAAD Study Scholarships for Foreign Graduates",
+                    "coverage": "€934/month Living Allowance + Health Insurance + Travel Subsidy",
+                    "eligibility": "Bachelor's graduates with top 10% academic standing",
+                    "deadline": "November 15",
+                    "apply_url": "https://www.daad.de/en/study-and-research-in-germany/scholarships/"
+                },
+                {
+                    "name": "Deutschlandstipendium National Merit Grant",
+                    "coverage": "€300/month merit stipend (Co-funded by German Federal Govt & Industry)",
+                    "eligibility": "Enrolled students demonstrating exceptional academic and social commitment",
+                    "deadline": "July 15 (University specific)",
+                    "apply_url": "https://www.deutschlandstipendium.de/"
+                },
+                {
+                    "name": "Heinrich Böll Foundation STEM Grant",
+                    "coverage": "€934/month + Individual support for non-EU students",
+                    "eligibility": "Excellent academic record with active engagement in technology ethics",
+                    "deadline": "September 01",
+                    "apply_url": "https://www.boell.de/en/foundation/scholarships"
+                }
+            ]
+        elif "CANADA" in c_upper or "CAN" in c_upper:
+            return [
+                {
+                    "name": "Ontario Graduate Scholarship (OGS)",
+                    "coverage": "CAD $15,000/year Merit Grant",
+                    "eligibility": "Students admitted to participating Ontario universities (Toronto, Waterloo)",
+                    "deadline": "January 15",
+                    "apply_url": "https://osap.gov.on.ca/OSAPPortal/en/A-ZListofAids/PRDR019245.html"
+                },
+                {
+                    "name": "Vanier Canada Graduate Scholarship (CGS)",
+                    "coverage": "CAD $50,000/year for 3 years",
+                    "eligibility": "High research output, academic excellence, leadership skills",
+                    "deadline": "November 01",
+                    "apply_url": "https://vanier.gc.ca/en/home-accueil.html"
+                },
+                {
+                    "name": "University International Master's Award",
+                    "coverage": "CAD $10,000 - $14,000 Automatic Entrance Award",
+                    "eligibility": "Top quartile international STEM applicants",
+                    "deadline": "Automatic with Application",
+                    "apply_url": "https://www.sgs.utoronto.ca/awards/international-awards/"
+                }
+            ]
+        elif "KINGDOM" in c_upper or "UK" in c_upper or "GBR" in c_upper:
+            return [
+                {
+                    "name": "Chevening Scholarship (UK FCDO)",
+                    "coverage": "100% Tuition Fees + Monthly Stipend (£1,400) + Airfare",
+                    "eligibility": "Minimum 2 years work experience and demonstrable leadership potential",
+                    "deadline": "November 07",
+                    "apply_url": "https://www.chevening.org/"
+                },
+                {
+                    "name": "Commonwealth Master's Scholarship",
+                    "coverage": "Full Tuition + Living Allowance + Return Flight Tickets",
+                    "eligibility": "Citizens of Commonwealth nations unable to afford study without aid",
+                    "deadline": "October 17",
+                    "apply_url": "https://cscuk.fcdo.gov.uk/scholarships/commonwealth-masters-scholarships/"
+                },
+                {
+                    "name": "GREAT Scholarships (British Council)",
+                    "coverage": "£10,000 Tuition Fee Waiver",
+                    "eligibility": "Indian passport holders applying for one-year postgraduate courses",
+                    "deadline": "April 30",
+                    "apply_url": "https://study-uk.britishcouncil.org/scholarships-funding/great-scholarships"
+                }
+            ]
+        elif "AUSTRALIA" in c_upper or "AUS" in c_upper:
+            return [
+                {
+                    "name": "Australia Awards Scholarship",
+                    "coverage": "Full Tuition + Return Airfare + Living Allowance (AUD $30,000/yr)",
+                    "eligibility": "Citizens of partner Indo-Pacific nations",
+                    "deadline": "April 30",
+                    "apply_url": "https://www.dfat.gov.au/people-to-people/australia-awards"
+                },
+                {
+                    "name": "Destination Australia Scholarship",
+                    "coverage": "AUD $15,000 per academic year",
+                    "eligibility": "International students enrolling in regional Australian tertiary campuses",
+                    "deadline": "Varies by University",
+                    "apply_url": "https://www.education.gov.au/destination-australia"
+                }
+            ]
+        elif "IRELAND" in c_upper or "IRL" in c_upper:
+            return [
+                {
+                    "name": "Government of Ireland International Education Scholarship",
+                    "coverage": "€10,000 Stipend + 100% Tuition Fee Waiver for 1 Year",
+                    "eligibility": "High-achieving non-EU/EEA students applying to Irish Higher Education",
+                    "deadline": "March 24",
+                    "apply_url": "https://eurireland.ie/2023/02/10/government-of-ireland-international-education-scholarships-2023/"
+                }
+            ]
+        elif "SINGAPORE" in c_upper or "SGP" in c_upper:
+            return [
+                {
+                    "name": "Singapore International Graduate Award (SINGA)",
+                    "coverage": "Full Tuition + SGD $2,700/mo Living Stipend + $1,500 Airfare",
+                    "eligibility": "Graduates with proven passion for AI, Computing, and Biomedical Research",
+                    "deadline": "June 01 / December 01",
+                    "apply_url": "https://www.a-star.edu.sg/Scholarships/for-graduate-studies/singapore-international-graduate-award-singa"
+                }
+            ]
+        elif "NETHERLANDS" in c_upper or "NLD" in c_upper:
+            return [
+                {
+                    "name": "NL Scholarship (Holland Scholarship)",
+                    "coverage": "€5,000 One-off Financial Award in Year 1",
+                    "eligibility": "Non-EEA students accepted into participating Dutch Research Universities",
+                    "deadline": "May 01",
+                    "apply_url": "https://www.studyinnl.org/finances/nl-scholarship"
+                }
+            ]
+        elif "FRANCE" in c_upper or "FRA" in c_upper:
+            return [
+                {
+                    "name": "Eiffel Excellence Scholarship (Campus France)",
+                    "coverage": "€1,181/month Living Allowance + Health Insurance + International Travel",
+                    "eligibility": "Top-tier international candidates nominated directly by French Grande Écoles",
+                    "deadline": "January 10",
+                    "apply_url": "https://www.campusfrance.org/en/eiffel-scholarship-program-of-excellence"
+                }
+            ]
+        elif "SWITZERLAND" in c_upper or "CHE" in c_upper:
+            return [
+                {
+                    "name": "ETH Excellence Scholarship & Opportunity Programme (ESOP)",
+                    "coverage": "CHF 12,000/semester Living Costs + 100% Tuition Waiver",
+                    "eligibility": "Outstanding academic record (Upper 10% of Bachelor's degree cohort)",
+                    "deadline": "December 15",
+                    "apply_url": "https://ethz.ch/students/en/studies/financial/scholarships/excellencescholarship.html"
+                }
+            ]
+        elif "SWEDEN" in c_upper or "SWE" in c_upper:
+            return [
+                {
+                    "name": "Swedish Institute Scholarship for Global Professionals (SISGP)",
+                    "coverage": "100% Tuition + SEK 12,000/month Living Stipend + Travel Grant",
+                    "eligibility": "Minimum 3,000 hours certified work experience + leadership proof",
+                    "deadline": "February 28",
+                    "apply_url": "https://si.se/en/apply/scholarships/swedish-institute-scholarships-for-global-professionals/"
+                }
+            ]
+        elif "ZEALAND" in c_upper or "NZL" in c_upper:
+            return [
+                {
+                    "name": "Manaaki New Zealand Scholarships",
+                    "coverage": "Full Tuition + NZD $531/week Living Allowance + Medical Cover",
+                    "eligibility": "Eligible developing country citizens with commitment to return post-degree",
+                    "deadline": "February 28",
+                    "apply_url": "https://www.mfat.govt.nz/en/aid-and-development/scholarships/"
+                }
+            ]
+        else:
+            return [
+                {
+                    "name": "University International Graduate Merit Award",
+                    "coverage": "25% to 50% Tuition Fee Reduction",
+                    "eligibility": "Applicants meeting university top percentile criteria",
+                    "deadline": "Rolling with admission",
+                    "apply_url": "https://www.educations.com/scholarships"
+                }
+            ]
+
+    @classmethod
+    def get_living_cost_breakdown(cls, country: str, annual_living_inr: float) -> Dict[str, Any]:
+        monthly_inr = round(annual_living_inr / 12.0, 2)
+        return {
+            "annual_living_inr": annual_living_inr,
+            "monthly_living_inr": monthly_inr,
+            "rent_monthly_inr": round(monthly_inr * 0.54, 2),
+            "food_groceries_monthly_inr": round(monthly_inr * 0.22, 2),
+            "transit_utilities_monthly_inr": round(monthly_inr * 0.14, 2),
+            "health_insurance_monthly_inr": round(monthly_inr * 0.10, 2),
+            "country": country
+        }
+
+    @classmethod
+    def get_university_loan_profile(cls, tuition_2y: float, living_2y: float, country: str, uni_name: str) -> Dict[str, Any]:
+        total_outlay = tuition_2y + living_2y + 280000.0  # flight, visa, initial settlement
+        recommended_loan = round(total_outlay * 0.82, 2)  # assuming 18% personal/family seed margin
+        
+        # Monthly EMI calculation for 15 years @ 10.5% interest rate
+        r = (10.5 / 100.0) / 12.0
+        n = 15 * 12
+        if recommended_loan > 0:
+            monthly_emi = round((recommended_loan * r * ((1 + r) ** n)) / (((1 + r) ** n) - 1), 2)
+        else:
+            monthly_emi = 0.0
+
+        return {
+            "total_outlay_2y_inr": total_outlay,
+            "recommended_loan_inr": recommended_loan,
+            "estimated_monthly_emi_inr": monthly_emi,
+            "tenure_years": 15,
+            "interest_rate_pct": 10.5,
+            "collateral_options": [
+                {
+                    "bank": "SBI Global Ed-Vantage",
+                    "rate": "8.65% - 9.15%",
+                    "max_amount_inr": 15000000,
+                    "collateral_required": "Tangible Property / Fixed Deposit (100% security)",
+                    "features": "Lowest public sector rate in India, Tax rebate under Section 80E, 0.50% concession for girls"
+                },
+                {
+                    "bank": "Bank of Baroda Scholar Scheme",
+                    "rate": "8.85% - 9.35%",
+                    "max_amount_inr": 8000000,
+                    "collateral_required": "Immovable Residential/Commercial Property",
+                    "features": "Zero processing fee for top 50 global universities, fast-track branch clearance"
+                }
+            ],
+            "non_collateral_options": [
+                {
+                    "lender": "Prodigy Finance (UK/US)",
+                    "rate": "10.2% - 12.4% USD",
+                    "max_amount_inr": 12000000,
+                    "collateral_required": "NO Collateral & NO Co-signer Required",
+                    "features": "Sanction based entirely on future earning potential; disbursed directly in foreign currency"
+                },
+                {
+                    "lender": "HDFC Credila",
+                    "rate": "10.50% - 11.75%",
+                    "max_amount_inr": 7500000,
+                    "collateral_required": "Unsecured up to ₹75 Lakhs with earning co-applicant",
+                    "features": "Sanction letter delivered before i-20 / CAS; covers 100% tuition, living, and flight"
+                },
+                {
+                    "lender": "Avanse Financial Services",
+                    "rate": "10.75% - 12.25%",
+                    "max_amount_inr": 7000000,
+                    "collateral_required": "Non-collateral with co-signer",
+                    "features": "Flexible moratorium period (course duration + 6 months post graduation)"
+                }
+            ]
+        }
+
+    @classmethod
     def get_shortlisted_universities(
         cls,
         selected_countries: List[str],
@@ -1892,9 +2162,22 @@ class StudyAbroadEngine:
                 continue
 
             # Calculate 2-year total cost and ROI payback
-            total_cost_2y = (item["annual_tuition_inr"] * 2.0) + (item["annual_living_inr"] * 2.0)
+            tuition_2y = item["annual_tuition_inr"] * 2.0
+            living_2y = item["annual_living_inr"] * 2.0
+            total_cost_2y = tuition_2y + living_2y
             post_tax_post_living_savings_inr = item["post_ms_avg_starting_salary_inr"] * 0.45  # ~45% net disposable after taxes & overseas living
             roi_years = round(total_cost_2y / max(post_tax_post_living_savings_inr, 1000000.0), 1)
+
+            # Rich Scholarships, Loan Profiles, Living Breakdowns
+            scholarships_data = cls.get_university_scholarships(item["university_name"], item["country"])
+            living_data = cls.get_living_cost_breakdown(item["country"], item["annual_living_inr"])
+            loan_data = cls.get_university_loan_profile(tuition_2y, living_2y, item["country"], item["university_name"])
+            tuition_data = {
+                "annual_tuition_inr": item["annual_tuition_inr"],
+                "annual_tuition_usd": item["annual_tuition_usd"],
+                "tuition_2y_inr": tuition_2y,
+                "is_tuition_free": item["annual_tuition_inr"] < 100000.0  # e.g. German public universities
+            }
 
             # Retrieve checklist
             uni_id = item["id"]
@@ -1933,6 +2216,10 @@ class StudyAbroadEngine:
                     application_deadline=item["application_deadline"],
                     application_fee_inr=item["application_fee_inr"],
                     is_stem_certified=item["is_stem_certified"],
+                    scholarships=scholarships_data,
+                    living_breakdown=living_data,
+                    loan_options=loan_data,
+                    tuition_breakdown=tuition_data,
                     checklist=default_chk
                 )
             )

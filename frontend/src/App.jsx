@@ -9,7 +9,6 @@ import CareerView from './components/CareerView';
 import FinanceView from './components/FinanceView';
 import InvestmentView from './components/InvestmentView';
 import DecisionCopilotView from './components/DecisionCopilotView';
-import TodayPlanView from './components/TodayPlanView';
 import ProfileView from './components/ProfileView';
 import ApplicationTrackerView from './components/ApplicationTrackerView';
 import FinancialHealthView from './components/FinancialHealthView';
@@ -240,8 +239,7 @@ export default function App() {
   const handleNotificationAction = (item) => {
     markNotifAsRead(item.id);
     setIsNotifDropdownOpen(false);
-    const actionUrl = item.action_url || '';
-    if (actionUrl.includes('daily-plan') || actionUrl.includes('daily')) setCurrentTab('today');
+    if (actionUrl.includes('daily-plan') || actionUrl.includes('daily')) setCurrentTab('dashboard');
     else if (actionUrl.includes('skills') || actionUrl.includes('skill')) setCurrentTab('skillgraph');
     else if (actionUrl.includes('jobs') || actionUrl.includes('job')) setCurrentTab('jobmarket');
     else if (actionUrl.includes('resume')) setCurrentTab('resume');
@@ -711,16 +709,6 @@ export default function App() {
             <DecisionCopilotView
               profile={profile}
               readiness={readiness}
-            />
-          )}
-
-          {currentTab === 'today' && (
-            <TodayPlanView
-              profile={profile}
-              dailyPlan={dailyPlan}
-              onToggleTask={handleToggleTask}
-              onSkillBoost={handleSkillBoost}
-              onRefresh={loadEngineData}
             />
           )}
 

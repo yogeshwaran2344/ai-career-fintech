@@ -8,7 +8,6 @@ import {
   Compass, 
   Wallet, 
   Bot, 
-  CalendarCheck, 
   UserCircle, 
   Sparkles, 
   RotateCcw,
@@ -73,12 +72,6 @@ export default function Sidebar({
       title: 'SAFETY & RESILIENCE',
       items: [
         { id: 'safety', label: '5-Gate Safety Center', icon: ShieldCheck, badge: '5-Gate' }
-      ]
-    },
-    {
-      title: 'PROGRESS',
-      items: [
-        { id: 'today', label: "What Next? (AI Decision Engine)", icon: CalendarCheck, badge: 'AI Brain' }
       ]
     },
     {

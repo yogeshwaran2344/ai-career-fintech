@@ -1416,6 +1416,10 @@ class ShortlistedUniversity(BaseModel):
     application_deadline: str
     application_fee_inr: float
     is_stem_certified: bool
+    scholarships: Optional[List[Dict[str, Any]]] = None
+    loan_options: Optional[Dict[str, Any]] = None
+    living_breakdown: Optional[Dict[str, Any]] = None
+    tuition_breakdown: Optional[Dict[str, Any]] = None
     checklist: Dict[str, bool] = Field(default_factory=lambda: {
         "account_created": False,
         "program_selected": False,

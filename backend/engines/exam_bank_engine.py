@@ -1078,8 +1078,9 @@ class ExamBankEngine:
     def _build_10_year_papers_catalog(cls) -> List[PreviousYearPaper]:
         papers: List[PreviousYearPaper] = []
 
-        # Descriptions & metadata for 10 years (2025 back to 2016)
+        # Comprehensive 10-year question papers archive spanning 2016 through 2025 for all major exams
         year_metadata = [
+            # ==================== GRE (2016 - 2025) ====================
             (2025, "GRE", "2025 GRE General Official-Style Benchmark Paper", "Realistic Exam", 35, 12, ["Quantitative Reasoning", "Verbal Reasoning", "Analytical Logic"]),
             (2024, "GRE", "2024 GRE Advanced Quantitative & Verbal Past Paper", "Hard", 35, 12, ["Algebra & Quadratics", "Permutations & Combinations", "Text Completion"]),
             (2023, "GRE", "2023 GRE General Past Simulation Set", "Medium", 30, 10, ["Geometry", "Data Analysis", "Sentence Equivalence"]),
@@ -1090,10 +1091,42 @@ class ExamBankEngine:
             (2018, "GRE", "2018 GRE High-Frequency Past Questions Paper", "Hard", 35, 10, ["Permutations", "Quadratic Extrema", "Reading Comprehension"]),
             (2017, "GRE", "2017 GRE General Analytical Practice Paper", "Medium", 30, 10, ["Work Rates", "Normal Curve Distribution", "Text Completion"]),
             (2016, "GRE", "2016 GRE General Benchmark Past Paper", "Medium", 30, 10, ["Inscribed Figures", "Algebraic Systems", "Verbal Vocab"]),
+
+            # ==================== IELTS ACADEMIC (2016 - 2025) ====================
             (2025, "IELTS", "2025 IELTS Academic Reading & Writing Past Paper", "Realistic Exam", 40, 10, ["Reading Comprehension", "Inference Analysis", "Academic Vocabulary"]),
             (2024, "IELTS", "2024 IELTS Academic Official Practice Paper", "Medium", 40, 10, ["Passage Reading", "Logical Deduction", "Task Response"]),
-            (2023, "TOEFL", "2023 TOEFL iBT Reading & Listening Past Paper", "Medium", 35, 10, ["Inference Passages", "Academic Lecture Context", "Vocabulary in Context"]),
-            (2024, "GMAT", "2024 GMAT Focus Data Insights & Quant Paper", "Hard", 45, 10, ["Data Sufficiency", "Multi-Source Reasoning", "Prime Factorization"])
+            (2023, "IELTS", "2023 IELTS Academic Standard Past Simulation", "Medium", 40, 10, ["Headings Matching", "True/False/Not Given", "Academic Collocations"]),
+            (2022, "IELTS", "2022 IELTS Academic Reading & Lexical Resource Paper", "Hard", 40, 10, ["Scientific Passage Analysis", "Coherence & Cohesion", "Sentence Completion"]),
+            (2021, "IELTS", "2021 IELTS Academic Full Diagnostic Paper", "Realistic Exam", 40, 10, ["Diagram Labelling", "Summary Completion", "Academic Register"]),
+            (2020, "IELTS", "2020 IELTS Academic Benchmark Examination Set", "Medium", 40, 10, ["Skimming & Scanning", "Author Perspective", "Grammatical Range"]),
+            (2019, "IELTS", "2019 IELTS Academic Intensive Reading Paper", "Hard", 40, 10, ["Multiple Choice Inference", "Academic Synthesis", "Lexical Accuracy"]),
+            (2018, "IELTS", "2018 IELTS Academic Global Past Questions Paper", "Medium", 40, 10, ["Paragraph Matching", "Fact vs Opinion", "Formal Style"]),
+            (2017, "IELTS", "2017 IELTS Academic Past Test Benchmark", "Medium", 40, 10, ["Text Structure", "Contextual Vocabulary", "Argument Analysis"]),
+            (2016, "IELTS", "2016 IELTS Academic Foundation Benchmark Paper", "Medium", 40, 10, ["Reading Speed Drills", "Identifying Information", "Academic Phrasing"]),
+
+            # ==================== TOEFL iBT (2016 - 2025) ====================
+            (2025, "TOEFL", "2025 TOEFL iBT Integrated Reading & Listening Paper", "Realistic Exam", 36, 10, ["Inference Passages", "Academic Lecture Context", "Vocabulary in Context"]),
+            (2024, "TOEFL", "2024 TOEFL iBT Advanced Academic Reading Paper", "Hard", 36, 10, ["Rhetorical Purpose", "Sentence Insertion", "Detail Questions"]),
+            (2023, "TOEFL", "2023 TOEFL iBT Reading & Listening Past Paper", "Medium", 35, 10, ["Main Idea Synthesis", "Negative Factual Information", "Academic Concepts"]),
+            (2022, "TOEFL", "2022 TOEFL iBT Core Academic Benchmark Set", "Medium", 35, 10, ["Reference Words", "Paraphrasing Tasks", "University Contexts"]),
+            (2021, "TOEFL", "2021 TOEFL iBT Reading & Integrated Tasks Paper", "Realistic Exam", 35, 10, ["Science & History Readings", "Pronoun Reference", "Logical Flow"]),
+            (2020, "TOEFL", "2020 TOEFL iBT Home Edition Simulation Paper", "Medium", 35, 10, ["Biological Systems Passage", "Author Attitude", "Academic Terminology"]),
+            (2019, "TOEFL", "2019 TOEFL iBT New Format Diagnostic Paper", "Hard", 35, 10, ["Sentence Simplification", "Prose Summary", "Classification"]),
+            (2018, "TOEFL", "2018 TOEFL iBT High-Frequency Past Paper", "Medium", 35, 10, ["Geology & Arts Texts", "Context Clues", "Factual Information"]),
+            (2017, "TOEFL", "2017 TOEFL iBT Academic Standard Paper", "Medium", 35, 10, ["Anthropology Contexts", "Purpose Analysis", "Grammar Mechanics"]),
+            (2016, "TOEFL", "2016 TOEFL iBT Benchmark Past Exam Paper", "Medium", 35, 10, ["Environmental Science Passages", "Inference Strategies", "Academic Register"]),
+
+            # ==================== GMAT FOCUS & CLASSIC (2016 - 2025) ====================
+            (2025, "GMAT", "2025 GMAT Focus Edition Data Insights & Quant Paper", "Realistic Exam", 45, 10, ["Data Sufficiency", "Multi-Source Reasoning", "Table Analysis"]),
+            (2024, "GMAT", "2024 GMAT Focus Data Insights & Quant Paper", "Hard", 45, 10, ["Data Sufficiency", "Prime Factorization", "Critical Reasoning"]),
+            (2023, "GMAT", "2023 GMAT Quantitative & Integrated Reasoning Paper", "Hard", 45, 10, ["Combinatorics", "Two-Part Analysis", "Graphics Interpretation"]),
+            (2022, "GMAT", "2022 GMAT Classic Quantitative Benchmark Paper", "Medium", 45, 10, ["Algebraic Inequalities", "Data Sufficiency", "Word Problems"]),
+            (2021, "GMAT", "2021 GMAT Advanced Problem Solving Paper", "Hard", 45, 10, ["Number Properties", "Probability Trees", "Data Analysis"]),
+            (2020, "GMAT", "2020 GMAT Online Core Simulation Paper", "Medium", 45, 10, ["Work & Rate Problems", "Overlapping Sets", "Quantitative Comparison"]),
+            (2019, "GMAT", "2019 GMAT Quantitative Reasoning Benchmark", "Hard", 45, 10, ["Quadratic Systems", "Coordinate Geometry", "Data Sufficiency"]),
+            (2018, "GMAT", "2018 GMAT High-Frequency Past Quantitative Paper", "Medium", 45, 10, ["Ratio & Proportion", "Statistics & Variance", "Logical Deduction"]),
+            (2017, "GMAT", "2017 GMAT General Diagnostic Past Paper", "Medium", 45, 10, ["Percentages & Interest", "Geometry Volumes", "Critical Reasoning"]),
+            (2016, "GMAT", "2016 GMAT Foundation Benchmark Past Paper", "Medium", 45, 10, ["Exponents & Roots", "Divisibility Rules", "Data Sufficiency"])
         ]
 
         for y, ex, title, diff, dur, count, secs in year_metadata:
