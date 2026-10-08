@@ -645,6 +645,7 @@ export default function App() {
             <SkillGraphView
               profile={profile}
               readiness={readiness}
+              onRefresh={loadEngineData}
             />
           )}
 
@@ -657,6 +658,7 @@ export default function App() {
           {currentTab === 'resume' && (
             <ResumeAnalyzerView
               profile={profile}
+              onRefresh={loadEngineData}
             />
           )}
 
@@ -718,6 +720,7 @@ export default function App() {
               dailyPlan={dailyPlan}
               onToggleTask={handleToggleTask}
               onSkillBoost={handleSkillBoost}
+              onRefresh={loadEngineData}
             />
           )}
 

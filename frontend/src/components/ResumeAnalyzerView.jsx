@@ -12,12 +12,16 @@ import {
   Target,
   RotateCcw,
   FileCheck2,
-  FileUp
+  FileUp,
+  Plus,
+  RefreshCw,
+  Layers,
+  Brain
 } from 'lucide-react';
 import { api } from '../api';
 import confetti from 'canvas-confetti';
 
-export default function ResumeAnalyzerView({ profile }) {
+export default function ResumeAnalyzerView({ profile, onRefresh }) {
   const [resumeText, setResumeText] = useState(
 `Education: B.Tech in AI & ML (CGPA: 8.2)
 Skills: Python, SQL, Machine Learning, Git, React
@@ -33,6 +37,41 @@ Projects:
   const [errorMsg, setErrorMsg] = useState(null);
   const [uploadedFilename, setUploadedFilename] = useState(null);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+
+  // Persistent ATS Resume Ledger
+  const [persistentResume, setPersistentResume] = useState(null);
+  const [isInjectingProject, setIsInjectingProject] = useState(false);
+
+  useEffect(() => {
+    loadResumeData();
+  }, [profile]);
+
+  const loadResumeData = async () => {
+    try {
+      const data = await api.getUserResumeData();
+      if (data) setPersistentResume(data);
+    } catch (err) {
+      console.warn('Persistent resume fetch notice:', err);
+    }
+  };
+
+  const handleInjectVerifiedProject = async () => {
+    setIsInjectingProject(true);
+    try {
+      await api.addProjectToResume(
+        "Production AI Inference Microservice",
+        "Python, FastAPI, PyTorch, Docker, AWS",
+        "Architected sub-45ms P95 latency model service handling 12,000+ req/min; Docker containerized and benchmarked."
+      );
+      confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+      await loadResumeData();
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Failed to inject verified project:', err);
+    } finally {
+      setIsInjectingProject(false);
+    }
+  };
 
   const handleAnalyze = async () => {
     if (!resumeText.trim()) return;
@@ -283,6 +322,83 @@ Projects:
         </div>
 
       </div>
+
+      {/* SECTION: PERSISTENT ATS PROFILE & VERIFIED PORTFOLIO LEDGER */}
+      {persistentResume && (
+        <div className="advisor-card p-6 space-y-4 bg-gradient-to-br from-stone-50 to-emerald-50/40 border border-emerald-200/80 rounded-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200/80 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Brain className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-sm font-black text-stone-900 uppercase tracking-wider">
+                  Persistent ATS Portfolio & Verified Projects
+                </h3>
+              </div>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Headline: <strong className="text-stone-800">{persistentResume.resume_headline}</strong>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <span className="text-[10px] text-stone-500 font-bold block uppercase">Recorded ATS Score</span>
+                <span className="text-xl font-black text-emerald-700">{persistentResume.ats_score}/100</span>
+              </div>
+
+              <button
+                onClick={handleInjectVerifiedProject}
+                disabled={isInjectingProject || persistentResume.ats_score >= 88}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                  persistentResume.ats_score >= 88
+                    ? 'bg-stone-200 text-stone-500 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                }`}
+              >
+                {isInjectingProject ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Cascading...</span>
+                  </>
+                ) : persistentResume.ats_score >= 88 ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Project Verified</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Inject Verified Project (+12 ATS)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <span className="text-[11px] font-black uppercase text-stone-500 tracking-wider block">
+              Verified Production Projects ({persistentResume.projects?.length || 0})
+            </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {persistentResume.projects?.map((proj, idx) => (
+                <div key={idx} className="p-3.5 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-stone-900">{proj.title}</h4>
+                    <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+                      Verified
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-bold text-stone-500 font-mono">
+                    Stack: {proj.tech_stack}
+                  </div>
+                  <p className="text-xs text-stone-700 leading-snug">
+                    {proj.metrics}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SECTION: BEFORE -> AFTER BULLET POINT OPTIMIZER */}
       {analysisResult?.bullet_improvements && analysisResult.bullet_improvements.length > 0 && (

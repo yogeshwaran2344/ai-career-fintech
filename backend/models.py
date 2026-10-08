@@ -1102,7 +1102,7 @@ class MarketOverviewResponse(BaseModel):
     regulatory_notice: str
 
 class BrokerConnectRequest(BaseModel):
-    broker_name: str = "Zerodha"  # "Zerodha", "Upstox", "Angel One", "Groww"
+    broker_name: str = "Groww"  # "Groww", "Dhan", "Zerodha", "Upstox", "Angel One", "Kotak Neo", "ICICI Direct", "HDFC Sky"
     account_id: str
     auth_code_or_token: Optional[str] = None
     is_sandbox: bool = False
@@ -1152,7 +1152,7 @@ class PlaceBrokerOrderRequest(BaseModel):
     product: str = "CNC"  # "CNC" (Cash & Carry Delivery), "MIS" (Intraday)
     quantity: int
     price: Optional[float] = None
-    execution_mode: Optional[str] = "PAPER"
+    execution_mode: Optional[str] = "LIVE"
 
 class BrokerOrderResult(BaseModel):
     order_id: str
@@ -1167,7 +1167,7 @@ class BrokerOrderResult(BaseModel):
     price: float
     estimated_charges: float = 0.0
     status: str  # "EXECUTED", "REJECTED", "SUBMITTED"
-    execution_mode: str = "LIVE"  # "LIVE" or "PAPER"
+    execution_mode: str = "LIVE"  # "LIVE" execution
     rejection_reason: Optional[str] = None
     message: str
     timestamp: str
@@ -1724,6 +1724,111 @@ class PreviousYearPapersListResponse(BaseModel):
     total_papers: int
     years_covered: List[int]
     papers: List[PreviousYearPaper]
+
+# ==================== LEARNING DECAY & STUDENT INTELLIGENCE ====================
+
+class LearningDecayConcept(BaseModel):
+    concept_name: str
+    category: str
+    stability_days: float
+    repetition_count: int
+    last_reviewed_at: str
+    retention_pct: float
+    decay_status: str  # CRITICAL, WARNING, OPTIMAL, MASTERED
+    days_since_review: float
+    recommended_action: str
+
+class LearningDecayStatusResponse(BaseModel):
+    overall_retention_score: float
+    critical_concepts_count: int
+    warning_concepts_count: int
+    mastered_concepts_count: int
+    urgent_review_queue: List[LearningDecayConcept]
+    all_concepts: List[LearningDecayConcept]
+
+class ConceptReviewRequest(BaseModel):
+    concept_name: str
+    performance_score: float = 1.0  # 0.0 to 1.0 (1.0 = remembered clearly)
+
+class NextBestActionItem(BaseModel):
+    id: str
+    priority: int  # 1 to 5 (1 = highest urgency)
+    priority_level: str  # CRITICAL, HIGH, OPPORTUNITY, PREPARATION, DISCIPLINE
+    category: str  # CAREER, RETENTION, RESUME, JOBS, FINANCE, STUDY_ABROAD
+    title: str
+    description: str
+    why_now: str
+    impact: str
+    action_type: str  # REVIEW_CONCEPT, UPDATE_RESUME, APPLY_JOB, PREP_EXAM, ALLOCATE_SURPLUS, COMPLETE_PROJECT
+    target_payload: Dict[str, Any] = Field(default_factory=dict)
+    cta_label: str
+    completed: bool = False
+
+class StudentIntelligenceResponse(BaseModel):
+    user_id: str
+    overall_health_score: int
+    summary_headline: str
+    summary_analysis: str
+    pillars: Dict[str, Any]
+    next_best_actions: List[NextBestActionItem]
+    active_cascade_log: List[str]
+
+class CompleteActionRequest(BaseModel):
+    action_id: str
+    action_type: str
+    metadata: Optional[Dict[str, Any]] = None
+
+class ResumeProjectItem(BaseModel):
+    title: str
+    tech_stack: str
+    metrics: str
+    verified: bool = True
+
+class UserResumeData(BaseModel):
+    user_id: str
+    ats_score: int
+    resume_headline: str
+    keywords: List[str]
+    projects: List[Dict[str, Any]]
+    suggestions: List[str]
+
+class AddProjectToResumeRequest(BaseModel):
+    title: str
+    tech_stack: str
+    metrics: str
+
+# ==================== AI STOCK ADVISOR & RECOMMENDATIONS ====================
+
+class StockRecommendationItem(BaseModel):
+    symbol: str
+    company_name: str
+    sector: str
+    market_cap_category: str  # Large Cap, Mid Cap, Small Cap
+    current_price: float
+    target_price: float
+    potential_upside_pct: float
+    recommendation: str  # STRONG BUY, BUY, ACCUMULATE, HOLD
+    confidence_score: int  # e.g. 92
+    risk_level: str  # LOW RISK, MODERATE RISK, HIGH GROWTH
+    why_invest: str
+    fundamental_catalysts: List[str]
+    student_suitability: str
+    key_metrics: Dict[str, Any]
+    suggested_allocation_pct: int
+    is_top_pick: bool = False
+
+class StockAdvisorResponse(BaseModel):
+    total_companies_tracked: int
+    as_of_time: str
+    market_sentiment: str
+    top_student_picks: List[StockRecommendationItem]
+    high_growth_picks: List[StockRecommendationItem]
+    defensive_picks: List[StockRecommendationItem]
+    all_recommendations: List[StockRecommendationItem]
+    investment_clearance_status: str
+    advisor_summary: str
+
+
 
 
 

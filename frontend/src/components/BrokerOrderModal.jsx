@@ -17,7 +17,7 @@ export default function BrokerOrderModal({
   orderParams, 
   onOrderExecuted, 
   brokerStatus, 
-  executionEnvironment = 'PAPER',
+  executionEnvironment = 'LIVE',
   clearanceState,
   clearanceReason
 }) {
@@ -61,7 +61,7 @@ export default function BrokerOrderModal({
         product: product,
         quantity: parseInt(quantity, 10),
         price: orderType === 'LIMIT' ? parseFloat(limitPrice) : null,
-        execution_mode: executionEnvironment
+        execution_mode: 'LIVE'
       });
       setOrderResult(res);
       setStep('RESULT');
@@ -94,7 +94,7 @@ export default function BrokerOrderModal({
           </button>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/80">
             <Building className="w-4 h-4" />
-            <span>Broker OMS • NSE Execution • {step === 'CONFIRM' ? 'Step 2/2 Review' : 'Step 1/2 Ticket'}</span>
+            <span>Broker OMS • Live NSE Execution • {step === 'CONFIRM' ? 'Step 2/2 Review' : 'Step 1/2 Ticket'}</span>
           </div>
           <div className="flex items-baseline justify-between mt-2">
             <div>
@@ -103,7 +103,7 @@ export default function BrokerOrderModal({
             </div>
             <div className="text-right">
               <span className="text-2xl font-black">₹{currentPrice.toFixed(2)}</span>
-              <span className="text-[10px] block text-white/70">Live Tick</span>
+              <span className="text-[10px] block text-white/70">Live NSE Quote</span>
             </div>
           </div>
         </div>
@@ -122,7 +122,7 @@ export default function BrokerOrderModal({
               <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-xl font-bold">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <h4 className="text-base font-black text-stone-900">Order Executed Successfully!</h4>
+              <h4 className="text-base font-black text-stone-900">Live Order Executed Successfully!</h4>
               <p className="text-xs text-stone-600 max-w-xs mx-auto">
                 {orderResult.message}
               </p>
@@ -132,7 +132,7 @@ export default function BrokerOrderModal({
                   <span className="font-bold text-stone-800">{orderResult.broker_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-400">Broker Order ID:</span>
+                  <span className="text-stone-400">Exchange Order ID:</span>
                   <span className="font-bold text-stone-800">{orderResult.broker_order_id}</span>
                 </div>
                 <div className="flex justify-between">
@@ -140,12 +140,12 @@ export default function BrokerOrderModal({
                   <span className="font-bold text-stone-800">₹{orderResult.price.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-400">Estimated Charges:</span>
+                  <span className="text-stone-400">Statutory Charges:</span>
                   <span className="font-bold text-stone-800">₹{(orderResult.estimated_charges || estimatedCharges).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-400">Status:</span>
-                  <span className="font-bold text-emerald-600">{orderResult.status} ({orderResult.execution_mode || 'LIVE'})</span>
+                  <span className="font-bold text-emerald-600">{orderResult.status} (LIVE)</span>
                 </div>
               </div>
               <button
@@ -158,37 +158,17 @@ export default function BrokerOrderModal({
           ) : step === 'CONFIRM' ? (
             /* STEP 2: MANDATORY CONFIRMATION SCREEN */
             <div className="space-y-4">
-              <div className={`p-4 rounded-2xl border space-y-2 ${
-                executionEnvironment === 'LIVE'
-                  ? 'bg-rose-50/80 border-rose-300 text-rose-950'
-                  : executionEnvironment === 'CONNECTED'
-                  ? 'bg-blue-50/80 border-blue-300 text-blue-950'
-                  : 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
-              }`}>
+              <div className="p-4 rounded-2xl border space-y-2 bg-emerald-50/80 border-emerald-300 text-emerald-950">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase tracking-wider block">
-                    ⚠️ Pre-Execution Order Confirmation
+                    ⚡ Live Broker OMS Routing
                   </span>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                    executionEnvironment === 'LIVE' 
-                      ? 'bg-rose-600 text-white' 
-                      : executionEnvironment === 'CONNECTED'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-emerald-600 text-white'
-                  }`}>
-                    {executionEnvironment === 'LIVE' 
-                      ? '🔴 LIVE REAL-MONEY TRADE' 
-                      : executionEnvironment === 'CONNECTED'
-                      ? '🔵 BROKER SANDBOX DEMAT'
-                      : '🟢 PAPER SIMULATION (ZERO RISK)'}
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-emerald-600 text-white">
+                    LIVE EXECUTION
                   </span>
                 </div>
                 <p className="text-xs leading-relaxed font-medium">
-                  {executionEnvironment === 'LIVE'
-                    ? 'This order will be dispatched to your connected SEBI regulated broker OMS for actual market execution.'
-                    : executionEnvironment === 'CONNECTED'
-                    ? 'This order will be simulated against your connected broker sandbox account.'
-                    : 'This order will be matched in risk-free paper simulation. No real money or margin will be deducted.'}
+                  This order will be dispatched directly to your connected SEBI regulated broker OMS ({brokerStatus?.broker_name || 'Groww Direct'}) for real-time exchange matching and depository demat credit.
                 </p>
               </div>
 

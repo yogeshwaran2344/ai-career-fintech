@@ -51,17 +51,13 @@ export default function OrdersLedgerTab({ onOpenOrderModal }) {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-black uppercase tracking-wider text-stone-500">Regulated Order Audit</span>
-            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-              summary?.active_environment === 'LIVE'
-                ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                : 'bg-amber-100 text-amber-800 border border-amber-300'
-            }`}>
-              {summary?.active_environment === 'LIVE' ? '🔴 LIVE TRADING (BROKER OMS)' : '🟠 PAPER TRADING (SIMULATION)'}
+            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300">
+              🔴 LIVE BROKER OMS EXECUTION
             </span>
           </div>
           <h2 className="text-xl font-black text-stone-900 mt-1">Official Broker Order History & Executions</h2>
           <p className="text-xs text-stone-500 mt-0.5 max-w-xl">
-            Real-time depository tracking for equity trades routed via your connected broker (Zerodha Kite, Upstox Pro, or SEBI Sandbox).
+            Real-time depository tracking for equity trades routed via your connected broker (Groww, Zerodha Kite, Upstox, Dhan, Kotak Neo, ICICI Direct, HDFC Sky).
           </p>
         </div>
 

@@ -13,38 +13,65 @@ import { api } from '../api';
 
 const BROKER_OPTIONS = [
   {
+    id: 'Groww',
+    name: 'Groww',
+    tagline: 'Direct Mutual Funds & Equity Trading (Nextbillion Technology - SEBI INZ000301838)',
+    logo: '🌱',
+    color: 'border-emerald-500/40 bg-emerald-50/20'
+  },
+  {
     id: 'Zerodha',
     name: 'Zerodha Kite',
-    tagline: "India's largest discount retail broker (Kite Connect v3)",
+    tagline: "India's pioneer discount retail broker (Kite Connect v3 - SEBI INZ000031633)",
     logo: '🔴',
     color: 'border-orange-500/40 bg-orange-50/20'
   },
   {
     id: 'Upstox',
     name: 'Upstox Pro',
-    tagline: 'High-speed trading APIs & institutional infrastructure',
+    tagline: 'High-speed algorithmic trading APIs & low latency OMS (SEBI INZ000185137)',
     logo: '🟣',
     color: 'border-purple-500/40 bg-purple-50/20'
   },
   {
     id: 'Angel One',
     name: 'Angel One (SmartAPI)',
-    tagline: 'SmartAPI algorithmic execution and depository clearing',
+    tagline: 'Rule-based algorithmic execution & depository clearing (SEBI INZ000161534)',
     logo: '🔵',
     color: 'border-blue-500/40 bg-blue-50/20'
   },
   {
-    id: 'Sandbox',
-    name: 'SEBI Regulatory Sandbox Demat',
-    tagline: 'Paper trading & demo execution with live NSE real-time ticks (Zero risk)',
+    id: 'Dhan',
+    name: 'Dhan (DhanHQ)',
+    tagline: 'Lightning fast trading APIs & TradingView webhook integration (SEBI INZ000006031)',
     logo: '⚡',
-    color: 'border-emerald-500/40 bg-emerald-50/20',
-    isSandbox: true
+    color: 'border-amber-500/40 bg-amber-50/20'
+  },
+  {
+    id: 'Kotak Neo',
+    name: 'Kotak Neo',
+    tagline: 'Zero-brokerage youth plan & high performance order routing (SEBI INZ000200137)',
+    logo: '🔴',
+    color: 'border-red-500/40 bg-red-50/20'
+  },
+  {
+    id: 'ICICI Direct',
+    name: 'ICICI Direct Prime',
+    tagline: 'Instant e-ATM cash payouts & 3-in-1 integrated banking (SEBI INZ000183631)',
+    logo: '🟠',
+    color: 'border-orange-500/40 bg-orange-50/20'
+  },
+  {
+    id: 'HDFC Sky',
+    name: 'HDFC Sky',
+    tagline: 'Institutional grade clearing & all-in-one equity depository (SEBI INZ000186937)',
+    logo: '🔷',
+    color: 'border-sky-500/40 bg-sky-50/20'
   }
 ];
 
 export default function BrokerConnectModal({ isOpen, onClose, brokerStatus, onConnectionChanged }) {
-  const [selectedBroker, setSelectedBroker] = useState('Zerodha');
+  const [selectedBroker, setSelectedBroker] = useState('Groww');
   const [accountId, setAccountId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,16 +81,14 @@ export default function BrokerConnectModal({ isOpen, onClose, brokerStatus, onCo
   const handleConnect = async (e) => {
     e.preventDefault();
     setError('');
-    const chosenBroker = BROKER_OPTIONS.find(b => b.id === selectedBroker);
-    const finalAccountId = accountId.trim() || (chosenBroker?.isSandbox ? 'SANDBOX-DEMO' : 'CLIENT-ZR9421');
+    const finalAccountId = accountId.trim() || `CLIENT-${selectedBroker.toUpperCase().slice(0, 3)}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     try {
       setLoading(true);
       await api.connectBroker(
         selectedBroker,
         finalAccountId,
-        null,
-        Boolean(chosenBroker?.isSandbox)
+        null
       );
       if (onConnectionChanged) await onConnectionChanged();
       onClose();
@@ -167,7 +192,7 @@ export default function BrokerConnectModal({ isOpen, onClose, brokerStatus, onCo
               </label>
               <input
                 type="text"
-                placeholder={selectedBroker === 'Sandbox' ? 'SANDBOX-DEMO (or custom ID)' : 'e.g. ZR9421 or UP5520'}
+                placeholder="e.g. GRW-9042, ZR9421, or DHAN-4412"
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
                 className="w-full text-xs font-bold p-3 bg-stone-100 border border-stone-200 rounded-xl focus:outline-emerald-500 text-stone-800"

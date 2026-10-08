@@ -334,16 +334,19 @@ export const api = {
   getBrokerStatus: async () => {
     return authFetch(`${API_BASE}/broker/status`);
   },
-  connectBroker: async (brokerName, accountId, authToken = null, isSandbox = false) => {
+  connectBroker: async (brokerName, accountId, authToken = null) => {
     return authFetch(`${API_BASE}/broker/connect`, {
       method: 'POST',
       body: JSON.stringify({
         broker_name: brokerName,
         account_id: accountId,
         auth_code_or_token: authToken,
-        is_sandbox: isSandbox
+        is_sandbox: false
       }),
     });
+  },
+  getAiStockRecommendations: async () => {
+    return authFetch(`${API_BASE}/wealth/ai-stock-recommendations`);
   },
   disconnectBroker: async () => {
     return authFetch(`${API_BASE}/broker/disconnect`, { method: 'POST' });
@@ -554,7 +557,37 @@ export const api = {
   },
   getQuestionBankStats: async () => {
     return authFetch(`${API_BASE}/study-abroad/exam/question-bank-stats`);
+  },
+
+  // Student Intelligence & Learning Decay
+  getDigitalTwin: async () => {
+    return authFetch(`${API_BASE}/student-intelligence/digital-twin`);
+  },
+  completeStudentAction: async (actionId, actionType, metadata = {}) => {
+    return authFetch(`${API_BASE}/student-intelligence/complete-action`, {
+      method: 'POST',
+      body: JSON.stringify({ action_id: actionId, action_type: actionType, metadata }),
+    });
+  },
+  getLearningDecayStatus: async () => {
+    return authFetch(`${API_BASE}/learning-decay/status`);
+  },
+  reviewDecayConcept: async (conceptName, performanceScore = 1.0) => {
+    return authFetch(`${API_BASE}/learning-decay/review-concept`, {
+      method: 'POST',
+      body: JSON.stringify({ concept_name: conceptName, performance_score: performanceScore }),
+    });
+  },
+  getUserResumeData: async () => {
+    return authFetch(`${API_BASE}/resume/data`);
+  },
+  addProjectToResume: async (title, techStack, metrics) => {
+    return authFetch(`${API_BASE}/resume/add-project`, {
+      method: 'POST',
+      body: JSON.stringify({ title, tech_stack: techStack, metrics }),
+    });
   }
 };
+
 
 

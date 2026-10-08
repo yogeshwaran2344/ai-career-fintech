@@ -17,8 +17,12 @@ import {
   Database,
   Box,
   Flame,
-  Check
+  Check,
+  Zap,
+  Brain,
+  RefreshCw
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { api } from '../api';
 
 const CURATED_RESOURCES = {
@@ -68,20 +72,39 @@ const CURATED_RESOURCES = {
   ]
 };
 
-export default function SkillGraphView({ profile, readiness }) {
+export default function SkillGraphView({ profile, readiness, onRefresh }) {
   const [graphData, setGraphData] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [decayMap, setDecayMap] = useState({});
+  const [isBoosting, setIsBoosting] = useState(false);
 
   useEffect(() => {
-    fetchGraph();
+    fetchGraphAndDecay();
   }, [profile]);
 
-  const fetchGraph = async () => {
+  const fetchGraphAndDecay = async () => {
     try {
-      const data = await api.getSkillGraph();
+      const [data, decayRes] = await Promise.all([
+        api.getSkillGraph().catch(() => null),
+        api.getLearningDecayStatus().catch(() => null)
+      ]);
       if (data && data.nodes && data.nodes.length > 0) {
         setGraphData(data);
         setSelectedNode(data.nodes[0]);
+      }
+      if (decayRes && decayRes.all_concepts) {
+        const dmap = {};
+        for (const c of decayRes.all_concepts) {
+          dmap[c.concept_name.toLowerCase()] = c;
+          if (c.concept_name.includes('Trees') || c.concept_name.includes('DFS')) dmap['dsa'] = c;
+          if (c.concept_name.includes('SQL')) dmap['sql'] = c;
+          if (c.concept_name.includes('Python')) dmap['python'] = c;
+          if (c.concept_name.includes('PyTorch')) dmap['pytorch'] = c;
+          if (c.concept_name.includes('Docker')) dmap['docker'] = c;
+          if (c.concept_name.includes('FastAPI')) dmap['fastapi'] = c;
+          if (c.concept_name.includes('Gradient') || c.concept_name.includes('Machine Learning')) dmap['ml'] = c;
+        }
+        setDecayMap(dmap);
       }
     } catch (err) {
       console.warn('Skill graph fetch notice, using calibrated tree:', err);
@@ -252,6 +275,21 @@ export default function SkillGraphView({ profile, readiness }) {
     }
   }, [treeNodes]);
 
+  const handlePracticeBooster = async (conceptName) => {
+    if (!conceptName) return;
+    setIsBoosting(true);
+    try {
+      await api.reviewDecayConcept(conceptName, 1.0);
+      confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
+      await fetchGraphAndDecay();
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Failed to boost concept:', err);
+    } finally {
+      setIsBoosting(false);
+    }
+  };
+
   const renderStatusBadge = (status) => {
     if (status === 'STRONG') {
       return (
@@ -278,6 +316,7 @@ export default function SkillGraphView({ profile, readiness }) {
     const isSelected = selectedNode?.id === node.id;
     const isStrong = node.status === 'STRONG';
     const isLearning = node.status === 'LEARNING';
+    const decayInfo = decayMap[node.id?.toLowerCase()] || decayMap[node.name?.toLowerCase()];
     
     return (
       <button
@@ -305,6 +344,14 @@ export default function SkillGraphView({ profile, readiness }) {
             {node.proficiency.toFixed(1)} / 10
           </span>
         </div>
+        {decayInfo && (
+          <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-stone-200/60 mt-1.5">
+            <span className="text-stone-500 font-medium">Memory Retention:</span>
+            <span className={`font-black ${decayInfo.retention_pct < 60 ? 'text-rose-600' : decayInfo.retention_pct < 75 ? 'text-amber-600' : 'text-emerald-600'}`}>
+              🧠 {decayInfo.retention_pct}%
+            </span>
+          </div>
+        )}
       </button>
     );
   };
@@ -525,6 +572,45 @@ export default function SkillGraphView({ profile, readiness }) {
                     💡 {selectedNode.whyRecruiter}
                   </p>
                 </div>
+
+                {/* Ebbinghaus Memory Retention Box */}
+                {(() => {
+                  const nodeDecay = decayMap[selectedNode.id?.toLowerCase()] || decayMap[selectedNode.name?.toLowerCase()];
+                  if (!nodeDecay) return null;
+                  return (
+                    <div className="p-3 bg-indigo-50/60 rounded-2xl border border-indigo-200 space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-indigo-950 flex items-center gap-1.5">
+                          <Brain className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Ebbinghaus Retention:</span>
+                        </span>
+                        <span className={`font-black ${nodeDecay.retention_pct < 60 ? 'text-rose-600' : nodeDecay.retention_pct < 75 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {nodeDecay.retention_pct}% ({nodeDecay.decay_status})
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-indigo-800 leading-snug">
+                        Last practiced {nodeDecay.days_since_review} days ago. Stability: {nodeDecay.stability_days} days.
+                      </p>
+                      <button
+                        onClick={() => handlePracticeBooster(nodeDecay.concept_name)}
+                        disabled={isBoosting}
+                        className="w-full py-2 rounded-xl bg-indigo-950 hover:bg-black text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                      >
+                        {isBoosting ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Updating Spaced Curve...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-3.5 h-3.5 text-amber-300 fill-current" />
+                            <span>Practice Recall Drill (+100% Boost)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* Curated Videos & Learning Links */}
                 <div className="space-y-2.5 pt-2 border-t border-stone-100">

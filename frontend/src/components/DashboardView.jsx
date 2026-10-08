@@ -234,14 +234,24 @@ export default function DashboardView({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsWhyModalOpen(true)}
-            className="text-xs font-semibold text-stone-600 hover:text-stone-900 flex items-center gap-1 cursor-pointer w-fit"
-          >
-            <HelpCircle className="w-3.5 h-3.5 text-stone-400" />
-            <span>Why these priorities?</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentTab('today')}
+              className="text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+            >
+              <span>🧠 AI Priority Engine</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsWhyModalOpen(true)}
+              className="text-xs font-semibold text-stone-600 hover:text-stone-900 flex items-center gap-1 cursor-pointer w-fit px-2 py-1"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-stone-400" />
+              <span>Why these priorities?</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-4">

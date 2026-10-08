@@ -78,7 +78,7 @@ export default function Sidebar({
     {
       title: 'PROGRESS',
       items: [
-        { id: 'today', label: "Today's AI Plan", icon: CalendarCheck, badge: 'Daily' }
+        { id: 'today', label: "What Next? (AI Decision Engine)", icon: CalendarCheck, badge: 'AI Brain' }
       ]
     },
     {

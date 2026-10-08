@@ -49,7 +49,10 @@ from models import (
     MockExamEvaluationResponse, MockScoreHistoryItem, MistakeBankResponse, MistakeBankItem, WritingEvaluationRequest,
     WritingEvaluationResponse, SpeakingEvaluationRequest, SpeakingEvaluationResponse,
     ExamAnalyticsSummary, MastersOverallReadiness, StudyAbroadPrepBudget, TopicPerformance,
-    PreviousYearPaper, PreviousYearPapersListResponse
+    PreviousYearPaper, PreviousYearPapersListResponse,
+    LearningDecayConcept, LearningDecayStatusResponse, ConceptReviewRequest,
+    NextBestActionItem, StudentIntelligenceResponse, CompleteActionRequest,
+    UserResumeData, AddProjectToResumeRequest, StockAdvisorResponse
 )
 from engines.career_comparator import CareerComparatorEngine
 from engines.career_engine import CareerEngine
@@ -62,7 +65,6 @@ from engines.llm_service import LLMService
 from engines.interview_engine import MockInterviewEngine
 from engines.skill_assessment_engine import SkillAssessmentEngine
 from engines.github_engine import GitHubAnalyzerEngine
-from engines.career_comparator import CareerComparatorEngine
 from engines.resume_parser import ResumeParserEngine
 from engines.linkedin_analyzer import LinkedInAnalyzerEngine
 from engines.market_demand_engine import SkillMarketDemandEngine
@@ -75,6 +77,9 @@ from engines.order_execution_engine import OrderExecutionEngine
 from engines.real_ai_wealth_copilot import RealAiWealthCopilot
 from engines.study_abroad_engine import StudyAbroadEngine
 from engines.exam_bank_engine import ExamBankEngine, SEED_QUESTIONS_BANK
+from engines.learning_decay_engine import LearningDecayEngine
+from engines.student_intelligence_engine import StudentIntelligenceEngine
+from engines.stock_advisor_engine import StockAdvisorEngine
 from database import (
     DatabaseManager, hash_password, verify_password
 )
@@ -813,6 +818,11 @@ def get_broker_order_history(current_user: StudentProfile = Depends(get_user_fro
 def get_broker_orders_summary(current_user: StudentProfile = Depends(get_user_from_auth)):
     return OrderExecutionEngine.get_orders_summary(current_user.id)
 
+@app.get("/api/wealth/ai-stock-recommendations", response_model=StockAdvisorResponse)
+@app.get("/api/investments/ai-stock-recommendations", response_model=StockAdvisorResponse)
+def get_ai_stock_recommendations(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return StockAdvisorEngine.get_recommendations_for_user(current_user)
+
 @app.post("/api/career/career-vs-investment", response_model=CareerVsInvestmentDecisionResponse)
 def compare_career_vs_investment(req: CareerVsInvestmentDecisionRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return CareerComparatorEngine.compare_career_vs_investment(current_user, req)
@@ -1331,6 +1341,88 @@ def get_previous_year_paper(paper_id: str, current_user: StudentProfile = Depend
 @app.get("/api/study-abroad/exam/question-bank-stats")
 def get_question_bank_statistics(current_user: StudentProfile = Depends(get_user_from_auth)):
     return ExamBankEngine.get_question_bank_statistics()
+
+# ==================== STUDENT INTELLIGENCE & LEARNING DECAY ====================
+
+@app.get("/api/student-intelligence/digital-twin", response_model=StudentIntelligenceResponse)
+def get_student_intelligence_digital_twin(current_user: StudentProfile = Depends(get_user_from_auth)):
+    """
+    Central AI Decision Engine ("What Should I Do Next?"):
+    Synthesizes Career Goal, Skills, Retention, Resume ATS, Job Market, and Finances into ranked Next Best Actions.
+    """
+    return StudentIntelligenceEngine.get_digital_twin_and_decision_matrix(current_user.id)
+
+@app.post("/api/student-intelligence/complete-action")
+def complete_student_intelligence_action(
+    req: CompleteActionRequest,
+    current_user: StudentProfile = Depends(get_user_from_auth)
+):
+    """
+    Executes a dynamic cascade:
+    Completing an action automatically cascades changes across Skill Graph, Learning Decay, Resume, and Finances.
+    """
+    return StudentIntelligenceEngine.record_student_action_and_cascade(
+        user_id=current_user.id,
+        action_id=req.action_id,
+        action_type=req.action_type,
+        metadata=req.metadata
+    )
+
+@app.get("/api/learning-decay/status", response_model=LearningDecayStatusResponse)
+def get_learning_decay_status(current_user: StudentProfile = Depends(get_user_from_auth)):
+    """
+    Returns Ebbinghaus spaced retention statistics and urgent decay review queue.
+    """
+    return LearningDecayEngine.get_decay_status(current_user.id)
+
+@app.post("/api/learning-decay/review-concept")
+def review_decay_concept(
+    req: ConceptReviewRequest,
+    current_user: StudentProfile = Depends(get_user_from_auth)
+):
+    """
+    Records a completed recall drill on a concept, boosting stability and resetting memory retention to 100%.
+    """
+    return LearningDecayEngine.review_concept(
+        user_id=current_user.id,
+        concept_name=req.concept_name,
+        performance_score=req.performance_score
+    )
+
+@app.get("/api/resume/data", response_model=UserResumeData)
+def get_user_resume_data(current_user: StudentProfile = Depends(get_user_from_auth)):
+    """
+    Retrieves user ATS resume details with quantified projects and score.
+    """
+    data = DatabaseManager.get_user_ats_resume(current_user.id)
+    return UserResumeData(
+        user_id=data["user_id"],
+        ats_score=data["ats_score"],
+        resume_headline=data["resume_headline"],
+        keywords=data["keywords"],
+        projects=data["projects"],
+        suggestions=data["suggestions"]
+    )
+
+@app.post("/api/resume/add-project")
+def add_project_to_resume(
+    req: AddProjectToResumeRequest,
+    current_user: StudentProfile = Depends(get_user_from_auth)
+):
+    """
+    Adds a verified project with metrics to resume, boosting ATS score by +12.
+    """
+    return StudentIntelligenceEngine.record_student_action_and_cascade(
+        user_id=current_user.id,
+        action_id="add-resume-project",
+        action_type="UPDATE_RESUME",
+        metadata={
+            "project_title": req.title,
+            "tech_stack": req.tech_stack,
+            "metrics": req.metrics
+        }
+    )
+
 
 
 

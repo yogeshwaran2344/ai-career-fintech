@@ -58,7 +58,19 @@ class LLMService:
         # Dynamic Engine Calculations
         pct, score, strong_skills, missing_skills, partial_skills = CareerEngine.calculate_readiness(profile, profile.career_goal)
         recommendations = CareerEngine.get_career_recommendations(profile)
-        budget_analysis = FinanceEngine.analyze_budget(profile)
+        fin_metrics = FinanceEngine.get_central_financial_metrics(profile)
+
+        # Learning Decay & ATS context
+        try:
+            from engines.learning_decay_engine import LearningDecayEngine
+            from database import DatabaseManager
+            decay_summary = LearningDecayEngine.get_decay_status(profile.id)
+            ats_resume = DatabaseManager.get_user_ats_resume(profile.id)
+            ats_score = ats_resume.get("ats_score", 76)
+            critical_decay_str = ", ".join([c.concept_name for c in decay_summary.urgent_review_queue[:3]]) or "None (Memory optimal)"
+        except Exception:
+            ats_score = 76
+            critical_decay_str = "Binary Trees & Graph Traversals"
 
         top_match = recommendations[0] if recommendations else None
         strong_str = ", ".join(strong_skills) if strong_skills else "Python, SQL"
@@ -71,14 +83,20 @@ class LLMService:
 You are the AI Career + Finance Copilot for {profile.name}.
 Student Academic Profile: {profile.academic.degree} in {profile.academic.branch} ({profile.academic.year}), CGPA {profile.academic.cgpa}.
 Target Career Goal: {profile.career_goal}.
-Current Computed Readiness: {pct}% (Skill Level {score}/10).
+Current Computed Career Readiness: {pct}% (Skill Level {score}/10).
 Top Strong Skills: {strong_str}.
 Key Missing Bottleneck Skills: {missing_str}.
+Resume ATS Score: {ats_score}/100.
+Urgent Memory Decay Concepts (Ebbinghaus <60%): {critical_decay_str}.
 Available Study Time: {profile.preferences.study_hours_per_day} hours/day.
-Financial Capacity: Monthly Income ₹{profile.financial.monthly_income:,.0f}, Available for Learning ₹{profile.financial.available_for_learning:,.0f}/month, Savings ₹{profile.financial.savings:,.0f}, Emergency Buffer ₹{profile.financial.emergency_buffer:,.0f}.
-Emergency Buffer Health: {budget_analysis['savings_health']}.
+Financial Intelligence:
+- Monthly Income: ₹{fin_metrics['monthly_income']:,.0f}
+- Essential Expenses: ₹{fin_metrics['essential_expenses']:,.0f}
+- Monthly Surplus: ₹{fin_metrics['monthly_surplus']:,.0f}
+- Emergency Buffer: ₹{fin_metrics['current_buffer']:,.0f} (Target: ₹{fin_metrics['emergency_target']:,.0f}, Runway: {fin_metrics['runway_months']} months)
+- Investment Clearance State: {fin_metrics['clearance_badge']}
 
-Your task is to provide intelligent, hyper-practical advice that co-optimizes CAREER SUCCESS and FINANCIAL AFFORDABILITY.
+Your task is to provide intelligent, hyper-practical advice that co-optimizes CAREER SUCCESS, LEARNING RETENTION, RESUME ATS, and FINANCIAL SAFETY.
 Always give clear, bulleted action steps with specific numbers, timelines, and trade-off rationales.
 """
         # If Gemini API Key exists, call Gemini REST

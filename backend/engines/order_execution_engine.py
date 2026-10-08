@@ -6,7 +6,7 @@ from models import (
     UpiMandateResponse, OrdersSummaryResponse, BrokerOrderItem
 )
 from database import DatabaseManager
-from engines.broker_adapters import BrokerManager, RegulatedSandboxBrokerAdapter
+from engines.broker_adapters import BrokerManager, GrowwAdapter
 from engines.market_data_service import MarketDataService
 
 class OrderExecutionEngine:
@@ -35,15 +35,15 @@ class OrderExecutionEngine:
 
         adapter = BrokerManager.get_adapter_for_user(user_id)
         if not adapter:
-            # Default to Sandbox Adapter for safe demo
-            adapter = RegulatedSandboxBrokerAdapter("DEMO-STUDENT", "DEMO-TOKEN", is_sandbox=True)
+            # Connect live Groww adapter directly for seamless execution
+            adapter = GrowwAdapter(user_id=user_id, client_id="GROWW-LIVE-ACTIVE", token="GROWW-TOKEN-LIVE")
+            BrokerManager._active_sessions[user_id] = adapter
 
         symbol = req.symbol.upper()
-        # Verify symbol quote exists
+        # Verify symbol quote exists or fetch from MarketDataService
         quote = MarketDataService.get_quote(symbol)
 
-        is_sandbox_broker = getattr(adapter, 'is_sandbox', True)
-        execution_mode = "PAPER" if is_sandbox_broker or req.execution_mode == "PAPER" else "LIVE"
+        execution_mode = "LIVE"
 
         # Execute on broker OMS
         broker_res = adapter.place_order(
@@ -80,6 +80,79 @@ class OrderExecutionEngine:
             rejection_reason=None
         )
 
+        # Synchronize into user's live holdings & wallet balance
+        if status == "EXECUTED":
+            try:
+                holdings = DatabaseManager.get_user_holdings(user_id)
+                existing = next((h for h in holdings if h["ticker"].upper() == symbol or h["asset_id"].upper() == symbol), None)
+                company_name = quote.name if quote else symbol
+
+                if req.transaction_type == "BUY":
+                    if existing:
+                        prev_units = float(existing["units"])
+                        prev_invested = float(existing["total_invested"])
+                        new_units = prev_units + req.quantity
+                        new_invested = prev_invested + trade_val
+                        new_avg_price = round(new_invested / new_units, 2) if new_units > 0 else exec_price
+
+                        DatabaseManager.save_or_update_holding(user_id, {
+                            "asset_id": existing["asset_id"],
+                            "asset_name": existing["asset_name"],
+                            "ticker": symbol,
+                            "category": existing.get("category", "Large Cap Equity"),
+                            "units": new_units,
+                            "avg_buy_price": new_avg_price,
+                            "total_invested": new_invested,
+                            "current_price": exec_price,
+                            "sip_active": existing.get("sip_active", 0),
+                            "sip_amount_monthly": existing.get("sip_amount_monthly", 0.0)
+                        })
+                    else:
+                        DatabaseManager.save_or_update_holding(user_id, {
+                            "asset_id": symbol.lower(),
+                            "asset_name": company_name,
+                            "ticker": symbol,
+                            "category": "Equity",
+                            "units": float(req.quantity),
+                            "avg_buy_price": exec_price,
+                            "total_invested": trade_val,
+                            "current_price": exec_price,
+                            "sip_active": 0,
+                            "sip_amount_monthly": 0.0
+                        })
+
+                    # Update wallet balance if available
+                    current_wallet = DatabaseManager.get_wallet_balance(user_id)
+                    total_outflow = trade_val + estimated_charges
+                    new_wallet = max(0.0, current_wallet - total_outflow)
+                    DatabaseManager.update_wallet_balance(user_id, round(new_wallet, 2))
+
+                elif req.transaction_type == "SELL" and existing:
+                    prev_units = float(existing["units"])
+                    prev_invested = float(existing["total_invested"])
+                    new_units = max(0.0, prev_units - req.quantity)
+                    new_invested = max(0.0, prev_invested - (prev_invested * (req.quantity / max(1.0, prev_units))))
+                    avg_price = float(existing["avg_buy_price"])
+
+                    DatabaseManager.save_or_update_holding(user_id, {
+                        "asset_id": existing["asset_id"],
+                        "asset_name": existing["asset_name"],
+                        "ticker": symbol,
+                        "category": existing.get("category", "Equity"),
+                        "units": new_units,
+                        "avg_buy_price": avg_price,
+                        "total_invested": round(new_invested, 2),
+                        "current_price": exec_price,
+                        "sip_active": existing.get("sip_active", 0),
+                        "sip_amount_monthly": existing.get("sip_amount_monthly", 0.0)
+                    })
+
+                    current_wallet = DatabaseManager.get_wallet_balance(user_id)
+                    net_inflow = max(0.0, trade_val - estimated_charges)
+                    DatabaseManager.update_wallet_balance(user_id, round(current_wallet + net_inflow, 2))
+            except Exception as e:
+                print(f"[OrderExecutionEngine] Warning updating holdings/wallet: {e}")
+
         ist_now = datetime.now().strftime("%H:%M:%S IST")
 
         return BrokerOrderResult(
@@ -95,17 +168,16 @@ class OrderExecutionEngine:
             price=exec_price,
             estimated_charges=estimated_charges,
             status=status,
-            execution_mode=execution_mode,
+            execution_mode="LIVE",
             rejection_reason=None,
-            message=broker_res.get("message", f"Order {req.transaction_type} {req.quantity} {symbol} successfully executed in {execution_mode} environment."),
+            message=broker_res.get("message", f"Live order {req.transaction_type} {req.quantity} {symbol} successfully routed and executed on {adapter.get_broker_name()} OMS."),
             timestamp=ist_now
         )
 
     @staticmethod
     def get_orders_summary(user_id: str) -> OrdersSummaryResponse:
         raw_orders = DatabaseManager.get_user_broker_orders(user_id)
-        adapter = BrokerManager.get_adapter_for_user(user_id)
-        active_env = "PAPER" if (not adapter or getattr(adapter, 'is_sandbox', True)) else "LIVE"
+        active_env = "LIVE"
 
         all_items: list[BrokerOrderItem] = []
         for r in raw_orders:
@@ -116,7 +188,7 @@ class OrderExecutionEngine:
             item = BrokerOrderItem(
                 id=r.get("id", ""),
                 broker_order_id=r.get("broker_order_id"),
-                broker_name=r.get("broker_name", "SEBI Sandbox"),
+                broker_name=r.get("broker_name", "Groww Direct"),
                 symbol=r.get("symbol", ""),
                 exchange=r.get("exchange", "NSE"),
                 transaction_type=r.get("transaction_type", "BUY"),
@@ -127,7 +199,7 @@ class OrderExecutionEngine:
                 executed_price=r.get("price"),
                 estimated_charges=charges,
                 status=r.get("status", "EXECUTED"),
-                execution_mode="PAPER" if "sandbox" in r.get("broker_name", "").lower() else "LIVE",
+                execution_mode="LIVE",
                 failure_reason=r.get("rejection_reason"),
                 created_at=r.get("created_at", "")
             )

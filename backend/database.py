@@ -364,6 +364,51 @@ def init_database():
         )
     """)
 
+    # 20. User Learning Decay & Spaced Repetition Ledger
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_learning_decay (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            concept_name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            stability_days REAL DEFAULT 3.0,
+            repetition_count INTEGER DEFAULT 1,
+            last_reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            retention_pct REAL DEFAULT 100.0,
+            decay_status TEXT DEFAULT 'OPTIMAL',
+            next_review_due TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, concept_name)
+        )
+    """)
+
+    # 21. User Completed Activities (Projects, Courses, Assessments Ledger)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_completed_activities (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            activity_type TEXT NOT NULL,
+            activity_title TEXT NOT NULL,
+            metadata_json TEXT DEFAULT '{}',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    # 22. User ATS Resume & Project Showcase Ledger
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_ats_resume (
+            user_id TEXT PRIMARY KEY,
+            ats_score INTEGER DEFAULT 76,
+            resume_headline TEXT DEFAULT 'Aspiring AI & Software Engineer',
+            keywords_json TEXT DEFAULT '[]',
+            projects_json TEXT DEFAULT '[]',
+            suggestions_json TEXT DEFAULT '[]',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -1222,6 +1267,187 @@ class DatabaseManager:
             "topic_stats": topic_rows,
             "unresolved_mistakes": mistake_cnt or 0
         }
+
+    # ==================== LEARNING DECAY & SPACED REPETITION ====================
+
+    @staticmethod
+    def get_learning_decay_records(user_id: str) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_learning_decay WHERE user_id = ? ORDER BY retention_pct ASC", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def upsert_learning_decay_concept(
+        user_id: str,
+        concept_name: str,
+        category: str,
+        stability_days: float,
+        repetition_count: int,
+        retention_pct: float,
+        decay_status: str,
+        last_reviewed_at: Optional[str] = None
+    ):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cid = str(uuid.uuid4())
+        reviewed_at = last_reviewed_at or datetime.datetime.now(datetime.timezone.utc).isoformat()
+        cursor.execute("""
+            INSERT INTO user_learning_decay
+            (id, user_id, concept_name, category, stability_days, repetition_count, last_reviewed_at, retention_pct, decay_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, concept_name) DO UPDATE SET
+                category = excluded.category,
+                stability_days = excluded.stability_days,
+                repetition_count = excluded.repetition_count,
+                last_reviewed_at = excluded.last_reviewed_at,
+                retention_pct = excluded.retention_pct,
+                decay_status = excluded.decay_status
+        """, (cid, user_id, concept_name, category, stability_days, repetition_count, reviewed_at, retention_pct, decay_status))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def seed_default_learning_decay_if_empty(user_id: str, target_role: str = "AI Engineer"):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as cnt FROM user_learning_decay WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        cnt = row["cnt"] if row else 0
+        conn.close()
+        if cnt > 0:
+            return
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        # Seed realistic concepts with staggered review dates to naturally demonstrate the Ebbinghaus curve:
+        # e.g., Trees & DFS reviewed 4 days ago with stability 3 -> retention ~54% (Critical)
+        seed_items = [
+            ("Binary Trees & DFS", "DSA", 3.0, 2, (now - datetime.timedelta(days=4.2)).isoformat(), 54.0, "CRITICAL"),
+            ("Dynamic Programming (Tabulation)", "DSA", 3.5, 2, (now - datetime.timedelta(days=3.8)).isoformat(), 58.0, "CRITICAL"),
+            ("PyTorch Tensor Broadcasting", "AI_ML", 4.0, 3, (now - datetime.timedelta(days=3.0)).isoformat(), 68.0, "WARNING"),
+            ("Docker Multi-Stage Builds", "SYSTEMS", 4.5, 3, (now - datetime.timedelta(days=3.1)).isoformat(), 72.0, "WARNING"),
+            ("FastAPI Async Endpoints", "BACKEND", 6.0, 4, (now - datetime.timedelta(days=1.5)).isoformat(), 82.0, "OPTIMAL"),
+            ("SQL Window Functions", "DATA", 7.0, 4, (now - datetime.timedelta(days=1.0)).isoformat(), 88.0, "OPTIMAL"),
+            ("Python OOP & Metaclasses", "LANGUAGES", 9.0, 5, (now - datetime.timedelta(days=0.5)).isoformat(), 95.0, "MASTERED"),
+            ("Gradient Descent & Optimizers", "AI_ML", 6.0, 3, (now - datetime.timedelta(days=2.0)).isoformat(), 76.0, "OPTIMAL"),
+            ("GRE Quant: Permutations & Combinations", "APTITUDE", 3.2, 2, (now - datetime.timedelta(days=3.5)).isoformat(), 62.0, "WARNING"),
+        ]
+
+        for item in seed_items:
+            DatabaseManager.upsert_learning_decay_concept(
+                user_id=user_id,
+                concept_name=item[0],
+                category=item[1],
+                stability_days=item[2],
+                repetition_count=item[3],
+                retention_pct=item[5],
+                decay_status=item[6],
+                last_reviewed_at=item[4]
+            )
+
+    # ==================== COMPLETED ACTIVITIES & ATS RESUME ====================
+
+    @staticmethod
+    def record_completed_activity(user_id: str, activity_type: str, activity_title: str, metadata: Optional[Dict[str, Any]] = None) -> str:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        aid = str(uuid.uuid4())
+        cursor.execute("""
+            INSERT INTO user_completed_activities (id, user_id, activity_type, activity_title, metadata_json)
+            VALUES (?, ?, ?, ?, ?)
+        """, (aid, user_id, activity_type, activity_title, json.dumps(metadata or {})))
+        conn.commit()
+        conn.close()
+        return aid
+
+    @staticmethod
+    def get_completed_activities(user_id: str) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_completed_activities WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        results = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["metadata"] = json.loads(d.get("metadata_json", "{}"))
+            except Exception:
+                d["metadata"] = {}
+            results.append(d)
+        return results
+
+    @staticmethod
+    def get_user_ats_resume(user_id: str) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_ats_resume WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            # Default state
+            default_data = {
+                "user_id": user_id,
+                "ats_score": 76,
+                "resume_headline": "Aspiring AI & Machine Learning Systems Engineer",
+                "keywords": ["Python", "Machine Learning", "PyTorch", "SQL", "FastAPI", "Docker"],
+                "projects": [
+                    {
+                        "title": "Autonomous Predictive Model & API",
+                        "tech_stack": "Python, FastAPI, Scikit-Learn",
+                        "metrics": "Trained predictive pipeline achieving 91% F1-score across 50,000 test cases.",
+                        "verified": True
+                    }
+                ],
+                "suggestions": [
+                    "Resume missing quantified latency/throughput metrics for production services.",
+                    "Add Docker containerization & cloud deployment deliverables.",
+                    "Include benchmark testing against baselines."
+                ]
+            }
+            DatabaseManager.save_user_ats_resume(
+                user_id=user_id,
+                ats_score=default_data["ats_score"],
+                resume_headline=default_data["resume_headline"],
+                keywords=default_data["keywords"],
+                projects=default_data["projects"],
+                suggestions=default_data["suggestions"]
+            )
+            return default_data
+
+        d = dict(row)
+        d["keywords"] = json.loads(d.get("keywords_json", "[]"))
+        d["projects"] = json.loads(d.get("projects_json", "[]"))
+        d["suggestions"] = json.loads(d.get("suggestions_json", "[]"))
+        return d
+
+    @staticmethod
+    def save_user_ats_resume(
+        user_id: str,
+        ats_score: int,
+        resume_headline: str,
+        keywords: List[str],
+        projects: List[Dict[str, Any]],
+        suggestions: List[str]
+    ):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = (
+            "INSERT INTO user_ats_resume (user_id, ats_score, resume_headline, keywords_json, projects_json, suggestions_json, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) "
+            "ON CONFLICT(user_id) DO UPDATE SET "
+            "ats_score = excluded.ats_score, "
+            "resume_headline = excluded.resume_headline, "
+            "keywords_json = excluded.keywords_json, "
+            "projects_json = excluded.projects_json, "
+            "suggestions_json = excluded.suggestions_json, "
+            "updated_at = CURRENT_TIMESTAMP"
+        )
+        cursor.execute(query, (user_id, ats_score, resume_headline, json.dumps(keywords), json.dumps(projects), json.dumps(suggestions)))
+        conn.commit()
+        conn.close()
 
 
 
