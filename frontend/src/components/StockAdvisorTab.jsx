@@ -157,11 +157,11 @@ export default function StockAdvisorTab({ onOpenOrderModal, brokerStatus, cleara
 
             <div className="p-3.5 bg-white/5 border border-white/10 rounded-2xl">
               <span className="text-[10px] text-amber-200 uppercase font-black tracking-wider block">Investment Safety Status</span>
-              <span className={`text-sm font-black mt-0.5 block ${clearanceState === 'BLOCKED' ? 'text-amber-300' : 'text-emerald-400'}`}>
-                {data?.investment_clearance_status || (clearanceState === 'BLOCKED' ? '⚠️ Emergency Gate Recommended' : '✅ Clear for Live Equity Allocation')}
+              <span className={`text-sm font-black mt-0.5 block ${clearanceState === 'LIMITED' || clearanceState === 'BLOCKED' ? 'text-amber-300' : 'text-emerald-400'}`}>
+                {data?.investment_clearance_status || (clearanceState === 'LIMITED' || clearanceState === 'BLOCKED' ? '🔒 Limited (₹500/mo Cap)' : '✅ Clear for Live Equity Allocation')}
               </span>
               <span className="text-[10px] text-stone-400 truncate block">
-                {clearanceReason ? clearanceReason.slice(0, 50) + '...' : 'SEBI-aligned 5-gate financial health check'}
+                {clearanceReason ? clearanceReason.slice(0, 50) + '...' : 'Reserve target: ₹12,000 | ₹500/mo allowed'}
               </span>
             </div>
           </div>

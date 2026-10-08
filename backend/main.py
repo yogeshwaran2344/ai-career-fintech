@@ -145,7 +145,7 @@ def get_llms_txt():
 > Integrated Career & Wealth Intelligence Platform for University Students and Young Professionals.
 
 ## Overview
-Elevare connects human capital development (skill roadmaps, ATS resume optimization, mock interviews, GitHub code analysis, and placement readiness) with financial intelligence (SEBI-aligned 5-gate safety check, Career ROI vs Stock Investment comparator, simulated Paper Trading vs Live Regulated Broker OMS execution, and safe NPCI UPI mandate management).
+Elevare connects human capital development (skill roadmaps, ATS resume optimization, mock interviews, GitHub code analysis, and placement readiness) with financial intelligence (SEBI-aligned 5-gate safety check, Career ROI vs Stock Investment comparator, Live Regulated Broker OMS execution, and safe NPCI UPI mandate management).
 
 ## Core Capabilities & Engines
 
@@ -157,7 +157,7 @@ Elevare connects human capital development (skill roadmaps, ATS resume optimizat
 
 ### 2. Wealth & Financial Engine
 - Financial Safety Center: 5-Gate prerequisite checklist (Emergency Fund runway, debt clearance, healthcare buffer, stable surplus, risk literacy) before market exposure.
-- Pluggable Regulated Broker OMS: Zero-credential architecture connecting to Zerodha, Upstox, Angel One, and Sandbox Broker with mandatory 2-step order review.
+- Pluggable Regulated Broker OMS: Zero-credential architecture connecting to Groww, Zerodha, Upstox, Angel One, Dhan, Kotak Neo, ICICI Direct, and HDFC Sky with mandatory 2-step order review.
 - Statutory Charges Engine: Computes STT, exchange turnover fees, SEBI charges, stamp duty, and GST on trades.
 - Safe NPCI UPI Mandate Flow: Collect mandate initiation with zero user PIN storage or interception.
 - Live NSE/BSE Telemetry: Real-time stock ticks, 5-level market depth, and historical candlestick charts.

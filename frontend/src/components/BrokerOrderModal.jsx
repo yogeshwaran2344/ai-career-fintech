@@ -357,20 +357,34 @@ export default function BrokerOrderModal({
               <div className="text-[10px] text-stone-500 flex items-center gap-1.5 justify-center">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>
-                  Routing via <strong>{brokerStatus?.broker_name || 'SEBI Sandbox Broker'}</strong> to NSE
+                  Routing via <strong>{brokerStatus?.broker_name || 'Groww Direct'}</strong> to NSE
                 </span>
               </div>
 
-              {clearanceState === 'BLOCKED' && transactionType === 'BUY' && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-start gap-2.5">
-                  <span className="text-base mt-0.5">🔒</span>
-                  <div>
-                    <span className="font-black text-rose-950 block">Investment Clearance BLOCKED</span>
-                    <span className="text-[11px] text-rose-800 leading-tight block mt-0.5">
-                      {clearanceReason || 'Build emergency reserve to ₹18,000 first (current: ₹2,000, 0.33 mo runway). Responsible wealth creation protects against liquidating market assets during shocks.'}
-                    </span>
+              {/* Smart Investment Clearance Gate (Not a binary block) */}
+              {transactionType === 'BUY' && (clearanceState === 'LIMITED' || clearanceState === 'BLOCKED') && (
+                estimatedTotal > 500 ? (
+                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 space-y-1.5">
+                    <div className="flex items-center gap-1.5 font-black text-amber-900">
+                      <span>🔒 Investment Clearance: Limited (₹500 Cap)</span>
+                    </div>
+                    <p className="text-[11px] text-amber-900/90 leading-relaxed">
+                      Your emergency reserve is below the recommended level (₹2,000 / ₹12,000). Investing is currently restricted to ₹500/order until your reserve reaches the ₹6,000 floor. Build at least ₹12,000 before increasing equity exposure (₹10,000 remaining).
+                    </p>
+                    <div className="p-2 bg-amber-100/70 rounded-xl text-[10px] text-amber-950 font-bold">
+                      ⚠️ Order value ₹{estimatedTotal.toFixed(2)} exceeds the ₹500 safety allowance. Reduce quantity to fit the ₹500 cap or deposit to your emergency reserve.
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-950 space-y-1">
+                    <div className="flex items-center gap-1.5 font-black text-emerald-900">
+                      <span>✅ Micro-Investment Permitted (₹{estimatedTotal.toFixed(2)} ≤ ₹500 Cap)</span>
+                    </div>
+                    <p className="text-[11px] text-emerald-800 leading-relaxed">
+                      Your emergency reserve is below the recommended level (₹2,000 / ₹12,000). Investing is allowed up to ₹500/order. Continue building your emergency fund to the ₹6,000 floor and ₹12,000 recommended target.
+                    </p>
+                  </div>
+                )
               )}
 
               <div className="pt-2 flex items-center justify-end gap-3">
@@ -383,17 +397,17 @@ export default function BrokerOrderModal({
                 </button>
                 <button
                   type="submit"
-                  disabled={clearanceState === 'BLOCKED' && transactionType === 'BUY'}
+                  disabled={transactionType === 'BUY' && (clearanceState === 'LIMITED' || clearanceState === 'BLOCKED') && estimatedTotal > 500}
                   className={`flex-1 py-2.5 text-white rounded-xl text-xs font-black shadow-md transition flex items-center justify-center gap-2 cursor-pointer ${
-                    clearanceState === 'BLOCKED' && transactionType === 'BUY'
+                    transactionType === 'BUY' && (clearanceState === 'LIMITED' || clearanceState === 'BLOCKED') && estimatedTotal > 500
                       ? 'bg-stone-300 text-stone-500 cursor-not-allowed shadow-none'
                       : transactionType === 'BUY'
                       ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
                       : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/25'
                   }`}
                 >
-                  {clearanceState === 'BLOCKED' && transactionType === 'BUY' ? (
-                    <span>🔒 Order Locked by Safety Gate</span>
+                  {transactionType === 'BUY' && (clearanceState === 'LIMITED' || clearanceState === 'BLOCKED') && estimatedTotal > 500 ? (
+                    <span>🔒 Order Exceeds ₹500 Safety Cap</span>
                   ) : (
                     <span>Review Order →</span>
                   )}

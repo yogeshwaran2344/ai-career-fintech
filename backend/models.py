@@ -1209,7 +1209,7 @@ class BrokerOrderItem(BaseModel):
     executed_price: Optional[float] = None
     estimated_charges: float = 0.0
     status: str  # "EXECUTED", "PENDING", "REJECTED", "CANCELLED", "FAILED"
-    execution_mode: str = "LIVE"  # "LIVE" or "PAPER"
+    execution_mode: str = "LIVE"  # Genuine Broker OMS Execution
     failure_reason: Optional[str] = None
     created_at: str
 
@@ -1220,7 +1220,7 @@ class OrdersSummaryResponse(BaseModel):
     rejected_orders: List[BrokerOrderItem]
     cancelled_orders: List[BrokerOrderItem]
     total_orders_count: int
-    active_environment: str  # "LIVE" or "PAPER"
+    active_environment: str = "LIVE"  # Live Broker OMS Environment
 
 class CareerVsInvestmentDecisionRequest(BaseModel):
     capital_amount: float = 10000.0
@@ -1292,6 +1292,7 @@ class FinancialSafetyCheckResponse(BaseModel):
     emergency_fund_current_inr: float
     emergency_fund_pct: float
     runway_months: float
+    target_runway_months: Optional[float] = 2.0
     debt_level: str
     monthly_disposable_cash_flow_inr: float
     investment_risk_profile: str
@@ -1300,9 +1301,14 @@ class FinancialSafetyCheckResponse(BaseModel):
     safety_gates: List[Dict[str, Any]]
     actionable_remedy: str
     essential_monthly_expenses_inr: Optional[float] = 6000.0
-    emergency_fund_gap_inr: Optional[float] = 16000.0
-    investment_clearance_state: Optional[str] = "BLOCKED"  # "BLOCKED", "LIMITED", "CLEARED"
-    clearance_badge: Optional[str] = "🔴 Investment Clearance BLOCKED"
+    emergency_fund_gap_inr: Optional[float] = 10000.0
+    emergency_floor_inr: Optional[float] = 6000.0
+    emergency_recommended_target_inr: Optional[float] = 12000.0
+    emergency_strong_target_inr: Optional[float] = 18000.0
+    emergency_remaining_to_recommended: Optional[float] = 10000.0
+    monthly_investment_cap: Optional[float] = 500.0
+    investment_clearance_state: Optional[str] = "LIMITED"  # "LIMITED", "MODERATE", "CLEARED"
+    clearance_badge: Optional[str] = "🔒 Investment Clearance: Limited"
     clearance_reason: Optional[str] = ""
     financial_health_score: Optional[int] = 64
 
@@ -1321,6 +1327,11 @@ class FinancialHealthSummary(BaseModel):
     emergency_target: float
     emergency_current: float
     emergency_gap: float
+    emergency_floor_inr: Optional[float] = 6000.0
+    emergency_recommended_target_inr: Optional[float] = 12000.0
+    emergency_strong_target_inr: Optional[float] = 18000.0
+    emergency_remaining_to_recommended: Optional[float] = 10000.0
+    monthly_investment_cap: Optional[float] = 500.0
     runway_months: float
     emergency_fund_pct: float
     monthly_income: float
@@ -1328,7 +1339,7 @@ class FinancialHealthSummary(BaseModel):
     monthly_surplus: float
     upskilling_capacity: float
     investment_capacity: float
-    clearance_state: str  # "BLOCKED", "LIMITED", "CLEARED"
+    clearance_state: str  # "LIMITED", "MODERATE", "CLEARED"
     clearance_badge: str
     clearance_reason: str
     factors: List[FinancialHealthFactor]

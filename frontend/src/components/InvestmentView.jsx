@@ -481,30 +481,35 @@ export default function InvestmentView({ profile }) {
         </div>
       </div>
 
-      {/* Investment Clearance Hard State Warning */}
-      {safetyData?.investment_clearance_state === 'BLOCKED' && (
-        <div className="bg-rose-500/10 border-2 border-rose-500/40 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs">
+      {/* Investment Clearance: Limited State Banner */}
+      {(safetyData?.investment_clearance_state === 'LIMITED' || safetyData?.investment_clearance_state === 'BLOCKED') && (
+        <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-rose-500/20 text-rose-600 mt-0.5 shrink-0">
+            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600 mt-0.5 shrink-0">
               <Lock className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-extrabold text-rose-950 text-xs md:text-sm">
-                  {safetyData.clearance_badge || '🔴 Investment Clearance BLOCKED'}
+                <span className="font-extrabold text-amber-950 text-xs md:text-sm">
+                  {safetyData.clearance_badge || '🔒 Investment Clearance: Limited'}
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800">
-                  Runway: {safetyData.runway_months} mo (₹{safetyData.emergency_fund_current_inr?.toLocaleString('en-IN')} / ₹{safetyData.emergency_fund_target_inr?.toLocaleString('en-IN')})
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                  Emergency reserve: ₹{safetyData.emergency_fund_current_inr?.toLocaleString('en-IN') || '2,000'} / ₹{(safetyData.emergency_recommended_target_inr || 12000).toLocaleString('en-IN')}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Micro-Investing: Permitted up to ₹{safetyData.monthly_investment_cap || 500}/mo
                 </span>
               </div>
-              <p className="text-xs text-rose-800/90 font-medium mt-0.5 leading-relaxed max-w-3xl">
-                {safetyData.clearance_reason || '🔒 Investment temporarily locked. Build emergency reserve to ₹18,000 first (current: ₹2,000, 0.33 months runway). Responsible wealth creation protects against liquidating market assets during shocks.'}
+              <p className="text-xs text-amber-900/90 font-medium mt-0.5 leading-relaxed max-w-3xl">
+                Build at least ₹{(safetyData.emergency_recommended_target_inr || 12000).toLocaleString('en-IN')} before increasing equity exposure. 
+                ₹{(safetyData.emergency_remaining_to_recommended || 10000).toLocaleString('en-IN')} remaining. 
+                Your current reserve covers approximately {safetyData.runway_months || '0.33'} months of essential expenses.
               </p>
             </div>
           </div>
           <button
             onClick={() => setActiveSubTab('safety')}
-            className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer transition shadow-xs whitespace-nowrap"
+            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer transition shadow-xs whitespace-nowrap"
           >
             5-Gate Safety Audit →
           </button>

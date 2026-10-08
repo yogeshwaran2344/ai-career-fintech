@@ -117,24 +117,29 @@ export default function FinancialHealthView({ profile, onNavigate }) {
         </div>
       </div>
 
-      {/* Investment Clearance Hard State Warning */}
-      {healthData.clearance_state === 'BLOCKED' && (
-        <div className="p-5 rounded-2xl border-2 border-rose-500/40 bg-gradient-to-r from-rose-500/10 via-rose-500/5 to-transparent backdrop-blur-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* Investment Clearance: Limited State Banner */}
+      {(healthData.clearance_state === 'LIMITED' || healthData.clearance_state === 'BLOCKED') && (
+        <div className="p-5 rounded-2xl border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent backdrop-blur-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-600 mt-0.5 shrink-0">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-600 mt-0.5 shrink-0">
               <Lock className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-black text-rose-900 text-sm md:text-base">
-                  {healthData.clearance_badge}
+                <span className="font-black text-amber-950 text-sm md:text-base">
+                  {healthData.clearance_badge || '🔒 Investment Clearance: Limited'}
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">
-                  Runway: {healthData.runway_months} mo (₹{healthData.emergency_current?.toLocaleString('en-IN')} / ₹{healthData.emergency_target?.toLocaleString('en-IN')})
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                  Emergency reserve: ₹{healthData.emergency_current?.toLocaleString('en-IN')} / ₹{(healthData.emergency_recommended_target_inr || 12000).toLocaleString('en-IN')}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Micro-Investing: Permitted up to ₹{healthData.monthly_investment_cap || 500}/mo
                 </span>
               </div>
-              <p className="text-xs text-rose-800/90 mt-1 font-medium leading-relaxed max-w-3xl">
-                {healthData.clearance_reason}
+              <p className="text-xs text-amber-900/90 mt-1 font-medium leading-relaxed max-w-3xl">
+                Build at least ₹{(healthData.emergency_recommended_target_inr || 12000).toLocaleString('en-IN')} before increasing equity exposure. 
+                ₹{(healthData.emergency_remaining_to_recommended || 10000).toLocaleString('en-IN')} remaining. 
+                Your current reserve covers approximately {healthData.runway_months} months of essential expenses.
               </p>
             </div>
           </div>
@@ -142,7 +147,7 @@ export default function FinancialHealthView({ profile, onNavigate }) {
           <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
             <button
               onClick={() => onNavigate ? onNavigate('safety') : null}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm w-full md:w-auto text-center cursor-pointer"
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition shadow-sm w-full md:w-auto text-center cursor-pointer"
             >
               5-Gate Safety Audit →
             </button>
@@ -188,7 +193,7 @@ export default function FinancialHealthView({ profile, onNavigate }) {
             {healthData.runway_months} Months
           </div>
           <span className="text-[10px] text-stone-500 block">
-            Target: 3.0 Months (₹{healthData.emergency_target?.toLocaleString('en-IN')})
+            Target: 2.0 Months (₹{(healthData.emergency_recommended_target_inr || 12000).toLocaleString('en-IN')})
           </span>
         </div>
       </div>
@@ -198,22 +203,30 @@ export default function FinancialHealthView({ profile, onNavigate }) {
         {/* Emergency Fund Progress */}
         <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase text-stone-500 tracking-wider">Emergency Fund Gap</span>
-            <span className="text-xs font-mono font-bold text-amber-700">{healthData.emergency_fund_pct}% funded</span>
+            <span className="text-xs font-black uppercase text-stone-500 tracking-wider">Emergency Reserve</span>
+            <span className="text-xs font-mono font-bold text-amber-700">{healthData.emergency_fund_pct || 16.7}% funded</span>
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-black text-stone-900">₹{healthData.emergency_current?.toLocaleString('en-IN')}</span>
-            <span className="text-xs text-stone-400 font-bold">Goal: ₹{healthData.emergency_target?.toLocaleString('en-IN')}</span>
+            <span className="text-xs text-stone-400 font-bold">Goal: ₹{(healthData.emergency_recommended_target_inr || 12000).toLocaleString('en-IN')}</span>
           </div>
           <div className="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden">
             <div 
-              className="h-full bg-amber-500 rounded-full" 
-              style={{ width: `${Math.min(100, healthData.emergency_fund_pct || 11.1)}%` }}
+              className="h-full bg-amber-500 rounded-full transition-all duration-500" 
+              style={{ width: `${Math.min(100, healthData.emergency_fund_pct || 16.7)}%` }}
             ></div>
           </div>
-          <p className="text-[11px] text-stone-500 leading-relaxed">
-            Gap of <strong>₹{healthData.emergency_gap?.toLocaleString('en-IN')}</strong> needed to clear 3-month survival buffer before market risk exposure.
-          </p>
+          <div className="text-[11px] text-stone-600 space-y-1 leading-relaxed">
+            <p>
+              Build at least <strong>₹{(healthData.emergency_recommended_target_inr || 12000).toLocaleString('en-IN')}</strong> before increasing equity exposure.
+            </p>
+            <p className="text-amber-800 font-bold">
+              ₹{(healthData.emergency_remaining_to_recommended || 10000).toLocaleString('en-IN')} remaining.
+            </p>
+            <p className="text-[10px] text-stone-500">
+              Your current reserve covers approximately {healthData.runway_months} months of essential expenses (Floor: ₹{(healthData.emergency_floor_inr || 6000).toLocaleString('en-IN')}; 3-mo strong: ₹{(healthData.emergency_strong_target_inr || 18000).toLocaleString('en-IN')}).
+            </p>
+          </div>
         </div>
 
         {/* Upskilling Capacity */}

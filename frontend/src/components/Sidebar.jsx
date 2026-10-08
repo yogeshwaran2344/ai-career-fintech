@@ -59,7 +59,7 @@ export default function Sidebar({
       title: 'WEALTH & FINTECH',
       items: [
         { id: 'finance', label: 'Finance & Budget', icon: Wallet },
-        { id: 'investments', label: 'Investments & Orders', icon: TrendingUp, badge: 'Paper/Live' }
+        { id: 'investments', label: 'Investments & Orders', icon: TrendingUp, badge: 'Live OMS' }
       ]
     },
     {

@@ -402,7 +402,7 @@ export default function App() {
             </span>
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-800 border-emerald-300">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>🟢 PAPER TRADING (Simulated Environment)</span>
+              <span>⚡ LIVE MARKET TELEMETRY & BROKER OMS</span>
             </span>
           </div>
 

@@ -54,11 +54,11 @@ export default function FinancialSafetyTab({ profile }) {
 
           <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 min-w-[240px]">
             <span className="text-[10px] text-emerald-200 font-bold uppercase block">Investing Clearance Status</span>
-            <span className={`text-base font-black ${safety?.investment_clearance_state === 'CLEARED' ? 'text-emerald-300' : 'text-rose-300'}`}>
-              {safety?.clearance_badge || (safety?.readiness_for_equity_investing ? '✅ Cleared for Market Orders' : '🔴 Clearance BLOCKED')}
+            <span className="text-base font-black text-amber-300">
+              {safety?.clearance_badge || '🔒 Investment Clearance: Limited'}
             </span>
             <span className="text-[10px] text-stone-300 block mt-0.5">
-              Runway: {safety?.runway_months || 0.33} Months | Gap: ₹{safety?.emergency_fund_gap_inr?.toLocaleString('en-IN') || '16,000'}
+              Runway: {safety?.runway_months || 0.33} Months | Gap: ₹{safety?.emergency_fund_gap_inr?.toLocaleString('en-IN') || '10,000'} remaining
             </span>
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function FinancialSafetyTab({ profile }) {
                 {safety.runway_months} Months
               </span>
               <span className="text-[10px] text-stone-500 mt-1 block">
-                Target: 3.0 Months (₹{safety.essential_monthly_expenses_inr?.toLocaleString('en-IN') || '6,000'}/mo essentials)
+                Target: 2.0 Months (₹{(safety.emergency_recommended_target_inr || 12000).toLocaleString('en-IN')})
               </span>
             </div>
 
