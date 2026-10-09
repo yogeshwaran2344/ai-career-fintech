@@ -14,7 +14,10 @@ import {
   Check,
   ChevronRight,
   ShieldCheck,
-  HelpCircle
+  HelpCircle,
+  GraduationCap,
+  Award,
+  Trophy
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../api';
