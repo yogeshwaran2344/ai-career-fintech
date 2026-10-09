@@ -29,20 +29,33 @@ class ProgressEngine:
                 for row in existing_rows
             ]
         else:
-            # Analyze current gaps to prioritize today's tasks
+            # Analyze current gaps and learning decay to prioritize today's tasks
             gaps = CareerEngine.analyze_skill_gap(profile)
             weak_or_missing = [g for g in gaps if g.status in ["MISSING", "IN_PROGRESS"]]
             
             primary_gap = weak_or_missing[0].skill if len(weak_or_missing) > 0 else "System Design"
             secondary_gap = weak_or_missing[1].skill if len(weak_or_missing) > 1 else "Deep Learning"
             
-            if total_mins >= 120:  # 2+ hours
+            # Check urgent forgetting curve / decay concepts
+            decay_concept = None
+            try:
+                from engines.learning_decay_engine import LearningDecayEngine
+                decay_summary = LearningDecayEngine.get_decay_status(profile.id)
+                if decay_summary.urgent_review_queue:
+                    decay_concept = decay_summary.urgent_review_queue[0].concept_name
+            except Exception:
+                pass
+
+            if total_mins >= 120:  # 2+ hours: 105 mins active study + 15 mins review = 120 mins
+                review_topic = f"Spaced Repetition: {decay_concept} (Retention <60%)" if decay_concept else "Review 2 target job postings & 1 behavioral prompt"
+                review_why = f"Predicted retention for {decay_concept} is dropping; 15-min active recall resets memory stability." if decay_concept else "Keeps you aligned with real-time 2026-2027 hiring requirements."
+
                 tasks = [
                     DailyTask(
                         id=f"{today_iso}-task-1",
                         subject="DSA & Problem Solving",
                         topic="Binary Search & Two Pointers (NeetCode 150)",
-                        duration_minutes=45,
+                        duration_minutes=40,
                         action_type="DSA Practice",
                         why_today="Top filter in technical placement rounds; daily consistency builds algorithmic intuition.",
                         completed=False
@@ -51,7 +64,7 @@ class ProgressEngine:
                         id=f"{today_iso}-task-2",
                         subject=f"Core Skill: {primary_gap}",
                         topic=f"{primary_gap} Architecture & Hands-on Implementation",
-                        duration_minutes=45,
+                        duration_minutes=35,
                         action_type="Learn",
                         why_today=f"Directly bridges your #{1} highest missing gap for {profile.career_goal}.",
                         completed=False
@@ -59,7 +72,7 @@ class ProgressEngine:
                     DailyTask(
                         id=f"{today_iso}-task-3",
                         subject="Portfolio Project",
-                        topic="Implement REST API endpoints & Dockerfile for Portfolio Capstone",
+                        topic=f"Implement REST API endpoints & Dockerfile for {secondary_gap} Capstone",
                         duration_minutes=30,
                         action_type="Code / Project",
                         why_today="Proves hands-on deployment capabilities to recruiters on GitHub.",
@@ -67,15 +80,15 @@ class ProgressEngine:
                     ),
                     DailyTask(
                         id=f"{today_iso}-task-4",
-                        subject="Career & Network",
-                        topic="Review 2 target job postings on LinkedIn & solve 1 behavioral prompt",
+                        subject="Review & Spaced Recall",
+                        topic=review_topic,
                         duration_minutes=15,
-                        action_type="Career / Apply",
-                        why_today="Keeps you aligned with real-time 2026-2027 hiring requirements.",
+                        action_type="Career / Review",
+                        why_today=review_why,
                         completed=False
                     )
                 ]
-            else:  # 1 hour
+            else:  # 1 hour (60 mins)
                 tasks = [
                     DailyTask(
                         id=f"{today_iso}-task-1",
@@ -96,6 +109,13 @@ class ProgressEngine:
                         completed=False
                     )
                 ]
+
+            # Invariant: sum of task duration MUST NEVER exceed total_mins
+            plan_sum = sum(t.duration_minutes for t in tasks)
+            if plan_sum > total_mins:
+                overflow = plan_sum - total_mins
+                tasks[0].duration_minutes = max(15, tasks[0].duration_minutes - overflow)
+
             # Save into persistent SQLite DB
             DatabaseManager.save_daily_tasks(profile.id, today_iso, tasks)
             

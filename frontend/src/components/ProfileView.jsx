@@ -20,6 +20,32 @@ export default function ProfileView({ profile, onSaveProfile, onReset }) {
   const [intentInsights, setIntentInsights] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
 
+  // Reset Confirmation State
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetError, setResetError] = useState('');
+
+  const handleConfirmReset = async () => {
+    if (resetConfirmText.trim().toUpperCase() !== 'RESET') {
+      setResetError("Please type 'RESET' exactly to confirm deletion.");
+      return;
+    }
+    setIsResetting(true);
+    setResetError('');
+    try {
+      if (onReset) {
+        await onReset({ confirm_phrase: 'RESET', reset_tasks: true, reset_activities: true, reset_exam_history: false });
+      }
+      setIsResetModalOpen(false);
+      setResetConfirmText('');
+    } catch (err) {
+      setResetError(err.message || 'Failed to reset profile.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const handleAcademicChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -101,8 +127,22 @@ export default function ProfileView({ profile, onSaveProfile, onReset }) {
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
+            onClick={() => {
+              setResetConfirmText('');
+              setResetError('');
+              setIsResetModalOpen(true);
+            }}
+            className="px-3.5 py-2 bg-stone-100 hover:bg-rose-50 text-stone-700 hover:text-rose-700 border border-stone-200 hover:border-rose-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Reset daily tasks, streak, and progress metrics"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Progress</span>
+          </button>
+
+          <button
             type="submit"
-            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md shadow-orange-600/20 transition-all"
+            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md shadow-orange-600/20 transition-all cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>{isSaved ? 'Saved & Recalculated!' : 'Save & Recalculate'}</span>
@@ -409,6 +449,80 @@ export default function ProfileView({ profile, onSaveProfile, onReset }) {
           </div>
         </div>
       </div>
+
+      {/* Explicit Reset Confirmation Modal */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center gap-2.5 text-rose-600">
+              <div className="p-2 rounded-xl bg-rose-50">
+                <RotateCcw className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-stone-900">Confirm Progress Reset</h3>
+                <p className="text-[11px] text-stone-500">Destructive irreversible action</p>
+              </div>
+            </div>
+
+            <div className="bg-rose-50/70 border border-rose-200 rounded-xl p-3.5 space-y-1.5 text-xs text-rose-900">
+              <p className="font-bold">What will be permanently deleted:</p>
+              <ul className="list-disc pl-4 space-y-1 text-[11px] text-rose-800">
+                <li>All daily task progress and focus sprint tracking logs</li>
+                <li>Completed learning activity logs and course milestone progress</li>
+                <li>XP points reset to 50, Level reset to 1, and study streak reset to Day 1</li>
+              </ul>
+              <p className="text-[11px] text-stone-600 pt-1">
+                Note: Your user account, password, and profile fields will remain intact.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-stone-700 block">
+                Type <span className="text-rose-600 font-mono font-black">RESET</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={resetConfirmText}
+                onChange={(e) => {
+                  setResetConfirmText(e.target.value);
+                  setResetError('');
+                }}
+                placeholder="RESET"
+                className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-mono text-stone-900 uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+              {resetError && (
+                <p className="text-[11px] font-bold text-rose-600">{resetError}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                disabled={isResetting}
+                className="px-4 py-2 text-xs font-bold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReset}
+                disabled={isResetting || resetConfirmText.trim().toUpperCase() !== 'RESET'}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5"
+              >
+                {isResetting ? (
+                  <span>Resetting...</span>
+                ) : (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Permanently Reset</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, status, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Header, Depends, Query, status, UploadFile, File, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, PlainTextResponse
@@ -12,7 +12,7 @@ import datetime
 from models import (
     StudentProfile, SkillItem, SkillGapItem, CareerMatch,
     LearningRoadmap, RecommendedProject, CertificationAffordability,
-    CourseCard, DailyActionPlan, DecisionEvaluationRequest,
+    CourseCard, CompleteCourseRequest, DailyActionPlan, DecisionEvaluationRequest,
     DecisionEvaluationResponse, ProgressUpdatePayload, LLMIntentAnalysis,
     UserRegisterRequest, UserLoginRequest, AuthResponse, ProfileSetupRequest,
     SimulationRequest, SimulationResponse, PlacementReadinessBreakdown,
@@ -52,10 +52,11 @@ from models import (
     PreviousYearPaper, PreviousYearPapersListResponse,
     LearningDecayConcept, LearningDecayStatusResponse, ConceptReviewRequest,
     NextBestActionItem, StudentIntelligenceResponse, CompleteActionRequest,
-    UserResumeData, AddProjectToResumeRequest, StockAdvisorResponse
+    UserResumeData, AddProjectToResumeRequest, StockAdvisorResponse,
+    ProfileResetRequest, ProfileResetResponse, RecordProjectEvidenceRequest, TargetRoleChangeRequest
 )
 from engines.career_comparator import CareerComparatorEngine
-from engines.career_engine import CareerEngine
+from engines.career_engine import CareerEngine, ROLE_BENCHMARKS
 from engines.finance_engine import FinanceEngine
 from engines.investment_engine import InvestmentEngine
 from engines.decision_engine import DecisionEngine
@@ -109,7 +110,7 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
 def get_user_from_auth(
@@ -248,20 +249,24 @@ def setup_profile_direct(req: ProfileSetupRequest):
     )
 
 @app.post("/api/auth/register", response_model=AuthResponse)
-def register_user(req: UserRegisterRequest):
+def register_user(req: UserRegisterRequest, request: Request):
+    client_ip = request.client.host if request.client else "127.0.0.1"
     email_clean = req.email.strip().lower()
+    rate_key = f"auth_register:{client_ip}:{email_clean}"
+    
+    allowed, attempts, retry_after = DatabaseManager.check_rate_limit(rate_key, max_attempts=5, window_seconds=300)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many registration attempts. Please wait {retry_after} seconds before trying again."
+        )
+
     existing = DatabaseManager.get_user_by_email(email_clean)
     if existing:
-        new_hash = hash_password(req.password)
-        DatabaseManager.update_password_hash(existing["id"], new_hash)
-        profile = DatabaseManager.get_profile_by_user_id(existing["id"])
-        token = DatabaseManager.create_session(existing["id"], duration_days=90)
-        return AuthResponse(
-            token=token,
-            user_id=existing["id"],
-            name=existing["name"],
-            email=email_clean,
-            profile=profile
+        DatabaseManager.record_auth_attempt(rate_key, success=False)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with this email address already exists. Please log in instead."
         )
         
     new_profile = StudentProfile(
@@ -284,6 +289,7 @@ def register_user(req: UserRegisterRequest):
         profile=new_profile
     )
     
+    DatabaseManager.record_auth_attempt(rate_key, success=True)
     return AuthResponse(
         token=token,
         user_id=user_id,
@@ -293,24 +299,29 @@ def register_user(req: UserRegisterRequest):
     )
 
 @app.post("/api/auth/login", response_model=AuthResponse)
-def login_user(req: UserLoginRequest):
+def login_user(req: UserLoginRequest, request: Request):
+    client_ip = request.client.host if request.client else "127.0.0.1"
     email_clean = req.email.strip().lower()
+    rate_key = f"auth_login:{client_ip}:{email_clean}"
+
+    allowed, attempts, retry_after = DatabaseManager.check_rate_limit(rate_key, max_attempts=5, window_seconds=300)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed login attempts. Please wait {retry_after} seconds before trying again."
+        )
+
     user_row = DatabaseManager.get_user_by_email(email_clean)
     if not user_row:
+        DatabaseManager.record_auth_attempt(rate_key, success=False)
         raise HTTPException(status_code=401, detail="Invalid email or password.")
         
     is_valid = verify_password(req.password, user_row["password_hash"])
-    
-    # Auto-recovery for user account if password was desynchronized
     if not is_valid:
-        if email_clean == "yogeshwaranselvaraj02@gmail.com":
-            new_hash = hash_password(req.password)
-            DatabaseManager.update_password_hash(user_row["id"], new_hash)
-            is_valid = True
-            
-    if not is_valid:
+        DatabaseManager.record_auth_attempt(rate_key, success=False)
         raise HTTPException(status_code=401, detail="Invalid email or password.")
         
+    DatabaseManager.record_auth_attempt(rate_key, success=True)
     uid = user_row["id"]
     profile = DatabaseManager.get_profile_by_user_id(uid)
     if not profile:
@@ -390,14 +401,109 @@ def save_profile(profile: StudentProfile, current_user: StudentProfile = Depends
     profile.email = current_user.email
     return DatabaseManager.save_profile(profile)
 
-@app.post("/api/profile/reset", response_model=StudentProfile)
-def reset_profile(current_user: StudentProfile = Depends(get_user_from_auth)):
+@app.post("/api/profile/reset", response_model=ProfileResetResponse)
+def reset_profile(req: ProfileResetRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    if req.confirm_phrase.strip().upper() not in ["CONFIRM_RESET", "RESET"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Profile reset requires explicit confirmation. Please provide confirm_phrase='RESET' to permanently delete tasks and activity progress."
+        )
+    
+    deleted_counts = DatabaseManager.reset_user_data(
+        current_user.id,
+        reset_tasks=req.reset_tasks,
+        reset_activities=req.reset_activities,
+        reset_exam_history=req.reset_exam_history
+    )
+    
     current_user.total_xp = 50
     current_user.user_level = 1
     current_user.streak_days = 1
-    return DatabaseManager.save_profile(current_user)
+    current_user.badges = ["🌱 Welcome Badge"]
+    saved_profile = DatabaseManager.save_profile(current_user)
+    
+    return ProfileResetResponse(
+        success=True,
+        message=f"User data successfully reset. Removed {deleted_counts.get('daily_tasks', 0)} daily tasks, {deleted_counts.get('completed_activities', 0)} activity logs, and {deleted_counts.get('course_progress', 0)} course progress records.",
+        deleted_records=deleted_counts,
+        updated_profile=saved_profile
+    )
 
 # ==================== ADVANCED CAREER ENGINE ====================
+
+@app.post("/api/career/target-role")
+def change_target_role(req: TargetRoleChangeRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    matching = [r for r in ROLE_BENCHMARKS if r.lower() == req.target_role.strip().lower()]
+    if matching:
+        target_role = matching[0]
+    elif req.target_role.strip() in ROLE_BENCHMARKS:
+        target_role = req.target_role.strip()
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Target role '{req.target_role}' is not in supported industry benchmarks ({len(ROLE_BENCHMARKS)} roles available)."
+        )
+        
+    current_user.career_goal = target_role
+    DatabaseManager.save_profile(current_user)
+    
+    readiness = CareerEngine.calculate_readiness(current_user, target_role)
+    skill_gaps = CareerEngine.analyze_skill_gap(current_user, target_role)
+    roadmap = CareerEngine.generate_roadmap(current_user)
+    projects = CareerEngine.recommend_projects(current_user)
+    
+    return {
+        "success": True,
+        "target_role": target_role,
+        "readiness": readiness,
+        "skill_gaps": skill_gaps,
+        "roadmap": roadmap,
+        "projects": projects,
+        "profile": current_user
+    }
+
+@app.post("/api/career/projects/record-evidence")
+def record_project_evidence(req: RecordProjectEvidenceRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    if not req.project_title.strip() or not req.github_url.strip():
+        raise HTTPException(status_code=400, detail="Project title and GitHub repository URL are required.")
+    
+    updated_skills = {s.name.lower(): s for s in current_user.skills}
+    for tech in req.tech_stack:
+        tech_clean = tech.strip()
+        t_key = tech_clean.lower()
+        if t_key in updated_skills:
+            updated_skills[t_key].proficiency = min(10.0, round(updated_skills[t_key].proficiency + 0.8, 1))
+            if updated_skills[t_key].proficiency >= 7.5:
+                updated_skills[t_key].level = "Advanced"
+            elif updated_skills[t_key].proficiency >= 5.0:
+                updated_skills[t_key].level = "Intermediate"
+        else:
+            new_skill = SkillItem(name=tech_clean, level="Intermediate", proficiency=6.0, category="Practical Project")
+            current_user.skills.append(new_skill)
+            updated_skills[t_key] = new_skill
+            
+    current_user.total_xp += 75
+    if "🛠️ Verified Project Builder" not in current_user.badges:
+        current_user.badges.append("🛠️ Verified Project Builder")
+        
+    DatabaseManager.save_profile(current_user)
+    DatabaseManager.record_completed_activity(
+        user_id=current_user.id,
+        activity_type="PROJECT_EVIDENCE_RECORDED",
+        activity_title=f"Recorded Project: {req.project_title}",
+        metadata={"github": req.github_url, "metrics": req.metrics_achieved, "tech_stack": req.tech_stack, "xp_earned": 75}
+    )
+    
+    readiness = CareerEngine.calculate_readiness(current_user, current_user.career_goal)
+    
+    return {
+        "success": True,
+        "message": f"Project '{req.project_title}' successfully recorded and verified in your engineering portfolio.",
+        "xp_earned": 75,
+        "ats_impact": "+8% Resume ATS Boost (Quantified engineering project evidence attached)",
+        "readiness": readiness,
+        "updated_profile": current_user
+    }
 
 @app.get("/api/career/readiness")
 def get_career_readiness(current_user: StudentProfile = Depends(get_user_from_auth)):
@@ -674,6 +780,49 @@ def calculate_career_roi(req: CareerRoiRequest, current_user: StudentProfile = D
 def evaluate_purchase(req: QuickPurchaseCheckRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return FinanceEngine.quick_purchase_check(current_user, req)
 
+# ==================== VERIFIED COURSE CATALOG & PROGRESS TRACKING ====================
+
+@app.get("/api/finance/courses", response_model=List[CourseCard])
+@app.get("/api/career/curated-courses", response_model=List[CourseCard])
+def get_curated_courses_endpoint(topic: Optional[str] = Query("Deep Learning"), current_user: StudentProfile = Depends(get_user_from_auth)):
+    return FinanceEngine.get_curated_courses(current_user, topic or "Deep Learning")
+
+@app.get("/api/career/courses/enrolled")
+def get_enrolled_courses(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return DatabaseManager.get_user_course_progress(current_user.id)
+
+@app.post("/api/career/courses/complete")
+def complete_course(req: CompleteCourseRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    was_first = DatabaseManager.mark_course_completed(
+        user_id=current_user.id,
+        course_id=req.course_id,
+        course_title=req.course_title or req.course_id,
+        provider=req.provider or "Verified Provider",
+        skill_targeted=req.skill_targeted or "Technical",
+        credential_type=req.credential_type or "COMPLETION_CERTIFICATE"
+    )
+    DatabaseManager.record_completed_activity(
+        user_id=current_user.id,
+        activity_type="COURSE_COMPLETION",
+        activity_title=req.course_title or req.course_id,
+        metadata={"provider": req.provider, "skill": req.skill_targeted, "credential": req.credential_type}
+    )
+    new_prof = None
+    readiness = None
+    if was_first and req.skill_targeted:
+        skill_name = req.skill_targeted
+        curr_prof = next((s.proficiency for s in current_user.skills if s.name.lower() == skill_name.lower()), 3.0)
+        new_prof = round(min(10.0, curr_prof + 0.5), 1)
+        updated_profile, summary = ProgressEngine.apply_progress_update(current_user, {skill_name: new_prof})
+        readiness = summary.get("new_readiness_pct")
+    return {
+        "success": True,
+        "was_first_completion": was_first,
+        "message": f"Course completed successfully!{' (+0.5 growth in ' + req.skill_targeted + ')' if (was_first and req.skill_targeted) else ''}",
+        "new_proficiency": new_prof,
+        "readiness_pct": readiness
+    }
+
 # ==================== WEALTH & INVESTMENT ENGINE ====================
 
 @app.get("/api/wealth/hub", response_model=InvestmentSavingsHubResponse)
@@ -878,13 +1027,10 @@ def toggle_daily_task(task_id: str, current_user: StudentProfile = Depends(get_u
     today_tasks = DatabaseManager.get_daily_tasks(profile.id)
     task_row = next((t for t in today_tasks if t["id"] == task_id), None)
     
-    completed = DatabaseManager.toggle_task_completion(task_id, profile.id)
-    
-    all_tasks = DatabaseManager.get_daily_tasks(profile.id)
-    total = sum(1 for t in all_tasks if t["completed"])
+    is_completed, total, was_first_completion = DatabaseManager.toggle_task(profile.id, task_id)
 
     skill_gained = None
-    if completed:
+    if is_completed and was_first_completion:
         skill_name = "DSA"
         if task_row:
             subject = (task_row.get("subject") or "").lower()
@@ -919,7 +1065,7 @@ def toggle_daily_task(task_id: str, current_user: StudentProfile = Depends(get_u
 
     return {
         "task_id": task_id, 
-        "completed": completed, 
+        "completed": is_completed, 
         "total_completed": total,
         "skill_gained": skill_gained
     }

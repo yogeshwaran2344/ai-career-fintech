@@ -110,8 +110,27 @@ export const api = {
     authState.setUser(updated);
     return updated;
   },
-  resetProfile: async () => {
-    return authFetch(`${API_BASE}/profile/reset`, { method: 'POST' });
+  resetProfile: async (payload = { confirm_phrase: 'RESET' }) => {
+    const res = await authFetch(`${API_BASE}/profile/reset`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (res.updated_profile) {
+      authState.setUser(res.updated_profile);
+    }
+    return res;
+  },
+  changeTargetRole: async (targetRole) => {
+    return authFetch(`${API_BASE}/career/target-role`, {
+      method: 'POST',
+      body: JSON.stringify({ target_role: targetRole }),
+    });
+  },
+  recordProjectEvidence: async (evidence) => {
+    return authFetch(`${API_BASE}/career/projects/record-evidence`, {
+      method: 'POST',
+      body: JSON.stringify(evidence),
+    });
   },
 
   // 1. What-If Career Simulator

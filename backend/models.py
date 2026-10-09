@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field
+import re
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Optional, Any
 from datetime import date
 
@@ -9,11 +10,23 @@ class AcademicProfile(BaseModel):
     college: Optional[str] = "Indian Institute of Technology / NIT / University"
     cgpa: float = 8.2
 
+    @field_validator("cgpa")
+    @classmethod
+    def validate_cgpa(cls, v: float) -> float:
+        if v < 0.0 or v > 10.0:
+            raise ValueError("CGPA must be between 0.0 and 10.0.")
+        return round(v, 2)
+
 class SkillItem(BaseModel):
     name: str
     level: str = "Beginner"  # Beginner, Intermediate, Advanced
     proficiency: float = 5.0  # 0 to 10
     category: Optional[str] = "General"
+
+    @field_validator("proficiency")
+    @classmethod
+    def validate_proficiency(cls, v: float) -> float:
+        return max(0.0, min(10.0, round(v, 1)))
 
 class FinancialProfile(BaseModel):
     monthly_income: float = 15000.0
@@ -25,11 +38,25 @@ class FinancialProfile(BaseModel):
     savings: float = 3000.0
     emergency_buffer: float = 2000.0
 
+    @field_validator("monthly_income", "food", "travel", "entertainment", "other", "available_for_learning", "savings", "emergency_buffer")
+    @classmethod
+    def validate_non_negative(cls, v: float) -> float:
+        if v < 0.0:
+            raise ValueError("Financial amounts must be non-negative (>= 0.0).")
+        return round(v, 2)
+
 class PreferencesProfile(BaseModel):
     preferred_learning_style: str = "Video"  # Video, Hands-on / Projects, Reading, Hybrid
     study_hours_per_day: float = 2.0
     target_placement_year: int = 2027
     free_text_intent: Optional[str] = "I want to work in AI but I'm not sure whether I should learn data science or ML engineering."
+
+    @field_validator("study_hours_per_day")
+    @classmethod
+    def validate_study_hours(cls, v: float) -> float:
+        if v < 0.5 or v > 16.0:
+            raise ValueError("Daily study commitment must be between 0.5 and 16.0 hours.")
+        return round(v, 1)
 
 class StudentProfile(BaseModel):
     id: str = "user-init"
@@ -71,6 +98,28 @@ class UserRegisterRequest(BaseModel):
     financial: FinancialProfile = Field(default_factory=FinancialProfile)
     preferences: PreferencesProfile = Field(default_factory=PreferencesProfile)
 
+    @field_validator("email")
+    @classmethod
+    def validate_email_format(cls, v: str) -> str:
+        clean = v.strip().lower()
+        email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        if not re.match(email_regex, clean):
+            raise ValueError("Invalid email format. Please provide a valid email address.")
+        return clean
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain at least one lowercase letter.")
+        if not re.search(r"[0-9\W_]", v):
+            raise ValueError("Password must contain at least one number or special character.")
+        return v
+
 class UserLoginRequest(BaseModel):
     email: str
     password: str
@@ -81,6 +130,29 @@ class AuthResponse(BaseModel):
     name: str
     email: str
     profile: StudentProfile
+
+class ProfileResetRequest(BaseModel):
+    confirm_phrase: str = Field(description="Must be 'CONFIRM_RESET' or 'RESET'")
+    reset_tasks: bool = True
+    reset_activities: bool = True
+    reset_exam_history: bool = False
+
+class ProfileResetResponse(BaseModel):
+    success: bool
+    message: str
+    deleted_records: Dict[str, int]
+    updated_profile: StudentProfile
+
+class RecordProjectEvidenceRequest(BaseModel):
+    project_title: str
+    github_url: str
+    live_demo_url: Optional[str] = None
+    tech_stack: List[str] = Field(default_factory=list)
+    metrics_achieved: str
+    verification_checklist: Dict[str, bool] = Field(default_factory=dict)
+
+class TargetRoleChangeRequest(BaseModel):
+    target_role: str
     
 class SkillGapItem(BaseModel):
     skill: str
@@ -101,6 +173,7 @@ class CareerMatch(BaseModel):
     strong_skills: List[str]
     missing_skills: List[str]
     partial_skills: List[str]
+    market_source_citation: Optional[str] = "Source: NASSCOM Tech Hiring Pulse 2025-2026 & Glassdoor Verified Aggregates, Q1 2026"
 
 # 1. Career Simulation "What-If"
 class SimulationRequest(BaseModel):
@@ -110,6 +183,27 @@ class SimulationRequest(BaseModel):
     skill_boosts: Dict[str, float] = {}
     invest_course_cost: Optional[float] = None
     invest_course_name: Optional[str] = None
+
+    @field_validator("study_hours_per_day")
+    @classmethod
+    def validate_hours(cls, v: float) -> float:
+        if v < 0.5 or v > 16.0:
+            raise ValueError("Daily study commitment must be between 0.5 and 16.0 hours.")
+        return round(v, 1)
+
+    @field_validator("monthly_budget")
+    @classmethod
+    def validate_budget(cls, v: float) -> float:
+        if v < 0.0:
+            raise ValueError("Monthly budget cannot be negative.")
+        return round(v, 2)
+
+    @field_validator("invest_course_cost")
+    @classmethod
+    def validate_course_cost(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0.0:
+            raise ValueError("Course investment cost cannot be negative.")
+        return round(v, 2) if v is not None else None
 
 class SimulationResponse(BaseModel):
     scenario_label: str
@@ -123,6 +217,9 @@ class SimulationResponse(BaseModel):
     recommendation_stars: int
     strategic_verdict: str
     course_investment_analysis: Optional[Dict[str, Any]] = None
+    side_by_side_scenarios: Optional[List[Dict[str, Any]]] = None
+    assumptions_explained: Optional[List[str]] = None
+    estimate_disclaimer: str = "⚠️ Statistical Model Estimate: Projections reflect simulated readiness velocity and learning compounding, not guaranteed recruitment offers or CTC packages."
 
 # 2. Placement Readiness Detailed Breakdown
 class PlacementFactor(BaseModel):
@@ -319,6 +416,17 @@ class CourseCard(BaseModel):
     is_recommended: bool = False
     verdict: str
     url: str
+    credential_type: Optional[str] = "COMPLETION_CERTIFICATE"
+    prerequisites: Optional[str] = "None"
+    verified: bool = True
+    completed: bool = False
+
+class CompleteCourseRequest(BaseModel):
+    course_id: str
+    course_title: Optional[str] = None
+    provider: Optional[str] = None
+    skill_targeted: Optional[str] = None
+    credential_type: Optional[str] = "COMPLETION_CERTIFICATE"
 
 class CertificationAffordability(BaseModel):
     cert_name: str

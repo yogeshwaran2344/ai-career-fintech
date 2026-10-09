@@ -20,8 +20,9 @@ class AdvancedSimulationEngine:
     def simulate_what_if(cls, profile: StudentProfile, req: SimulationRequest) -> SimulationResponse:
         target_role = req.target_role or profile.career_goal
         current_pct, current_score, strong, missing, _ = CareerEngine.calculate_readiness(profile, target_role)
-        hours = req.study_hours_per_day
-        budget = req.monthly_budget
+        hours = max(0.5, min(16.0, req.study_hours_per_day))
+        budget = max(0.0, req.monthly_budget)
+        cost = max(0.0, req.invest_course_cost or 0.0)
         
         # Compounding velocity per month based on daily study hours:
         # 1 hr/day -> +1.8% per month, 2 hrs/day -> +3.0% per month, 3 hrs/day -> +4.2% per month, 4 hrs/day -> +5.5% per month
@@ -33,9 +34,8 @@ class AdvancedSimulationEngine:
         # Course investment impact simulation
         course_analysis = None
         course_gain = 0.0
-        if req.invest_course_cost and req.invest_course_cost > 0:
-            cost = req.invest_course_cost
-            affordability_ratio = budget / cost if cost > 0 else 1.0
+        if cost > 0:
+            affordability_ratio = (budget / cost) if cost > 0 else 1.0
             
             # Diminishing returns on expensive courses vs free hands-on practice
             skill_gain_pct = round(min(10.0, 3.0 + (cost / 2000.0)), 1)
@@ -88,6 +88,67 @@ class AdvancedSimulationEngine:
             f"{p3}% in 3 months, and reach {p6}% (+{gain}%) by month 6. Estimated time to reach 85%+ readiness is ~{months_to_ready} months."
         )
 
+        # Side-by-side scenario comparison
+        # Scenario B: Capital SIP Compounding (allocate monthly budget to 12% equity index SIP while learning on open source)
+        sip_hours = 2.0
+        sip_velocity = sip_hours * 1.4
+        p6_sip = min(99, int(round(current_pct + (sip_velocity * 5.0))))
+        corpus_6m = int(round(budget * 6 * 1.035)) if budget > 0 else 0
+        months_to_ready_sip = max(1, int(round(needed / sip_velocity)))
+
+        # Scenario C: Intensive Placement Sprint (+1.5h/day study)
+        sprint_hours = round(min(16.0, hours + 1.5), 1)
+        sprint_velocity = min(8.0, max(1.2, sprint_hours * 1.4))
+        p6_sprint = min(99, int(round(current_pct + (sprint_velocity * 5.0) + skill_bonus + course_gain)))
+        months_to_ready_sprint = max(1, int(round(needed / sprint_velocity)))
+
+        side_by_side = [
+            {
+                "id": "scenario_a",
+                "name": "Scenario A: Active Custom Plan",
+                "daily_study_hours": f"{hours}h / day",
+                "monthly_commitment": f"{int(hours * 30)}h total",
+                "monthly_budget": f"₹{budget:,.0f}/mo",
+                "projected_6m_readiness": f"{p6}% (+{gain}%)",
+                "months_to_target": f"~{months_to_ready} months",
+                "financial_stress": fin_stress,
+                "strategy_summary": "Your customized balance of daily study hours and targeted monthly expenditure.",
+                "badge": "Active Plan"
+            },
+            {
+                "id": "scenario_b",
+                "name": "Scenario B: Capital SIP & Free Track",
+                "daily_study_hours": f"{sip_hours}h / day",
+                "monthly_commitment": f"{int(sip_hours * 30)}h total",
+                "monthly_budget": f"₹{budget:,.0f}/mo invested in Index SIP",
+                "projected_6m_readiness": f"{p6_sip}% (+{p6_sip - current_pct}%)",
+                "months_to_target": f"~{months_to_ready_sip} months",
+                "financial_stress": "LOW (Zero Course Risk)",
+                "strategy_summary": f"Uses free verified curricula while accumulating ₹{corpus_6m:,.0f} emergency reserve over 6 months.",
+                "badge": "Financial Fortress"
+            },
+            {
+                "id": "scenario_c",
+                "name": "Scenario C: Accelerated Placement Sprint",
+                "daily_study_hours": f"{sprint_hours}h / day",
+                "monthly_commitment": f"{int(sprint_hours * 30)}h total",
+                "monthly_budget": f"₹{budget:,.0f}/mo",
+                "projected_6m_readiness": f"{p6_sprint}% (+{p6_sprint - current_pct}%)",
+                "months_to_target": f"~{months_to_ready_sprint} months",
+                "financial_stress": fin_stress,
+                "strategy_summary": "Intensive sprint for urgent placement drives; +1.5h daily problem solving to compress preparation timeline.",
+                "badge": "Accelerated"
+            }
+        ]
+
+        assumptions = [
+            "Velocity Assumption: Daily focused study hour yields ~1.4% monthly placement readiness increase based on standard CS/AI curricula.",
+            "Fatigue Decay: Daily commitments beyond 6 hours experience diminishing marginal knowledge retention.",
+            "Course Impact: Paid certifications contribute up to +5% to initial recruiter screening, while hands-on GitHub projects drive offer conversion.",
+            "Financial Stress Model: Allocating >35% of monthly disposable budget to courses elevates financial stress to HIGH.",
+            "Statistical Model Label: Projections are simulated algorithmic estimations and do not constitute hiring or salary guarantees."
+        ]
+
         return SimulationResponse(
             scenario_label=f"Simulation: {hours}h/day Study • ₹{budget:,.0f}/mo Budget",
             current_readiness_pct=current_pct,
@@ -99,7 +160,10 @@ class AdvancedSimulationEngine:
             financial_stress=fin_stress,
             recommendation_stars=stars,
             strategic_verdict=verdict_text,
-            course_investment_analysis=course_analysis
+            course_investment_analysis=course_analysis,
+            side_by_side_scenarios=side_by_side,
+            assumptions_explained=assumptions,
+            estimate_disclaimer="⚠️ Statistical Model Estimate: Projections reflect simulated readiness velocity and learning compounding, not guaranteed recruitment offers or CTC packages."
         )
 
     # 2. DETAILED PLACEMENT READINESS FACTOR BREAKDOWN

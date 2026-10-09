@@ -33,7 +33,8 @@ import {
   LogOut,
   Check,
   Inbox,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
@@ -249,8 +250,8 @@ export default function App() {
     else setCurrentTab('dashboard');
   };
 
-  const showNotification = (message, title = 'AI Alert') => {
-    setNotification({ title, message });
+  const showNotification = (message, title = 'AI Alert', type = 'info') => {
+    setNotification({ title, message, type });
     setTimeout(() => setNotification(null), 5000);
   };
 
@@ -258,7 +259,7 @@ export default function App() {
     setProfile(userProfile);
     setIsAuthOpen(false);
     await loadEngineData();
-    showNotification(`Welcome, ${userProfile.name}! Your personalized career and financial roadmaps are active.`, 'Profile Ready');
+    showNotification(`Welcome, ${userProfile.name}! Your personalized career and financial roadmaps are active.`, 'Profile Ready', 'success');
   };
 
   const handleSaveProfile = async (updatedProfile) => {
@@ -266,21 +267,26 @@ export default function App() {
       const saved = await api.updateProfile(updatedProfile);
       setProfile(saved);
       await loadEngineData();
-      showNotification(`Profile for ${saved.name} updated. All AI engines have re-evaluated!`, 'Profile Synced');
+      showNotification(`Profile for ${saved.name} updated. All AI engines have re-evaluated!`, 'Profile Synced', 'success');
     } catch (err) {
       console.error(err);
+      showNotification(err.message || 'Failed to update profile.', 'Error Updating Profile', 'error');
     }
   };
 
-  const handleResetProfile = async () => {
+  const handleResetProfile = async (payload = { confirm_phrase: 'RESET' }) => {
     try {
-      const reset = await api.resetProfile();
-      setProfile(reset);
+      const res = await api.resetProfile(payload);
+      if (res.updated_profile) {
+        setProfile(res.updated_profile);
+      }
       await loadEngineData();
-      showNotification('Progress metrics reset to initial baseline.', 'Reset Complete');
+      showNotification(res.message || 'Progress metrics reset to initial baseline.', 'Reset Complete', 'success');
       confetti({ particleCount: 40 });
     } catch (err) {
       console.error(err);
+      showNotification(err.message || 'Failed to reset profile.', 'Reset Failed', 'error');
+      throw err;
     }
   };
 
@@ -320,9 +326,19 @@ export default function App() {
 
   const handleSelectRole = async (newRole) => {
     if (!profile) return;
-    const updated = { ...profile, career_goal: newRole };
-    await handleSaveProfile(updated);
-    showNotification(`Target switched to ${newRole}. Roadmap and skill gaps regenerated!`, 'Target Updated');
+    try {
+      const res = await api.changeTargetRole(newRole);
+      if (res.profile) setProfile(res.profile);
+      if (res.readiness) setReadiness(res.readiness);
+      if (res.skill_gaps) setSkillGaps(res.skill_gaps);
+      if (res.roadmap) setRoadmap(res.roadmap);
+      if (res.projects) setProjects(res.projects);
+      showNotification(`Target switched to ${newRole}. Roadmap, skill gaps, and projects re-evaluated!`, 'Target Updated', 'success');
+      loadEngineData();
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message || 'Failed to switch target role.', 'Target Change Failed', 'error');
+    }
   };
 
   if (loading && !profile) {
@@ -592,13 +608,43 @@ export default function App() {
 
         {/* Floating Notification */}
         {notification && (
-          <div className="fixed bottom-6 right-6 z-50 bg-stone-900 text-white p-4 rounded-2xl shadow-2xl border border-stone-700 max-w-md animate-bounce">
+          <div className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl shadow-2xl border max-w-md animate-bounce transition-all ${
+            notification.type === 'error'
+              ? 'bg-stone-950 text-white border-rose-500/80 shadow-rose-950/50'
+              : notification.type === 'success'
+              ? 'bg-stone-950 text-white border-emerald-500/80 shadow-emerald-950/50'
+              : 'bg-stone-900 text-white border-stone-700'
+          }`}>
             <div className="flex items-start gap-3">
-              <div className="p-1 rounded-full bg-orange-500 text-white mt-0.5">
-                <Sparkles className="w-4 h-4" />
+              <div className={`p-1.5 rounded-full text-white mt-0.5 ${
+                notification.type === 'error'
+                  ? 'bg-rose-500'
+                  : notification.type === 'success'
+                  ? 'bg-emerald-500'
+                  : 'bg-orange-500'
+              }`}>
+                {notification.type === 'error' ? (
+                  <AlertCircle className="w-4 h-4" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
               </div>
-              <div>
-                <h4 className="text-xs font-extrabold text-orange-400">{notification.title}</h4>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className={`text-xs font-extrabold ${
+                    notification.type === 'error'
+                      ? 'text-rose-400'
+                      : notification.type === 'success'
+                      ? 'text-emerald-400'
+                      : 'text-orange-400'
+                  }`}>{notification.title}</h4>
+                  <button
+                    onClick={() => setNotification(null)}
+                    className="text-stone-400 hover:text-white text-xs ml-2 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
                 <p className="text-xs text-stone-200 mt-0.5 leading-relaxed">{notification.message}</p>
               </div>
             </div>

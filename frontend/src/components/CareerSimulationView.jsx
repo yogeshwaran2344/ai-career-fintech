@@ -468,47 +468,83 @@ export default function CareerSimulationView({ profile }) {
       </div>
 
       {/* SECTION: SCENARIO COMPARATOR (SCENARIO A vs B vs C) */}
-      <div className="advisor-card p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+      <div className="advisor-card p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-orange-600" />
-            <h2 className="text-base font-bold text-stone-900">Compare Saved Scenarios (A vs B vs C)</h2>
+            <h2 className="text-base font-bold text-stone-900">Side-by-Side Scenario Simulation (A vs B vs C)</h2>
           </div>
-          <span className="text-xs text-stone-500">Side-by-side Decision Impact</span>
+          <span className="text-xs text-stone-500 font-medium">Dynamically recomputed for every parameter change</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {savedScenarios.map((sc, idx) => (
-            <div key={sc.id} className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-3">
+          {(simulationResult?.side_by_side_scenarios || savedScenarios).map((sc, idx) => (
+            <div key={sc.id || idx} className={`p-4 rounded-2xl border space-y-3 transition-all ${
+              idx === 0 
+                ? 'bg-orange-50/30 border-orange-200 shadow-sm ring-1 ring-orange-400/20' 
+                : 'bg-stone-50 border-stone-200/80 hover:border-stone-300'
+            }`}>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase bg-orange-100 text-orange-800 px-2 py-0.5 rounded">
-                  {['Scenario A', 'Scenario B', 'Scenario C'][idx] || 'Custom'}
+                <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                  idx === 0 ? 'bg-orange-500 text-white' : 'bg-stone-200 text-stone-800'
+                }`}>
+                  {sc.badge || `Scenario ${String.fromCharCode(65 + idx)}`}
                 </span>
-                <div className="flex text-amber-500">
-                  {[...Array(sc.stars || 4)].map((_, i) => (
-                    <Star key={i} className="w-3 h-3 fill-amber-400" />
-                  ))}
+                <span className="text-[10px] font-bold text-stone-500">{sc.daily_study_hours || `${sc.studyHours || 2}h/day`}</span>
+              </div>
+
+              <h4 className="text-xs font-black text-stone-900 leading-snug">{sc.name}</h4>
+
+              <div className="space-y-1.5 text-xs text-stone-600 pt-1 border-t border-stone-200/60">
+                <div className="flex justify-between">
+                  <span className="text-stone-500">6-Month Readiness:</span>
+                  <strong className="text-orange-600 font-black">{sc.projected_6m_readiness || `${sc.p6}%`}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500">Time to 85% Target:</span>
+                  <strong className="text-stone-900">{sc.months_to_target || `~${sc.months} Months`}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500">Budget / Capital:</span>
+                  <span className="font-bold text-stone-800">{sc.monthly_budget || `₹${sc.budget}/mo`}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500">Financial Stress:</span>
+                  <span className="font-bold text-emerald-700">{sc.financial_stress || sc.stress}</span>
                 </div>
               </div>
 
-              <h4 className="text-xs font-bold text-stone-900">{sc.name}</h4>
-
-              <div className="space-y-1.5 text-xs text-stone-600 pt-1">
-                <div className="flex justify-between">
-                  <span>6-Month Projected Readiness:</span>
-                  <strong className="text-orange-600 font-black">{sc.p6}%</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Est. Time to Job Ready:</span>
-                  <strong className="text-stone-900">{sc.months} Months</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Financial Stress:</span>
-                  <span className="font-bold text-stone-800">{sc.stress}</span>
-                </div>
-              </div>
+              {sc.strategy_summary && (
+                <p className="text-[11px] text-stone-500 leading-relaxed italic bg-white/60 p-2 rounded-lg border border-stone-200/40">
+                  {sc.strategy_summary}
+                </p>
+              )}
             </div>
           ))}
+        </div>
+
+        {/* Model Assumptions & Statistical Disclaimers */}
+        <div className="pt-2 border-t border-stone-100 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
+            <ShieldAlert className="w-3.5 h-3.5 text-orange-600" />
+            <span>Assumptions Behind Simulation & Stress Models:</span>
+          </div>
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-stone-600">
+            {(simulationResult?.assumptions_explained || [
+              "Daily focused study hour yields ~1.4% monthly placement readiness increase based on standard CS/AI curricula.",
+              "Diminishing returns kick in beyond 6 hours daily due to fatigue decay.",
+              "Certifications contribute up to +5% to screening, while hands-on GitHub projects drive offer conversion.",
+              "Allocating >35% of monthly disposable budget to courses elevates financial stress to HIGH."
+            ]).map((assumption, aIdx) => (
+              <li key={aIdx} className="bg-stone-50 p-2 rounded-lg border border-stone-200/60 flex items-start gap-1.5">
+                <span className="text-orange-500 font-bold">•</span>
+                <span>{assumption}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-stone-400 font-medium italic pt-1">
+            {simulationResult?.estimate_disclaimer || "⚠️ Statistical Model Estimate: Projections reflect simulated readiness velocity and learning compounding, not guaranteed recruitment offers or CTC packages."}
+          </p>
         </div>
       </div>
     </div>

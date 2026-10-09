@@ -409,6 +409,40 @@ def init_database():
         )
     """)
 
+    # 23. Rate Limiting Table (Login & Registration brute-force protection)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS auth_rate_limits (
+            key TEXT PRIMARY KEY,
+            attempts INTEGER DEFAULT 1,
+            first_attempt_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_attempt_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # 24. User Verified Course Progress Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_course_progress (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            course_id TEXT NOT NULL,
+            course_title TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            skill_targeted TEXT NOT NULL,
+            credential_type TEXT DEFAULT 'COMPLETION_CERTIFICATE',
+            completed INTEGER DEFAULT 0,
+            completed_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, course_id)
+        )
+    """)
+
+    # Migration: Add xp_awarded column to daily_tasks if not present
+    try:
+        cursor.execute("ALTER TABLE daily_tasks ADD COLUMN xp_awarded INTEGER DEFAULT 0")
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -491,6 +525,43 @@ class DatabaseManager:
         conn.commit()
         conn.close()
         return profile
+
+    @staticmethod
+    def reset_user_data(user_id: str, reset_tasks: bool = True, reset_activities: bool = True, reset_exam_history: bool = False) -> Dict[str, int]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        deleted_counts = {}
+
+        if reset_tasks:
+            cursor.execute("SELECT COUNT(*) FROM daily_tasks WHERE user_id = ?", (user_id,))
+            deleted_counts["daily_tasks"] = cursor.fetchone()[0]
+            cursor.execute("DELETE FROM daily_tasks WHERE user_id = ?", (user_id,))
+
+        if reset_activities:
+            cursor.execute("SELECT COUNT(*) FROM user_completed_activities WHERE user_id = ?", (user_id,))
+            deleted_counts["completed_activities"] = cursor.fetchone()[0]
+            cursor.execute("DELETE FROM user_completed_activities WHERE user_id = ?", (user_id,))
+
+            cursor.execute("SELECT COUNT(*) FROM user_course_progress WHERE user_id = ?", (user_id,))
+            deleted_counts["course_progress"] = cursor.fetchone()[0]
+            cursor.execute("DELETE FROM user_course_progress WHERE user_id = ?", (user_id,))
+
+        if reset_exam_history:
+            cursor.execute("SELECT COUNT(*) FROM user_exam_attempts WHERE user_id = ?", (user_id,))
+            deleted_counts["exam_attempts"] = cursor.fetchone()[0]
+            cursor.execute("DELETE FROM user_exam_attempts WHERE user_id = ?", (user_id,))
+
+            cursor.execute("SELECT COUNT(*) FROM user_mistake_bank WHERE user_id = ?", (user_id,))
+            deleted_counts["mistake_bank"] = cursor.fetchone()[0]
+            cursor.execute("DELETE FROM user_mistake_bank WHERE user_id = ?", (user_id,))
+
+        cursor.execute("SELECT COUNT(*) FROM progress_history WHERE user_id = ?", (user_id,))
+        deleted_counts["progress_history"] = cursor.fetchone()[0]
+        cursor.execute("DELETE FROM progress_history WHERE user_id = ?", (user_id,))
+
+        conn.commit()
+        conn.close()
+        return deleted_counts
 
     @staticmethod
     def create_user(name: str, email: str, password_plain: str, avatar: str, profile: StudentProfile) -> Tuple[str, str]:
@@ -615,24 +686,29 @@ class DatabaseManager:
         conn.close()
 
     @staticmethod
-    def toggle_task(user_id: str, task_id: str) -> Tuple[bool, int]:
+    def toggle_task(user_id: str, task_id: str) -> Tuple[bool, int, bool]:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT completed FROM daily_tasks WHERE user_id = ? AND id = ?", (user_id, task_id))
+        cursor.execute("SELECT completed, xp_awarded FROM daily_tasks WHERE user_id = ? AND id = ?", (user_id, task_id))
         row = cursor.fetchone()
         new_status = 1
+        was_first = False
         if row and row["completed"] == 1:
             new_status = 0
             cursor.execute("UPDATE daily_tasks SET completed = 0, completed_at = NULL WHERE user_id = ? AND id = ?", (user_id, task_id))
         else:
-            cursor.execute("UPDATE daily_tasks SET completed = 1, completed_at = CURRENT_TIMESTAMP WHERE user_id = ? AND id = ?", (user_id, task_id))
+            already_awarded = bool(row["xp_awarded"]) if (row and "xp_awarded" in row.keys() and row["xp_awarded"]) else False
+            was_first = not already_awarded
+            cursor.execute("UPDATE daily_tasks SET completed = 1, completed_at = CURRENT_TIMESTAMP, xp_awarded = 1 WHERE user_id = ? AND id = ?", (user_id, task_id))
         conn.commit()
 
         # Count completed tasks for user
         cursor.execute("SELECT COUNT(*) FROM daily_tasks WHERE user_id = ? AND completed = 1", (user_id,))
         total_completed = cursor.fetchone()[0]
         conn.close()
-        return (new_status == 1), total_completed
+        return (new_status == 1), total_completed, was_first
+
+    toggle_task_completion = toggle_task
 
     @staticmethod
     def get_task_by_id(user_id: str, task_id: str) -> Optional[Dict[str, Any]]:
@@ -1448,6 +1524,142 @@ class DatabaseManager:
         cursor.execute(query, (user_id, ats_score, resume_headline, json.dumps(keywords), json.dumps(projects), json.dumps(suggestions)))
         conn.commit()
         conn.close()
+
+    # ==================== RATE LIMITING ====================
+    @staticmethod
+    def check_rate_limit(key: str, max_attempts: int = 5, window_seconds: int = 300) -> Tuple[bool, int, int]:
+        """
+        Returns (allowed: bool, current_attempts: int, retry_after_seconds: int)
+        """
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT attempts, last_attempt_at FROM auth_rate_limits WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return True, 0, 0
+        
+        attempts = row["attempts"]
+        last_at = row["last_attempt_at"]
+        try:
+            last_dt = datetime.datetime.fromisoformat(str(last_at).replace("Z", "+00:00"))
+        except Exception:
+            try:
+                last_dt = datetime.datetime.strptime(str(last_at), "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                last_dt = datetime.datetime.utcnow()
+        
+        now = datetime.datetime.utcnow()
+        elapsed = (now - last_dt.replace(tzinfo=None)).total_seconds()
+
+        if elapsed > window_seconds:
+            # Window expired, reset
+            cursor.execute("DELETE FROM auth_rate_limits WHERE key = ?", (key,))
+            conn.commit()
+            conn.close()
+            return True, 0, 0
+        
+        if attempts >= max_attempts:
+            conn.close()
+            retry_after = max(1, int(window_seconds - elapsed))
+            return False, attempts, retry_after
+        
+        conn.close()
+        return True, attempts, 0
+
+    @staticmethod
+    def record_auth_attempt(key: str, success: bool = False):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        if success:
+            cursor.execute("DELETE FROM auth_rate_limits WHERE key = ?", (key,))
+        else:
+            now_iso = datetime.datetime.utcnow().isoformat()
+            cursor.execute("""
+                INSERT INTO auth_rate_limits (key, attempts, first_attempt_at, last_attempt_at)
+                VALUES (?, 1, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                attempts = auth_rate_limits.attempts + 1,
+                last_attempt_at = ?
+            """, (key, now_iso, now_iso, now_iso))
+        conn.commit()
+        conn.close()
+
+    # ==================== CHAT HISTORY STORE ====================
+    @staticmethod
+    def save_chat_message(user_id: str, sender: str, message: str) -> str:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        msg_id = f"msg-{uuid.uuid4().hex[:12]}"
+        cursor.execute("""
+            INSERT INTO chat_history (id, user_id, sender, message, created_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (msg_id, user_id, sender, message))
+        conn.commit()
+        conn.close()
+        return msg_id
+
+    @staticmethod
+    def get_recent_chat_history(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT sender, message, created_at FROM chat_history
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?
+        """, (user_id, limit))
+        rows = cursor.fetchall()
+        conn.close()
+        # Chronological order
+        return [{"sender": r["sender"], "message": r["message"], "created_at": str(r["created_at"])} for r in reversed(rows)]
+
+    # ==================== USER COURSE PROGRESS & COMPLETIONS ====================
+    @staticmethod
+    def record_course_enrollment(user_id: str, course_id: str, course_title: str, provider: str, skill_targeted: str, credential_type: str = "COMPLETION_CERTIFICATE"):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cid = f"cp-{uuid.uuid4().hex[:8]}"
+        cursor.execute("""
+            INSERT INTO user_course_progress (id, user_id, course_id, course_title, provider, skill_targeted, credential_type, completed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+            ON CONFLICT(user_id, course_id) DO NOTHING
+        """, (cid, user_id, course_id, course_title, provider, skill_targeted, credential_type))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def mark_course_completed(user_id: str, course_id: str, course_title: str = "", provider: str = "", skill_targeted: str = "", credential_type: str = "COMPLETION_CERTIFICATE") -> bool:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, completed FROM user_course_progress WHERE user_id = ? AND course_id = ?", (user_id, course_id))
+        row = cursor.fetchone()
+        was_already_completed = False
+        if row:
+            was_already_completed = (row["completed"] == 1)
+            cursor.execute("""
+                UPDATE user_course_progress 
+                SET completed = 1, completed_at = CURRENT_TIMESTAMP
+                WHERE user_id = ? AND course_id = ?
+            """, (user_id, course_id))
+        else:
+            cid = f"cp-{uuid.uuid4().hex[:8]}"
+            cursor.execute("""
+                INSERT INTO user_course_progress (id, user_id, course_id, course_title, provider, skill_targeted, credential_type, completed, completed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+            """, (cid, user_id, course_id, course_title or course_id, provider or "Verified Provider", skill_targeted or "Technical", credential_type))
+        conn.commit()
+        conn.close()
+        return not was_already_completed
+
+    @staticmethod
+    def get_user_course_progress(user_id: str) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_course_progress WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
 
 
 

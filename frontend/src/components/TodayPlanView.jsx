@@ -882,10 +882,11 @@ export default function TodayPlanView({
                 <button
                   onClick={() => {
                     setIsTimerRunning(false);
-                    setSecondsLeft(45 * 60);
+                    const matched = dailyPlan?.tasks?.find(t => t.id === activeTaskId);
+                    setSecondsLeft((matched?.duration_minutes || 45) * 60);
                   }}
                   className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition"
-                  title="Reset timer to 45m"
+                  title="Reset timer to task duration"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
