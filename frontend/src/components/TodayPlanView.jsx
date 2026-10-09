@@ -130,9 +130,11 @@ export default function TodayPlanView({
   const [executingActionId, setExecutingActionId] = useState(null);
   const [cascadeModalEvents, setCascadeModalEvents] = useState(null);
 
-  // Learning Decay state
+  // Learning Decay & Quiz state
   const [decayData, setDecayData] = useState(null);
   const [reviewingConcept, setReviewingConcept] = useState(null);
+  const [quizModalOpen, setQuizModalOpen] = useState(false);
+  const [activeQuiz, setActiveQuiz] = useState(null);
 
   // Stopwatch timer state
   const [activeTaskId, setActiveTaskId] = useState(null);
@@ -227,6 +229,93 @@ export default function TodayPlanView({
       console.error('Failed to review decay concept:', err);
     } finally {
       setReviewingConcept(null);
+    }
+  };
+
+  // Open interactive retention quiz modal
+  const handleOpenConceptQuiz = async (conceptName) => {
+    setActiveQuiz({
+      concept_name: conceptName,
+      questions: [],
+      selectedAnswers: {},
+      showHints: {},
+      loading: true,
+      submitting: false,
+      result: null,
+      error: null
+    });
+    setQuizModalOpen(true);
+    try {
+      const data = await api.getConceptQuiz(conceptName);
+      setActiveQuiz(prev => ({
+        ...prev,
+        loading: false,
+        questions: data?.questions || []
+      }));
+    } catch (err) {
+      console.error('Failed to load concept quiz:', err);
+      setActiveQuiz(prev => ({
+        ...prev,
+        loading: false,
+        error: 'Failed to fetch quiz questions. Please ensure the backend is connected.'
+      }));
+    }
+  };
+
+  const handleSelectQuizAnswer = (qId, optionText) => {
+    setActiveQuiz(prev => ({
+      ...prev,
+      selectedAnswers: {
+        ...prev.selectedAnswers,
+        [qId]: optionText
+      }
+    }));
+  };
+
+  const toggleQuizHint = (qId) => {
+    setActiveQuiz(prev => ({
+      ...prev,
+      showHints: {
+        ...prev.showHints,
+        [qId]: !prev.showHints[qId]
+      }
+    }));
+  };
+
+  const handleSubmitQuiz = async () => {
+    if (!activeQuiz || !activeQuiz.questions.length) return;
+    setActiveQuiz(prev => ({ ...prev, submitting: true, error: null }));
+    try {
+      const answersPayload = activeQuiz.questions.map(q => ({
+        question_id: q.id,
+        selected_answer: activeQuiz.selectedAnswers[q.id] || ''
+      }));
+
+      const res = await api.submitConceptQuiz({
+        concept_name: activeQuiz.concept_name,
+        answers: answersPayload,
+        study_duration_minutes: 15
+      });
+
+      setActiveQuiz(prev => ({
+        ...prev,
+        submitting: false,
+        result: res
+      }));
+
+      if (res?.passed) {
+        confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+      }
+
+      await loadIntelligenceData();
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Failed to submit concept quiz:', err);
+      setActiveQuiz(prev => ({
+        ...prev,
+        submitting: false,
+        error: 'Quiz evaluation failed. Please try again.'
+      }));
     }
   };
 
@@ -669,6 +758,42 @@ export default function TodayPlanView({
             </div>
           </div>
 
+          {/* Weak Topics Watchlist Banner */}
+          {decayData?.weak_topics_list && decayData.weak_topics_list.length > 0 && (
+            <div className="advisor-card p-4.5 bg-rose-50 border border-rose-200/90 rounded-2xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-rose-200 text-rose-800">
+                    <AlertTriangle className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-rose-900 tracking-wider">
+                      Weak Topics Priority Watchlist ({decayData.weak_topics_list.length} Concepts Identified)
+                    </h4>
+                    <span className="text-[11px] text-rose-700 font-medium">
+                      Concepts with recent score &lt;70% or rapid forgetting decay. Prioritized for spaced re-testing.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {decayData.weak_topics_list.map((topic, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleOpenConceptQuiz(topic)}
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-rose-100 text-rose-900 border border-rose-300 text-xs font-extrabold transition-all flex items-center gap-2 shadow-2xs cursor-pointer"
+                  >
+                    <span>{topic}</span>
+                    <span className="text-[10px] bg-rose-800 text-white px-2 py-0.5 rounded-md font-bold">
+                      Take Recall Quiz →
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Concepts Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {decayData?.all_concepts?.map((c, idx) => {
@@ -689,7 +814,7 @@ export default function TodayPlanView({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
                           isCrit ? 'bg-rose-100 text-rose-800 border-rose-200' :
                           isWarn ? 'bg-amber-100 text-amber-800 border-amber-200' :
@@ -700,6 +825,11 @@ export default function TodayPlanView({
                         <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-stone-100 text-stone-600">
                           {c.category}
                         </span>
+                        {c.is_weak_topic && (
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                            Weak Topic
+                          </span>
+                        )}
                       </div>
                       <h4 className="text-sm font-black text-stone-900 mt-1.5">
                         {c.concept_name}
@@ -728,7 +858,7 @@ export default function TodayPlanView({
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-stone-500 font-medium">
                       <span>Last reviewed: {c.days_since_review} days ago</span>
-                      <span>Stability: {c.stability_days} days ({c.repetition_count} reps)</span>
+                      <span>Next test: {c.next_scheduled_review || `${c.next_scheduled_days || 2}d`}</span>
                     </div>
                   </div>
 
@@ -736,10 +866,15 @@ export default function TodayPlanView({
                     {c.recommended_action}
                   </p>
 
-                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-stone-400">
-                      Spaced booster multiplier: 1.75x
-                    </span>
+                  <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      onClick={() => handleOpenConceptQuiz(c.concept_name)}
+                      className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Brain className="w-3.5 h-3.5 text-blue-700" />
+                      <span>Recall Quiz</span>
+                    </button>
+
                     <button
                       onClick={() => handleReviewConcept(c.concept_name)}
                       disabled={isReviewing}
@@ -753,7 +888,7 @@ export default function TodayPlanView({
                       ) : (
                         <>
                           <Zap className="w-3 h-3 text-amber-400 fill-current" />
-                          <span>Practice Concept (+100%)</span>
+                          <span>Practice (+100%)</span>
                         </>
                       )}
                     </button>
@@ -1051,6 +1186,249 @@ export default function TodayPlanView({
                 Done & Return to AI Plan
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* RETENTION RECALL QUIZ MODAL */}
+      {/* ============================================================== */}
+      {quizModalOpen && (
+        <div className="fixed inset-0 bg-stone-950/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-blue-500/30 max-h-[90vh] overflow-y-auto space-y-4">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-blue-100 text-blue-800">
+                  <Brain className="w-5 h-5 text-blue-700" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                      Spaced Retention Drill
+                    </span>
+                    <span className="text-[10px] font-bold text-stone-400">
+                      Ebbinghaus Memory Verification
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-stone-900 mt-0.5">
+                    {activeQuiz?.concept_name || 'Concept Recall Quiz'}
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setQuizModalOpen(false)}
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Loading State */}
+            {activeQuiz?.loading && (
+              <div className="py-12 text-center space-y-3">
+                <RefreshCw className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
+                <p className="text-xs text-stone-500 font-bold">
+                  Synthesizing conceptual verification questions...
+                </p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {activeQuiz?.error && (
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-2">
+                <div className="flex items-center gap-2 font-black">
+                  <AlertTriangle className="w-4 h-4 text-rose-600" />
+                  <span>Unable to complete quiz</span>
+                </div>
+                <p>{activeQuiz.error}</p>
+                <button
+                  onClick={() => setQuizModalOpen(false)}
+                  className="px-3 py-1.5 rounded-lg bg-stone-900 text-white font-bold"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+
+            {/* Active Quiz Questions (Pre-submission) */}
+            {!activeQuiz?.loading && !activeQuiz?.result && activeQuiz?.questions?.length > 0 && (
+              <div className="space-y-5">
+                <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/80 text-xs text-blue-900">
+                  <span className="font-bold">Instructions:</span> Answer all questions below. Scoring &ge;70% locks the memory trace for <strong>{activeQuiz?.questions?.length > 1 ? '7 to 14 days' : '2 to 7 days'}</strong> and resets your retention to 100%.
+                </div>
+
+                <div className="space-y-4">
+                  {activeQuiz.questions.map((q, qIndex) => {
+                    const selected = activeQuiz.selectedAnswers[q.id];
+                    const showHint = activeQuiz.showHints[q.id];
+
+                    return (
+                      <div key={q.id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50/40 space-y-3">
+                        <div className="flex items-start gap-2.5">
+                          <span className="w-6 h-6 rounded-lg bg-stone-900 text-white flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">
+                            Q{qIndex + 1}
+                          </span>
+                          <div className="flex-1">
+                            <h4 className="text-xs font-bold text-stone-900 leading-snug">
+                              {q.question}
+                            </h4>
+                          </div>
+                        </div>
+
+                        {/* Options */}
+                        <div className="space-y-1.5 pt-1">
+                          {q.options.map((opt, optIdx) => {
+                            const isChosen = selected === opt;
+                            return (
+                              <button
+                                key={optIdx}
+                                type="button"
+                                onClick={() => handleSelectQuizAnswer(q.id, opt)}
+                                className={`w-full text-left p-3 rounded-xl border text-xs font-medium transition flex items-center justify-between cursor-pointer ${
+                                  isChosen 
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs font-semibold' 
+                                    : 'bg-white hover:bg-stone-100 text-stone-800 border-stone-200'
+                                }`}
+                              >
+                                <span className="leading-snug">{opt}</span>
+                                {isChosen && <Check className="w-4 h-4 text-white flex-shrink-0 ml-2" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Hint Accordion */}
+                        {q.hint && (
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleQuizHint(q.id)}
+                              className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>{showHint ? 'Hide Hint ▴' : 'Need a Hint? 💡'}</span>
+                            </button>
+                            {showHint && (
+                              <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 italic">
+                                {q.hint}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Submit Controls */}
+                <div className="flex items-center justify-between pt-3 border-t border-stone-100">
+                  <span className="text-xs text-stone-500 font-medium">
+                    Answered: {Object.keys(activeQuiz.selectedAnswers).length} of {activeQuiz.questions.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQuizModalOpen(false)}
+                      className="px-4 py-2 rounded-xl text-stone-600 hover:bg-stone-100 text-xs font-bold cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSubmitQuiz}
+                      disabled={activeQuiz.submitting || Object.keys(activeQuiz.selectedAnswers).length < activeQuiz.questions.length}
+                      className="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {activeQuiz.submitting ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Evaluating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Submit Answers</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Post-submission Results Screen */}
+            {activeQuiz?.result && (
+              <div className="space-y-4">
+                <div className={`p-4 rounded-2xl border ${
+                  activeQuiz.result.passed 
+                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950' 
+                    : 'bg-rose-50/80 border-rose-300 text-rose-950'
+                } space-y-2`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xl ${activeQuiz.result.passed ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {activeQuiz.result.passed ? '🎉' : '⚠️'}
+                      </span>
+                      <h4 className="text-base font-black">
+                        {activeQuiz.result.passed ? 'Recall Succeeded: 100% Retention Restored!' : 'Review Incomplete: Focus Revision Needed'}
+                      </h4>
+                    </div>
+                    <span className="text-base font-black px-2.5 py-1 rounded-xl bg-white shadow-2xs">
+                      {activeQuiz.result.score_pct}% Score
+                    </span>
+                  </div>
+
+                  <p className="text-xs leading-relaxed">
+                    {activeQuiz.result.passed 
+                      ? `Excellent performance! Your neural trace for "${activeQuiz.concept_name}" has been stabilized. Next spaced repetition is scheduled in ${activeQuiz.result.next_scheduled_days || 7} days (${activeQuiz.result.next_scheduled_review}).` 
+                      : `You scored below 70%. Spaced repetition interval has been contracted to 1 day to prevent further knowledge decay.`}
+                  </p>
+                </div>
+
+                {/* Question Evaluations */}
+                <div className="space-y-3">
+                  <h5 className="text-xs font-black uppercase text-stone-700 tracking-wider">
+                    Detailed Verification Breakdown:
+                  </h5>
+                  {activeQuiz.result.question_evaluations?.map((ev, idx) => (
+                    <div key={idx} className="p-3.5 rounded-xl border border-stone-200 bg-stone-50/60 space-y-2 text-xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-bold text-stone-900">Q{idx + 1}: {ev.question}</span>
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          ev.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {ev.is_correct ? 'Correct' : 'Incorrect'}
+                        </span>
+                      </div>
+                      <div className="space-y-1 text-[11px]">
+                        <div><strong className="text-stone-700">Your Answer:</strong> <span className={ev.is_correct ? 'text-emerald-700 font-semibold' : 'text-rose-700 font-semibold'}>{ev.selected_answer || '(None)'}</span></div>
+                        {!ev.is_correct && (
+                          <div><strong className="text-stone-700">Correct Answer:</strong> <span className="text-stone-900 font-semibold">{ev.correct_answer}</span></div>
+                        )}
+                        <div className="p-2 rounded-lg bg-white border border-stone-200/80 text-stone-600 italic mt-1">
+                          💡 <strong>Explanation:</strong> {ev.explanation}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={() => {
+                      setQuizModalOpen(false);
+                      setActiveQuiz(null);
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition cursor-pointer"
+                  >
+                    Done & Return to Learning Radar
+                  </button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

@@ -16,13 +16,133 @@ import {
   TrendingUp,
   Coins,
   Cpu,
-  Bookmark
+  Bookmark,
+  GitFork,
+  Check,
+  Clock,
+  Layers
 } from 'lucide-react';
 import { api } from '../api';
 
+const LIFE_DECISION_SCENARIOS = [
+  {
+    id: "skill_vs_exam",
+    title: "Applied AI Stack & Projects vs Competitive Exam (GATE / GRE)",
+    description: "Compare dedicated engineering project building with full-time competitive entrance exam preparation.",
+    optionA: {
+      name: "Option A: Applied AI Stack & Projects",
+      cost_inr: "₹2,500 (Cloud API credits + Colab)",
+      time_months: "4 Months (2h / day)",
+      prerequisites: "Python fundamentals, Linear algebra basics",
+      risk_level: "Low (Direct hands-on portfolio)",
+      projected_outcome: "₹14.0 LPA campus placement [₹12.0L – ₹16.2L 80% CI]",
+      stress_index: 35,
+      pros: ["Immediate proof-of-work on GitHub", "Direct relevance to private sector hiring", "Low financial leverage"],
+      cons: ["Does not provide government PSU or M.Tech credentials"]
+    },
+    optionB: {
+      name: "Option B: Intensive Exam Prep (GATE/GRE)",
+      cost_inr: "₹25,000 - ₹45,000 (Test series + Coaching material)",
+      time_months: "8 Months (4-5h / day)",
+      prerequisites: "Complete CS theoretical syllabus (TOC, OS, CN, Compilers)",
+      risk_level: "High (Binary cutoff; 1 exam day dependency)",
+      projected_outcome: "₹18.5 LPA (PSU / Top IIT M.Tech) [₹11.0L – ₹24.0L 80% CI]",
+      stress_index: 80,
+      pros: ["Opens IIT M.Tech seats and PSU recruitment", "High academic prestige"],
+      cons: ["Heavy opportunity cost", "Zero industry portfolio code written"]
+    },
+    recommendation: "For your current profile, Option A delivers higher immediate ROI and lower variance risk unless your explicit goal is a government PSU research role."
+  },
+  {
+    id: "internship_vs_certs",
+    title: "6-Month Startup Internship vs Intensive Certifications & Projects",
+    description: "Evaluate working at an early-stage startup versus dedicated deep-skilling and credentialing.",
+    optionA: {
+      name: "Option A: 6-Month Startup Internship",
+      cost_inr: "₹0 (Earns ₹15,000 - ₹25,000/mo stipend)",
+      time_months: "6 Months (Full-time / 30h/wk)",
+      prerequisites: "Working knowledge of Git, APIs, and basic stack",
+      risk_level: "Moderate (Work-life balance with college exams)",
+      projected_outcome: "₹12.5 LPA PPO conversion [₹10.5L – ₹15.0L 80% CI]",
+      stress_index: 65,
+      pros: ["Real production code & peer reviews", "Potential Pre-Placement Offer (PPO)", "Immediate cashflow boost"],
+      cons: ["Leaves little time for core college subjects and DSA"]
+    },
+    optionB: {
+      name: "Option B: Certifications & Open Source Projects",
+      cost_inr: "₹12,000 (AWS voucher + course fees)",
+      time_months: "3 Months (15h/wk self-paced)",
+      prerequisites: "Self-discipline and structured curriculum",
+      risk_level: "Low (Flexible pacing around academics)",
+      projected_outcome: "₹13.2 LPA off-campus entry [₹11.2L – ₹15.5L 80% CI]",
+      stress_index: 40,
+      pros: ["Verified cloud credentials (AWS SAA)", "Clean open-source GitHub footprint", "Balanced CGPA maintenance"],
+      cons: ["Lacks formal company work experience letter"]
+    },
+    recommendation: "If offered a stipend > ₹15,000/mo at a tech-led startup, take Option A. Otherwise, Option B maximizes your placement readiness score."
+  },
+  {
+    id: "abroad_vs_domestic",
+    title: "Study Abroad (MS in Germany / US) vs Domestic Tech Career (India)",
+    description: "Compare international master's degree investment against immediate domestic software engineering employment.",
+    optionA: {
+      name: "Option A: MS Abroad (Germany / USA)",
+      cost_inr: "Germany: ₹12L - ₹15L | USA: ₹45L - ₹65L",
+      time_months: "24 Months (2-Year Master's Degree)",
+      prerequisites: "CGPA >= 7.5, IELTS/GRE, Statement of Purpose",
+      risk_level: "Moderate to High (Visa rules & macroeconomic hiring)",
+      projected_outcome: "Germany: €62,000/yr (~₹55L) | USA: $120,000/yr (~₹1.0Cr) [±20% CI]",
+      stress_index: 75,
+      pros: ["Global mobility & high international purchasing power", "Cutting-edge research labs", "3-Year STEM OPT / EU Blue Card"],
+      cons: ["Substantial financial outlay or student debt loan"]
+    },
+    optionB: {
+      name: "Option B: Domestic Tech Career in India",
+      cost_inr: "₹0 (Zero debt; immediate earning)",
+      time_months: "Immediate (0 Months delay)",
+      prerequisites: "Campus placement or off-campus portfolio",
+      risk_level: "Low (Zero debt exposure, strong family support)",
+      projected_outcome: "₹12.0 LPA starting -> ₹24.0 LPA at Year 3 [₹18.0L – ₹28.0L 80% CI]",
+      stress_index: 30,
+      pros: ["Zero educational debt leverage", "High savings rate in India", "Rapid domestic promotion cycles"],
+      cons: ["Lower global mobility and foreign currency earnings"]
+    },
+    recommendation: "If targeting Germany with low tuition (TUM/RWTH), the ROI is exceptional with minimal debt. If targeting the US without scholarship, ensure emergency buffers exceed ₹10L."
+  },
+  {
+    id: "aiml_vs_fullstack",
+    title: "AI / Machine Learning Track vs Full-Stack Backend Track",
+    description: "Evaluate competitive specialization between AI/ML engineering and resilient backend systems.",
+    optionA: {
+      name: "Option A: AI / Machine Learning Track",
+      cost_inr: "₹3,500 (GPU cloud compute)",
+      time_months: "5 Months (PyTorch, Math, Transformers, RAG)",
+      prerequisites: "Multivariable calculus, linear algebra, Python",
+      risk_level: "Moderate (Higher barrier to entry for freshers)",
+      projected_outcome: "₹15.5 LPA median [₹12.5L – ₹19.0L 80% CI]",
+      stress_index: 55,
+      pros: ["High premium on specialized generative AI skills", "Strong long-term industry runway", "Exciting research frontier"],
+      cons: ["Fewer junior openings compared to web engineering; higher math barrier"]
+    },
+    optionB: {
+      name: "Option B: Full-Stack / Backend Engineering",
+      cost_inr: "₹1,500 (Hosting + DB tiers)",
+      time_months: "3.5 Months (Node/FastAPI, PostgreSQL, React, Docker)",
+      prerequisites: "OOP, SQL, web basics",
+      risk_level: "Low (Largest volume of fresher campus openings)",
+      projected_outcome: "₹12.8 LPA median [₹10.5L – ₹15.5L 80% CI]",
+      stress_index: 35,
+      pros: ["Massive job opening volume across all company sizes", "Easier to showcase full live working apps"],
+      cons: ["Higher applicant competition per seat; salary ceiling slightly lower at entry"]
+    },
+    recommendation: "A hybrid profile (Backend APIs + PyTorch ML integration) yields the highest shortlisting velocity across Indian product startups."
+  }
+];
+
 export default function DecisionCopilotView({ profile, readiness }) {
   // Active Tab Mode
-  const [activeMode, setActiveMode] = useState('capital_optimizer'); // 'capital_optimizer' | 'scenario_evaluator'
+  const [activeMode, setActiveMode] = useState('capital_optimizer'); // 'capital_optimizer' | 'scenario_evaluator' | 'life_decision_simulator'
+  const [selectedScenarioId, setSelectedScenarioId] = useState('skill_vs_exam');
 
   // Next ₹X Capital Allocation State
   const [allocationAmount, setAllocationAmount] = useState(3000);
@@ -164,6 +284,17 @@ export default function DecisionCopilotView({ profile, readiness }) {
             >
               <Scale className="w-3.5 h-3.5" />
               <span>Purchase / Cert Check</span>
+            </button>
+            <button
+              onClick={() => setActiveMode('life_decision_simulator')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeMode === 'life_decision_simulator'
+                  ? 'bg-orange-600 text-white shadow-md'
+                  : 'text-stone-300 hover:text-white'
+              }`}
+            >
+              <GitFork className="w-3.5 h-3.5" />
+              <span>Life-Decision Simulator</span>
             </button>
           </div>
         </div>
@@ -482,6 +613,214 @@ export default function DecisionCopilotView({ profile, readiness }) {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ================= MODE 3: LIFE-DECISION TRADE-OFF SIMULATOR ================= */}
+          {activeMode === 'life_decision_simulator' && (
+            <div className="space-y-4">
+              {/* Scenario Picker Bar */}
+              <div className="advisor-card p-4 bg-white border border-stone-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center">
+                    <GitFork className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-stone-900 uppercase tracking-wider">
+                      Strategic Trade-off Matrix
+                    </h3>
+                    <p className="text-[11px] text-stone-500">
+                      Explicit comparison with uncertainty bounds, prerequisites, stress index and quantitative ROI
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {LIFE_DECISION_SCENARIOS.map((sc) => {
+                    const isSelected = selectedScenarioId === sc.id;
+                    return (
+                      <button
+                        key={sc.id}
+                        type="button"
+                        onClick={() => setSelectedScenarioId(sc.id)}
+                        className={`text-left p-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-between cursor-pointer ${
+                          isSelected
+                            ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                            : 'bg-stone-50 hover:bg-stone-100 text-stone-800 border-stone-200'
+                        }`}
+                      >
+                        <span className="truncate">{sc.title.split('vs')[0].trim()} vs...</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-orange-400 flex-shrink-0 ml-1" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Active Scenario Detail */}
+              {(() => {
+                const activeScenario = LIFE_DECISION_SCENARIOS.find(s => s.id === selectedScenarioId) || LIFE_DECISION_SCENARIOS[0];
+                return (
+                  <div className="space-y-4">
+                    {/* Scenario Title Header */}
+                    <div className="p-3.5 bg-orange-50/60 rounded-xl border border-orange-200 text-xs">
+                      <h4 className="font-black text-orange-950 text-sm">{activeScenario.title}</h4>
+                      <p className="text-orange-900/80 text-[11px] mt-0.5 font-medium">{activeScenario.description}</p>
+                    </div>
+
+                    {/* Side-by-Side Trade-off Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* OPTION A */}
+                      <div className="p-4 bg-white rounded-2xl border border-stone-200/90 shadow-xs space-y-3 flex flex-col justify-between">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                              Option Alpha
+                            </span>
+                            <span className="text-[10px] font-bold text-stone-500">
+                              Stress: {activeScenario.optionA.stress_index}/100
+                            </span>
+                          </div>
+
+                          <h4 className="text-sm font-black text-stone-900 leading-snug">
+                            {activeScenario.optionA.name}
+                          </h4>
+
+                          <div className="space-y-2 text-xs">
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-stone-50 border border-stone-200/60">
+                              <span className="text-stone-500 font-medium">Direct Cost:</span>
+                              <strong className="text-stone-900 font-black">{activeScenario.optionA.cost_inr}</strong>
+                            </div>
+
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-stone-50 border border-stone-200/60">
+                              <span className="text-stone-500 font-medium">Time Horizon:</span>
+                              <strong className="text-stone-900 font-black">{activeScenario.optionA.time_months}</strong>
+                            </div>
+
+                            <div className="p-2 rounded-lg bg-emerald-50/60 border border-emerald-200/80">
+                              <span className="text-[10px] text-emerald-800 font-bold uppercase block">Expected Career Outcome:</span>
+                              <strong className="text-emerald-950 font-black text-xs">{activeScenario.optionA.projected_outcome}</strong>
+                            </div>
+
+                            <div className="p-2 rounded-lg bg-stone-50 text-[11px] text-stone-700">
+                              <span className="font-bold text-stone-500 block text-[10px] uppercase">Prerequisites:</span>
+                              <span>{activeScenario.optionA.prerequisites}</span>
+                            </div>
+                          </div>
+
+                          {/* Pros & Cons */}
+                          <div className="space-y-2 pt-1 border-t border-stone-100 text-[11px]">
+                            <div>
+                              <span className="font-bold text-emerald-700 block mb-0.5">Key Advantages:</span>
+                              <ul className="space-y-0.5 text-stone-600">
+                                {activeScenario.optionA.pros.map((p, idx) => (
+                                  <li key={idx} className="flex items-start gap-1">
+                                    <span className="text-emerald-600 font-bold">✓</span>
+                                    <span>{p}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <span className="font-bold text-rose-700 block mb-0.5">Key Trade-off / Risk:</span>
+                              <ul className="space-y-0.5 text-stone-600">
+                                {activeScenario.optionA.cons.map((c, idx) => (
+                                  <li key={idx} className="flex items-start gap-1">
+                                    <span className="text-rose-500 font-bold">•</span>
+                                    <span>{c}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* OPTION B */}
+                      <div className="p-4 bg-white rounded-2xl border border-stone-200/90 shadow-xs space-y-3 flex flex-col justify-between">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-purple-100 text-purple-800">
+                              Option Beta
+                            </span>
+                            <span className="text-[10px] font-bold text-stone-500">
+                              Stress: {activeScenario.optionB.stress_index}/100
+                            </span>
+                          </div>
+
+                          <h4 className="text-sm font-black text-stone-900 leading-snug">
+                            {activeScenario.optionB.name}
+                          </h4>
+
+                          <div className="space-y-2 text-xs">
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-stone-50 border border-stone-200/60">
+                              <span className="text-stone-500 font-medium">Direct Cost:</span>
+                              <strong className="text-stone-900 font-black">{activeScenario.optionB.cost_inr}</strong>
+                            </div>
+
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-stone-50 border border-stone-200/60">
+                              <span className="text-stone-500 font-medium">Time Horizon:</span>
+                              <strong className="text-stone-900 font-black">{activeScenario.optionB.time_months}</strong>
+                            </div>
+
+                            <div className="p-2 rounded-lg bg-purple-50/60 border border-purple-200/80">
+                              <span className="text-[10px] text-purple-800 font-bold uppercase block">Expected Career Outcome:</span>
+                              <strong className="text-purple-950 font-black text-xs">{activeScenario.optionB.projected_outcome}</strong>
+                            </div>
+
+                            <div className="p-2 rounded-lg bg-stone-50 text-[11px] text-stone-700">
+                              <span className="font-bold text-stone-500 block text-[10px] uppercase">Prerequisites:</span>
+                              <span>{activeScenario.optionB.prerequisites}</span>
+                            </div>
+                          </div>
+
+                          {/* Pros & Cons */}
+                          <div className="space-y-2 pt-1 border-t border-stone-100 text-[11px]">
+                            <div>
+                              <span className="font-bold text-emerald-700 block mb-0.5">Key Advantages:</span>
+                              <ul className="space-y-0.5 text-stone-600">
+                                {activeScenario.optionB.pros.map((p, idx) => (
+                                  <li key={idx} className="flex items-start gap-1">
+                                    <span className="text-emerald-600 font-bold">✓</span>
+                                    <span>{p}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <span className="font-bold text-rose-700 block mb-0.5">Key Trade-off / Risk:</span>
+                              <ul className="space-y-0.5 text-stone-600">
+                                {activeScenario.optionB.cons.map((c, idx) => (
+                                  <li key={idx} className="flex items-start gap-1">
+                                    <span className="text-rose-500 font-bold">•</span>
+                                    <span>{c}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AI Copilot Strategic Verdict */}
+                    <div className="p-4 bg-gradient-to-r from-stone-900 to-black text-white rounded-2xl border border-stone-800 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-orange-400" />
+                        <h5 className="text-xs font-black uppercase tracking-wider text-orange-400">
+                          AI Decision Recommendation for Your Profile:
+                        </h5>
+                      </div>
+                      <p className="text-xs text-stone-200 leading-relaxed font-medium">
+                        {activeScenario.recommendation}
+                      </p>
+                      <div className="pt-1 text-[10px] text-stone-400 font-mono">
+                        Calculated from your current readiness ({readiness?.readiness_pct || 44}%), active skills, and monthly learning envelope.
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

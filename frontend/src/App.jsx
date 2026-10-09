@@ -15,6 +15,8 @@ import FinancialHealthView from './components/FinancialHealthView';
 import FinancialSafetyTab from './components/FinancialSafetyTab';
 import StudyAbroadView from './components/StudyAbroadView';
 import ExamPrepView from './components/ExamPrepView';
+import TodayPlanView from './components/TodayPlanView';
+import InterviewArenaView from './components/InterviewArenaView';
 import AuthModal from './components/AuthModal';
 import PlacementScoreModal from './components/PlacementScoreModal';
 import WeeklyReviewModal from './components/WeeklyReviewModal';
@@ -23,6 +25,7 @@ import confetti from 'canvas-confetti';
 import { 
   Sparkles, 
   Bell, 
+  Search, 
   CheckCircle2, 
   Sliders, 
   Award, 
@@ -93,6 +96,8 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isPlacementModalOpen, setIsPlacementModalOpen] = useState(false);
   const [isWeeklyReviewOpen, setIsWeeklyReviewOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Notifications & Signals
   const [notificationsList, setNotificationsList] = useState([]);
@@ -110,9 +115,20 @@ export default function App() {
       showNotification('Your session has expired or was revoked. Please sign in again.', 'Session Expired');
     };
 
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      } else if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+      }
+    };
+
     window.addEventListener('auth:expired', handleAuthExpired);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('auth:expired', handleAuthExpired);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -421,6 +437,20 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Quick Search Button */}
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-white hover:bg-stone-100 text-stone-700 border-stone-200 transition-all cursor-pointer shadow-2xs"
+              title="Global Search (Ctrl+K or ⌘K)"
+            >
+              <Search className="w-3.5 h-3.5 text-stone-500" />
+              <span className="hidden md:inline">Search</span>
+              <kbd className="hidden sm:inline bg-stone-100 border border-stone-300 text-[9px] px-1.5 py-0.2 rounded font-mono text-stone-600">
+                ⌘K
+              </kbd>
+            </button>
+
             {/* Notification Bell Dropdown */}
             <div className="relative" ref={notifRef}>
               <button
@@ -666,6 +696,22 @@ export default function App() {
             />
           )}
 
+          {currentTab === 'today' && (
+            <TodayPlanView
+              profile={profile}
+              dailyPlan={dailyPlan}
+              onToggleTask={handleToggleTask}
+              onRefresh={loadEngineData}
+            />
+          )}
+
+          {currentTab === 'interview' && (
+            <InterviewArenaView
+              profile={profile}
+              onRefresh={loadEngineData}
+            />
+          )}
+
           {currentTab === 'financialhealth' && (
             <FinancialHealthView
               profile={profile}
@@ -786,6 +832,112 @@ export default function App() {
         onClose={() => setIsWeeklyReviewOpen(false)}
         profile={profile}
       />
+
+      {/* Global Search Dialog Modal (Cmd/Ctrl + K) */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 bg-stone-950/70 backdrop-blur-xs flex items-start justify-center pt-20 p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-stone-200 overflow-hidden space-y-0">
+            {/* Search Input Bar */}
+            <div className="p-4 border-b border-stone-100 flex items-center gap-3">
+              <Search className="w-5 h-5 text-stone-400 flex-shrink-0" />
+              <input
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search modules, skills, exams, destinations, or roadmaps..."
+                className="w-full text-sm font-semibold text-stone-900 placeholder-stone-400 bg-transparent focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-xs text-stone-400 hover:text-stone-700 font-bold px-1.5 py-0.5"
+                >
+                  Clear
+                </button>
+              )}
+              <kbd className="bg-stone-100 border border-stone-300 text-[10px] px-1.5 py-0.5 rounded font-mono text-stone-500">
+                ESC
+              </kbd>
+            </div>
+
+            {/* Quick Links / Filtered Results */}
+            <div className="max-h-96 overflow-y-auto p-2 space-y-1">
+              {[
+                { id: 'dashboard', title: 'Dashboard', desc: 'Overview, career metrics, capital buffer', category: 'Overview' },
+                { id: 'today', title: "Today's AI Plan & Brain", desc: 'Priority engine, focus sprints, spaced retention radar', category: 'Intelligence' },
+                { id: 'interview', title: 'AI Interview Arena', desc: 'Mock technical & STAR behavioural interview simulation', category: 'Career' },
+                { id: 'career', title: 'Career Engine', desc: 'Placement readiness, role tracks, and career roadmaps', category: 'Career' },
+                { id: 'simulation', title: 'What-If Career Simulator', desc: 'Skill leaps, digital twin career and salary trajectories', category: 'Simulation' },
+                { id: 'skillgraph', title: 'Skill Graph Tree', desc: 'Curated skills tree, prerequisite mapping, dependencies', category: 'Skills' },
+                { id: 'resume', title: 'Resume & ATS Analyzer', desc: 'ATS score, missing metrics, and bullet point enhancements', category: 'Career' },
+                { id: 'jobmarket', title: 'Opportunity Radar', desc: 'Jobs, internships, scholarships, hackathons & certs', category: 'Opportunities' },
+                { id: 'applications', title: 'Application Tracker', desc: 'Job hunt Kanban pipeline, deadlines, interview stages', category: 'Tracker' },
+                { id: 'financialhealth', title: 'My Financial Health', desc: 'Cashflow health, buffer resilience, and debt stress', category: 'Wealth' },
+                { id: 'finance', title: 'Finance & Budget', desc: 'Expense tracking, discretionary income, budgeting rules', category: 'Wealth' },
+                { id: 'investments', title: 'Investments & Orders', desc: 'Live broker simulation, stock research, SIP calculator', category: 'Fintech' },
+                { id: 'studyabroad', title: 'Study Abroad & MS', desc: 'Top 3 countries comparison, university finder, costs & ROI', category: 'Global' },
+                { id: 'examprep', title: 'Exam Prep & 10-Yr Papers', desc: '1,000+ questions, GRE, IELTS, GATE, TOEFL mock tests', category: 'Exams' },
+                { id: 'safety', title: '5-Gate Financial Safety', desc: 'Emergency floor clearance, impulse lock, safety checks', category: 'Safety' },
+                { id: 'copilot', title: 'AI Career Copilot', desc: 'Personalized AI advisor, life decision simulator & guidance', category: 'AI Advisor' },
+                { id: 'profile', title: 'Profile & Setup', desc: 'Academic details, financial settings, export my data', category: 'Account' },
+                // Skills & Concepts
+                { id: 'skillgraph', title: 'PyTorch & Deep Learning Systems', desc: 'Neural network training, tensor broadcasting, autograd', category: 'Skill' },
+                { id: 'skillgraph', title: 'Docker & Containerization', desc: 'Dockerfile, microservices deployment, volume mapping', category: 'Skill' },
+                { id: 'skillgraph', title: 'Data Structures & Algorithms (Trees, DP)', desc: 'Binary search, graph DFS/BFS, dynamic programming', category: 'Skill' },
+                { id: 'skillgraph', title: 'FastAPI & Production REST APIs', desc: 'Async Python endpoints, Pydantic, OpenAPI schemas', category: 'Skill' },
+                // Global study & exams
+                { id: 'studyabroad', title: 'Germany MS (TUM, RWTH Aachen)', desc: 'Zero tuition, APS certificate, blocked account €11,208', category: 'Study Abroad' },
+                { id: 'studyabroad', title: 'United States MS (CMU, Stanford, UT Austin)', desc: 'STEM OPT 3-year extension, top tech hiring hub', category: 'Study Abroad' },
+                { id: 'examprep', title: 'GRE Practice & 10-Yr Papers', desc: '10-year previous questions, Verbal & Quant drills', category: 'Exam Prep' },
+                { id: 'examprep', title: 'IELTS / TOEFL Mock Tests', desc: 'Reading, Listening, Writing, Speaking practice papers', category: 'Exam Prep' }
+              ]
+                .filter(item => {
+                  if (!searchQuery.trim()) return true;
+                  const query = searchQuery.toLowerCase();
+                  return (
+                    item.title.toLowerCase().includes(query) ||
+                    item.desc.toLowerCase().includes(query) ||
+                    item.category.toLowerCase().includes(query)
+                  );
+                })
+                .slice(0, 8)
+                .map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setCurrentTab(item.id);
+                      setIsSearchOpen(false);
+                      setSearchQuery('');
+                    }}
+                    className="w-full text-left p-3 rounded-2xl hover:bg-stone-50 transition flex items-center justify-between group cursor-pointer"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-stone-900 group-hover:text-orange-600 transition-colors">
+                          {item.title}
+                        </span>
+                        <span className="text-[10px] font-black uppercase px-2 py-0.2 rounded-md bg-stone-100 text-stone-600">
+                          {item.category}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 line-clamp-1">{item.desc}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-orange-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  </button>
+                ))}
+            </div>
+
+            {/* Search Footer */}
+            <div className="p-3 bg-stone-50 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between font-medium">
+              <span>Navigate quickly to any module or practice material</span>
+              <span>Press <strong>ESC</strong> to dismiss</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

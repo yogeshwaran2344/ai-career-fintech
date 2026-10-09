@@ -51,6 +51,7 @@ from models import (
     ExamAnalyticsSummary, MastersOverallReadiness, StudyAbroadPrepBudget, TopicPerformance,
     PreviousYearPaper, PreviousYearPapersListResponse,
     LearningDecayConcept, LearningDecayStatusResponse, ConceptReviewRequest,
+    ConceptQuizQuestion, ConceptQuizResponse, SubmitConceptQuizRequest, ConceptQuizEvaluationResponse,
     NextBestActionItem, StudentIntelligenceResponse, CompleteActionRequest,
     UserResumeData, AddProjectToResumeRequest, StockAdvisorResponse,
     ProfileResetRequest, ProfileResetResponse, RecordProjectEvidenceRequest, TargetRoleChangeRequest
@@ -82,7 +83,7 @@ from engines.learning_decay_engine import LearningDecayEngine
 from engines.student_intelligence_engine import StudentIntelligenceEngine
 from engines.stock_advisor_engine import StockAdvisorEngine
 from database import (
-    DatabaseManager, hash_password, verify_password
+    DatabaseManager, hash_password, verify_password, get_db_connection
 )
 
 app = FastAPI(
@@ -428,6 +429,33 @@ def reset_profile(req: ProfileResetRequest, current_user: StudentProfile = Depen
         deleted_records=deleted_counts,
         updated_profile=saved_profile
     )
+
+@app.get("/api/profile/export")
+def export_user_data(current_user: StudentProfile = Depends(get_user_from_auth)):
+    """
+    Data Export: Exports student's complete profile, daily tasks, completed activities,
+    learning decay records, and portfolio holdings as a portable JSON payload.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM daily_tasks WHERE user_id = ?", (current_user.id,))
+    tasks = [dict(r) for r in cursor.fetchall()]
+    cursor.execute("SELECT * FROM user_completed_activities WHERE user_id = ?", (current_user.id,))
+    activities = [dict(r) for r in cursor.fetchall()]
+    cursor.execute("SELECT * FROM user_learning_decay WHERE user_id = ?", (current_user.id,))
+    decay = [dict(r) for r in cursor.fetchall()]
+    cursor.execute("SELECT * FROM user_holdings WHERE user_id = ?", (current_user.id,))
+    holdings = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return {
+        "export_timestamp": datetime.datetime.now().isoformat(),
+        "user_id": current_user.id,
+        "profile": current_user.model_dump(),
+        "daily_tasks": tasks,
+        "completed_activities": activities,
+        "learning_decay_concepts": decay,
+        "portfolio_holdings": holdings
+    }
 
 # ==================== ADVANCED CAREER ENGINE ====================
 
@@ -1534,6 +1562,20 @@ def review_decay_concept(
         concept_name=req.concept_name,
         performance_score=req.performance_score
     )
+
+@app.get("/api/learning-decay/quiz/{concept_name}", response_model=ConceptQuizResponse)
+def get_concept_retention_quiz(concept_name: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    """
+    Returns an interactive 2-question retention quiz for spaced recall testing.
+    """
+    return LearningDecayEngine.get_concept_quiz(concept_name)
+
+@app.post("/api/learning-decay/quiz/submit", response_model=ConceptQuizEvaluationResponse)
+def submit_concept_retention_quiz(req: SubmitConceptQuizRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    """
+    Evaluates concept quiz answers, reschedules next retest (Day +2, Day +7), and updates retention/weak topics list.
+    """
+    return LearningDecayEngine.submit_concept_quiz(current_user.id, req)
 
 @app.get("/api/resume/data", response_model=UserResumeData)
 def get_user_resume_data(current_user: StudentProfile = Depends(get_user_from_auth)):

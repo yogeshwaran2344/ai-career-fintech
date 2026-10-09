@@ -95,6 +95,14 @@ export default function DashboardView({
     day: 'numeric' 
   });
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    if (hour >= 17 && hour < 22) return 'Good evening';
+    return 'Good evening';
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-8">
       
@@ -114,7 +122,7 @@ export default function DashboardView({
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-stone-900 tracking-tight">
-              Good morning, {profile?.name ? profile.name.split(' ')[0] : 'there'}
+              {getGreeting()}, {profile?.name ? profile.name.split(' ')[0] : 'there'}
             </h1>
             <p className="text-xs text-stone-600 mt-1">
               Tracking your progression toward <strong className="text-stone-900 font-semibold">{profile?.career_goal || 'Engineering Placement'}</strong> with synchronized capital allocation.

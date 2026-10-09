@@ -39,6 +39,7 @@ export default function Sidebar({
       title: 'OVERVIEW',
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'today', label: "Today's AI Plan & Brain", icon: Zap, badge: 'Intelligence' },
         { id: 'financialhealth', label: 'My Financial Health', icon: Activity, badge: 'Health' },
         { id: 'copilot', label: 'AI Career Copilot', icon: Bot, badge: 'Advisor' }
       ]
@@ -47,10 +48,11 @@ export default function Sidebar({
       title: 'CAREER',
       items: [
         { id: 'career', label: 'Career Engine', icon: Compass },
+        { id: 'interview', label: 'AI Interview Arena', icon: Sparkles, badge: 'STAR Eval' },
         { id: 'simulation', label: 'What-If Simulator', icon: Sliders, badge: 'Twin' },
         { id: 'skillgraph', label: 'Skill Graph Tree', icon: GitFork },
         { id: 'resume', label: 'Resume & ATS', icon: FileText },
-        { id: 'jobmarket', label: 'Job Market Intel', icon: TrendingUp },
+        { id: 'jobmarket', label: 'Opportunity Radar', icon: TrendingUp, badge: 'Verified' },
         { id: 'applications', label: 'Application Tracker', icon: Briefcase, badge: 'Funnel' }
       ]
     },

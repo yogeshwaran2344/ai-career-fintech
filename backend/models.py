@@ -854,7 +854,7 @@ class MockInterviewQuestion(BaseModel):
 
 class MockInterviewAnswerItem(BaseModel):
     question_id: str
-    question: str
+    question: Optional[str] = ""
     user_answer: str
 
 class MockInterviewSubmitRequest(BaseModel):
@@ -1860,18 +1860,52 @@ class LearningDecayConcept(BaseModel):
     decay_status: str  # CRITICAL, WARNING, OPTIMAL, MASTERED
     days_since_review: float
     recommended_action: str
+    next_scheduled_review: Optional[str] = None
+    next_scheduled_days: Optional[int] = None
+    is_weak_topic: bool = False
 
 class LearningDecayStatusResponse(BaseModel):
     overall_retention_score: float
     critical_concepts_count: int
     warning_concepts_count: int
     mastered_concepts_count: int
+    weak_topics_list: List[str] = Field(default_factory=list)
     urgent_review_queue: List[LearningDecayConcept]
     all_concepts: List[LearningDecayConcept]
 
 class ConceptReviewRequest(BaseModel):
     concept_name: str
     performance_score: float = 1.0  # 0.0 to 1.0 (1.0 = remembered clearly)
+
+class ConceptQuizQuestion(BaseModel):
+    id: str
+    question: str
+    options: List[str]
+    hint: Optional[str] = None
+
+class ConceptQuizResponse(BaseModel):
+    concept_name: str
+    category: str
+    questions: List[ConceptQuizQuestion]
+
+class SubmitConceptQuizRequest(BaseModel):
+    concept_name: Optional[str] = None
+    concept_id: Optional[str] = None
+    user_answers: Optional[Dict[str, str]] = None  # question_id -> selected_option
+    answers: Optional[List[Dict[str, Any]]] = None  # List of { question_id, selected_answer }
+    study_duration_minutes: Optional[int] = 15
+
+class ConceptQuizEvaluationResponse(BaseModel):
+    concept_name: str
+    score_pct: int
+    passed: bool
+    new_retention_pct: float
+    new_stability_days: float
+    next_review_days: int
+    next_review_date: str
+    is_weak_topic: bool
+    explanations: List[Dict[str, Any]]
+    question_evaluations: Optional[List[Dict[str, Any]]] = None
 
 class NextBestActionItem(BaseModel):
     id: str

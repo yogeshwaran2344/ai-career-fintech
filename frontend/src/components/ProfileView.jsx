@@ -9,7 +9,8 @@ import {
   Save, 
   RotateCcw, 
   Sliders,
-  CheckCircle
+  CheckCircle,
+  Download
 } from 'lucide-react';
 import { api } from '../api';
 
@@ -19,6 +20,27 @@ export default function ProfileView({ profile, onSaveProfile, onReset }) {
   const [isParsingIntent, setIsParsingIntent] = useState(false);
   const [intentInsights, setIntentInsights] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Export User Data as Portable JSON
+  const handleExportData = async () => {
+    setIsExporting(true);
+    try {
+      const data = await api.exportUserData();
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', jsonString);
+      downloadAnchor.setAttribute('download', `elevare_student_data_${formData?.name?.replace(/\s+/g, '_') || 'profile'}_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (err) {
+      console.error('Failed to export data:', err);
+      alert('Failed to export student data. Please ensure you are logged in.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Reset Confirmation State
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -126,6 +148,17 @@ export default function ProfileView({ profile, onSaveProfile, onReset }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportData}
+            disabled={isExporting}
+            className="px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Download portable JSON backup of your student profile, skills, tasks, and wealth records"
+          >
+            <Download className="w-3.5 h-3.5 text-stone-600" />
+            <span>{isExporting ? 'Exporting...' : 'Export My Data'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {

@@ -597,6 +597,27 @@ export const api = {
       body: JSON.stringify({ concept_name: conceptName, performance_score: performanceScore }),
     });
   },
+  getConceptQuiz: async (conceptName) => {
+    return authFetch(`${API_BASE}/learning-decay/quiz/${encodeURIComponent(conceptName)}`);
+  },
+  submitConceptQuiz: async (payload) => {
+    return authFetch(`${API_BASE}/learning-decay/quiz/submit`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  getMockInterviewQuestions: async (role = '') => {
+    return authFetch(`${API_BASE}/career/mock-interview/questions?role=${encodeURIComponent(role)}`);
+  },
+  evaluateMockInterview: async (payload) => {
+    return authFetch(`${API_BASE}/career/mock-interview/evaluate`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  exportUserData: async () => {
+    return authFetch(`${API_BASE}/profile/export`);
+  },
   getUserResumeData: async () => {
     return authFetch(`${API_BASE}/resume/data`);
   },

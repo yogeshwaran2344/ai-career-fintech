@@ -840,6 +840,150 @@ export default function StudyAbroadView({ profile, onNavigate }) {
               </p>
             </div>
 
+            {/* TOP 3 DESTINATIONS FINANCIAL FEASIBILITY COMPARISON */}
+            <div className="p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-3xl border border-indigo-500/30 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-800/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-indigo-500/30 text-indigo-300">
+                    <Sparkles className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-indigo-200">
+                      Top 3 Countries Financial Feasibility Matrix
+                    </h4>
+                    <span className="text-[11px] text-slate-300">
+                      Dynamic synergy analysis connected to your Finance Engine (Surplus: ₹{((profile?.financial?.monthly_income || 15000) - (profile?.financial?.monthly_expenses || 11000)).toLocaleString()}/mo)
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('loans')}
+                  className="px-3 py-1.5 rounded-xl bg-white text-indigo-950 text-xs font-bold hover:bg-slate-100 transition cursor-pointer self-start sm:self-auto"
+                >
+                  Simulate Education Loan →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 1. Germany */}
+                <div className="p-4 rounded-2xl bg-white/10 border border-white/15 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-extrabold flex items-center gap-1.5">
+                      <span>🇩🇪</span> Germany
+                    </span>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Feasibility: High
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between text-slate-300">
+                      <span>Annual Tuition:</span>
+                      <strong className="text-white font-bold">€0 - €3,000 (~₹0-₹2.7L)</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Blocked Account:</span>
+                      <strong className="text-white font-bold">€11,208/yr (~₹10.5L)</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>2-Year Outlay:</span>
+                      <strong className="text-emerald-300 font-extrabold">~₹14.0 Lakhs Total</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Post-MS Salary:</span>
+                      <strong className="text-white font-bold">€62,000 (~₹55L/yr)</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>PSW Visa:</span>
+                      <strong className="text-white font-bold">18 Mo + EU Blue Card</strong>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-indigo-200/90 pt-1 border-t border-white/10 leading-snug">
+                    💡 Unbeatable ROI. Zero tuition at TUM/RWTH Aachen means student debt risk is virtually zero.
+                  </p>
+                </div>
+
+                {/* 2. United States */}
+                <div className="p-4 rounded-2xl bg-white/10 border border-white/15 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-extrabold flex items-center gap-1.5">
+                      <span>🇺🇸</span> United States
+                    </span>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Feasibility: Action Req.
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between text-slate-300">
+                      <span>Annual Tuition:</span>
+                      <strong className="text-white font-bold">$35,000 - $55,000 (~₹32L)</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Annual Living:</span>
+                      <strong className="text-white font-bold">$15,000 (~₹12.5L)</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>2-Year Outlay:</span>
+                      <strong className="text-amber-300 font-extrabold">~₹65.0 Lakhs Total</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Post-MS Salary:</span>
+                      <strong className="text-white font-bold">$125,000 (~₹1.05 Cr/yr)</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>PSW Visa:</span>
+                      <strong className="text-white font-bold">3-Year STEM OPT</strong>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-indigo-200/90 pt-1 border-t border-white/10 leading-snug">
+                    💡 Highest global tech salaries. Requires education loan of ₹35L-₹45L + on-campus TA/RA funding.
+                  </p>
+                </div>
+
+                {/* 3. Canada */}
+                <div className="p-4 rounded-2xl bg-white/10 border border-white/15 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-extrabold flex items-center gap-1.5">
+                      <span>🇨🇦</span> Canada
+                    </span>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                      Feasibility: Moderate
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between text-slate-300">
+                      <span>Annual Tuition:</span>
+                      <strong className="text-white font-bold">CAD $32,000 (~₹20L)</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Annual Living:</span>
+                      <strong className="text-white font-bold">CAD $18,000 (~₹11L)</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>2-Year Outlay:</span>
+                      <strong className="text-blue-300 font-extrabold">~₹38.0 Lakhs Total</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Post-MS Salary:</span>
+                      <strong className="text-white font-bold">CAD $85,000 (~₹52L/yr)</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>PSW Visa:</span>
+                      <strong className="text-white font-bold">Up to 3-Year PGWP</strong>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-indigo-200/90 pt-1 border-t border-white/10 leading-snug">
+                    💡 Clear PR pathways. Waterloo and Toronto co-op programs offset second-year living expenses.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
               {cost_roi_comparisons.map((item, idx) => (
                 <div key={idx} className="bg-slate-50 rounded-3xl p-5 border border-slate-200 space-y-4 flex flex-col justify-between">
