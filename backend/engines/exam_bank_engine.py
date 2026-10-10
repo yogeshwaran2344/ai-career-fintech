@@ -230,6 +230,148 @@ SEED_QUESTIONS_BANK: List[Dict[str, Any]] = [
         "concept_tested": "Direct Paraphrase Identification"
     },
     {
+        "id": "ielts_read_tfng_01",
+        "exam": "IELTS",
+        "section": "READING",
+        "topic": "True / False / Not Given",
+        "difficulty": "Hard",
+        "question": "Passage: 'Direct Air Capture (DAC) systems synthesize synthetic hydrocarbons using sequestered carbon dioxide and green hydrogen. Although the current energy penalty renders large-scale deployment economically uncompetitive without carbon subsidies, thermodynamic models indicate a potential 40% reduction in thermal regeneration energy by 2030.' \n\nStatement: Current Direct Air Capture facilities operate profitably without government intervention.",
+        "options": [
+            "TRUE",
+            "FALSE",
+            "NOT GIVEN"
+        ],
+        "correct_option": 1,
+        "explanation": "The text states the technology is 'economically uncompetitive without carbon subsidies', meaning it is NOT profitable on its own. Therefore, the statement is FALSE.",
+        "mistake_analysis": "Confusing 'economically uncompetitive without subsidies' with NOT GIVEN.",
+        "concept_tested": "IELTS True/False/Not Given Contradiction Analysis"
+    },
+    {
+        "id": "ielts_read_tfng_02",
+        "exam": "IELTS",
+        "section": "READING",
+        "topic": "True / False / Not Given",
+        "difficulty": "Medium",
+        "question": "Passage: 'Recent cognitive neuroimaging demonstrates that adult second-language learners utilize hippocampal declarative memory networks during initial syntax acquisition, whereas native speakers rely predominantly on procedural basal ganglia loops.' \n\nStatement: Adult second-language learners require more sleep than native speakers to consolidate syntax rules.",
+        "options": [
+            "TRUE",
+            "FALSE",
+            "NOT GIVEN"
+        ],
+        "correct_option": 2,
+        "explanation": "The passage discusses hippocampal vs basal ganglia brain regions, but does NOT mention sleep duration or sleep requirements at all. Hence, the correct answer is NOT GIVEN.",
+        "mistake_analysis": "Assuming that because hippocampal memory consolidation relates to sleep in general neuroscience, the text said so.",
+        "concept_tested": "IELTS Not Given Distinction"
+    },
+    {
+        "id": "ielts_read_headings_01",
+        "exam": "IELTS",
+        "section": "READING",
+        "topic": "Matching Headings",
+        "difficulty": "Hard",
+        "question": "Paragraph: 'Rather than treating urban storm run-off as hazardous waste to be channeled rapidly through concrete storm sewers into rivers, sponge city architecture employs permeable pavements, bioswales, and subterranean cisterns to detain and naturally filter rainwater into urban aquifers.' \n\nWhich heading best summarizes this paragraph?",
+        "options": [
+            "A paradigm shift from rapid disposal to natural retention",
+            "The chemical degradation of concrete drainage systems",
+            "Financial constraints in municipal infrastructure upgrades",
+            "Comparative groundwater contamination across Asian metropolises"
+        ],
+        "correct_option": 0,
+        "explanation": "The paragraph contrasts 'treating as waste to be channeled rapidly' with 'sponge city architecture employing permeable pavements to detain and naturally filter', which is a paradigm shift from disposal to retention.",
+        "mistake_analysis": "Selecting options focusing on concrete damage or finance, which are not central to the paragraph.",
+        "concept_tested": "IELTS Heading Matching & Core Idea Synthesis"
+    },
+    {
+        "id": "ielts_read_vocab_01",
+        "exam": "IELTS",
+        "section": "READING",
+        "topic": "Vocabulary in Context",
+        "difficulty": "Medium",
+        "question": "Passage: 'The historical transition from artisanal scribal reproduction to movable metal type in 15th-century Europe precipitated an unprecedented democratization of scholarly discourse.' \n\nIn this context, the word 'precipitated' is closest in meaning to:",
+        "options": [
+            "Triggered or accelerated",
+            "Gradually hindered",
+            "Condensed into moisture",
+            "Legally prohibited"
+        ],
+        "correct_option": 0,
+        "explanation": "'Precipitated' in historical/academic context means caused suddenly or accelerated an event or change.",
+        "mistake_analysis": "Choosing the meteorological meaning ('condensed into moisture').",
+        "concept_tested": "Academic Collocations & Secondary Meanings"
+    },
+    {
+        "id": "ielts_listen_01",
+        "exam": "IELTS",
+        "section": "LISTENING",
+        "topic": "Campus Registration",
+        "difficulty": "Easy",
+        "question": "Audio Transcript Context: 'Officer: Students requesting 24-hour graduate library keycards must present their official university admission letter, proof of health insurance, and two passport-sized photographs at the Security Office in Building B between 9:00 AM and 1:00 PM.' \n\nQuestion: Which document is NOT explicitly required to obtain a 24-hour library access keycard?",
+        "options": [
+            "Undergraduate degree original transcript",
+            "Official university admission letter",
+            "Proof of health insurance",
+            "Two passport-sized photographs"
+        ],
+        "correct_option": 0,
+        "explanation": "The officer specifies the admission letter, health insurance proof, and photographs. Undergraduate transcripts are not requested for keycard issuance.",
+        "mistake_analysis": "Selecting documents mentioned in academic enrollment rather than the keycard dialogue.",
+        "concept_tested": "IELTS Section 1 Detail Extraction"
+    },
+    {
+        "id": "ielts_listen_02",
+        "exam": "IELTS",
+        "section": "LISTENING",
+        "topic": "Academic Lecture",
+        "difficulty": "Hard",
+        "question": "Audio Transcript Context: 'Professor: When assessing underwater tidal stream turbines, the predominant engineering bottleneck is not rotational torque generation, but rather the accelerated cavitation erosion that degrades turbine blade hydrofoils in saltwater conditions.' \n\nQuestion: According to the lecturer, what is the primary technical obstacle in commercial tidal power installations?",
+        "options": [
+            "Blade surface erosion caused by seawater cavitation",
+            "Insufficient electrical torque during low tide",
+            "Excessive acoustic disturbance to marine mammals",
+            "Inability to transmit high voltage currents to onshore substations"
+        ],
+        "correct_option": 0,
+        "explanation": "The professor directly clarifies the bottleneck is 'accelerated cavitation erosion that degrades turbine blade hydrofoils in saltwater'.",
+        "mistake_analysis": "Choosing electrical torque, which the professor explicitly stated was NOT the primary bottleneck.",
+        "concept_tested": "IELTS Section 4 Academic Lecture Comprehension"
+    },
+    {
+        "id": "ielts_write_task1_01",
+        "exam": "IELTS",
+        "section": "WRITING",
+        "topic": "Academic Writing Task 1",
+        "difficulty": "Medium",
+        "question": "Prompt: A bar chart depicts renewable energy adoption across Germany, the UK, and Sweden between 2015 and 2025. Sweden maintained the highest proportion throughout, rising from 52% to 68%, while Germany exhibited the sharpest growth rate (from 28% to 54%). \n\nQuestion: Which overview statement adheres strictly to Band 8.5+ IELTS Task 1 criteria?",
+        "options": [
+            "Overall, while Sweden consistently led in renewable adoption over the decade, Germany demonstrated the most rapid acceleration, closing the margin with other nations.",
+            "In my opinion, Germany is doing better than Sweden because their politicians passed good environmental laws in 2020.",
+            "First I will describe Sweden with 52% and then I will describe Germany with 28% and lastly UK.",
+            "Renewables are good for stopping climate change and every country must invest more money immediately."
+        ],
+        "correct_option": 0,
+        "explanation": "Band 8.5 Task 1 requires an objective, comprehensive overview highlighting main trends and comparisons without subjective personal opinions or external speculations.",
+        "mistake_analysis": "Including personal opinions ('In my opinion', 'countries must invest') which strictly violates Task 1 objectivity rules.",
+        "concept_tested": "IELTS Task 1 Overview Formulation & Objective Academic Tone"
+    },
+    {
+        "id": "ielts_grammar_01",
+        "exam": "IELTS",
+        "section": "WRITING",
+        "topic": "Grammatical Range & Accuracy",
+        "difficulty": "Hard",
+        "question": "Identify the grammatically correct sentence demonstrating Band 8.0+ complex syntactic inversion: \n\nWhich sentence is punctuated and structured correctly?",
+        "options": [
+            "Not only did the implementation of automated code reviews reduce software regression rates, but it also shortened the release deployment cycle.",
+            "Not only the implementation of automated reviews reduced regression rates, but also it shortened cycles.",
+            "Not only did automated reviews reduced regression rates, but also shortened the release cycle.",
+            "Not only the review implementation had reduced regressions, but shortening deployment cycles too."
+        ],
+        "correct_option": 0,
+        "explanation": "Negative/restrictive inversion with 'Not only' requires auxiliary inversion: 'Not only did [subject] [bare infinitive verb]..., but it also [verb]...'.",
+        "mistake_analysis": "Failing to invert subject-auxiliary ('Not only the implementation...') or using double past tense ('did... reduced').",
+        "concept_tested": "Syntactic Inversion & Complex Clause Cohesion"
+    },
+    {
         "id": "toefl_read_01",
         "exam": "TOEFL",
         "section": "READING",
@@ -379,11 +521,24 @@ class ExamBankEngine:
             }
         ]
 
+        ielts_templates = [
+            {
+                "topic": "Academic Reading",
+                "gen": lambda: cls._gen_ielts_reading()
+            },
+            {
+                "topic": "Vocabulary in Context",
+                "gen": lambda: cls._gen_ielts_vocab()
+            }
+        ]
+
+        active_templates = ielts_templates if exam.upper() == "IELTS" else templates
+
         for i in range(count):
-            tpl = random.choice(templates)
+            tpl = random.choice(active_templates)
             q_data = tpl["gen"]()
             q_data["exam"] = exam
-            q_data["section"] = section
+            q_data["section"] = section or ("READING" if exam.upper() == "IELTS" else "QUANTITATIVE")
             results.append(ExamQuestion(**q_data))
 
         return results
@@ -503,6 +658,63 @@ class ExamBankEngine:
             "explanation": f"'{target_word}' precisely matches the contextual direction indicated by the supporting clause.",
             "mistake_analysis": "Choosing words that sound formal but carry the opposite or an unrelated connotation.",
             "concept_tested": "High-Frequency Academic Vocabulary"
+        }
+
+    @classmethod
+    def _gen_ielts_reading(cls) -> Dict[str, Any]:
+        passages = [
+            (
+                "Passage: 'Algorithmic carbon footprint audits demonstrate that quantized neural networks consume up to 65% less floating-point inference energy than baseline float32 checkpoints without statistically significant degradation in BLEU scores.' \n\nQuestion: According to the passage, quantized models provide which primary advantage?",
+                "They dramatically decrease computational power consumption during inference",
+                ["They increase training convergence speed", "They eliminate all floating-point math entirely", "They require zero specialized GPU hardware"],
+                "Up to 65% less inference energy directly means reduced power consumption.",
+                "Detail Identification & Technical Paraphrasing"
+            ),
+            (
+                "Passage: 'Microbial bioremediation in subterranean saline aquifers remains technically constrained by hyper-osmotic pressure, which lyses bacterial cell membranes before enzymatic hydrocarbon oxidation occurs.' \n\nQuestion: Why is bacterial hydrocarbon degradation hindered in deep saline aquifers?",
+                "Excessive salinity causes bacterial cell walls to rupture",
+                ["Hydrocarbons become completely non-reactive under high pressure", "Oxygen levels are too high for anaerobic digestion", "Subterranean temperatures destroy the hydrocarbon bonds"],
+                "Hyper-osmotic pressure lysing cell membranes means the salinity causes cells to rupture.",
+                "Causal Inference in Scientific Reading"
+            )
+        ]
+        prompt, correct_ans, distractors, explanation, concept = random.choice(passages)
+        options = [correct_ans] + distractors
+        random.shuffle(options)
+        correct_idx = options.index(correct_ans)
+        return {
+            "id": f"dyn_ielts_rd_{uuid.uuid4().hex[:6]}",
+            "topic": "Academic Reading",
+            "difficulty": "Medium",
+            "question": prompt,
+            "options": options,
+            "correct_option": correct_idx,
+            "explanation": explanation,
+            "mistake_analysis": "Confusing technical prerequisites with secondary observations.",
+            "concept_tested": concept
+        }
+
+    @classmethod
+    def _gen_ielts_vocab(cls) -> Dict[str, Any]:
+        vocab_items = [
+            ("ubiquitous", "omnipresent", "The deployment of edge machine learning sensors has become virtually ________ across municipal traffic monitoring networks.", ["diminished", "speculative", "transient"]),
+            ("ameliorate", "improve or mitigate", "Targeted fiscal incentives are structured to ________ the initial capital risk of geothermal well exploration.", ["exacerbate", "circumvent", "confiscate"]),
+            ("tenuous", "fragile or weak", "The correlation between self-reported study hours and long-term exam retention remained ________ in the absence of spaced repetition testing.", ["robust", "insurmountable", "ubiquitous"])
+        ]
+        target_term, meaning, prompt, distractors = random.choice(vocab_items)
+        options = [target_term] + distractors
+        random.shuffle(options)
+        correct_idx = options.index(target_term)
+        return {
+            "id": f"dyn_ielts_voc_{uuid.uuid4().hex[:6]}",
+            "topic": "Vocabulary in Context",
+            "difficulty": "Medium",
+            "question": prompt,
+            "options": options,
+            "correct_option": correct_idx,
+            "explanation": f"'{target_term}' (meaning {meaning}) is the precise academic collocation for this sentence.",
+            "mistake_analysis": "Selecting antonyms or unrelated sounding Latinate words.",
+            "concept_tested": "IELTS Academic Collocations & Precision"
         }
 
     @classmethod

@@ -1528,6 +1528,12 @@ class ShortlistedUniversity(BaseModel):
     loan_options: Optional[Dict[str, Any]] = None
     living_breakdown: Optional[Dict[str, Any]] = None
     tuition_breakdown: Optional[Dict[str, Any]] = None
+    match_reason: Optional[str] = None
+    admission_risk_disclaimer: Optional[str] = "Admission is competitive and not guaranteed. Final evaluation depends on holistic profile factors including research, recommendations, and test scores."
+    academic_prerequisites: Optional[List[str]] = None
+    source_info: Optional[str] = "Official Graduate Admissions Portal & Department Bulletin"
+    last_verified_date: Optional[str] = "October 2026"
+    missing_requirements: Optional[List[str]] = None
     checklist: Dict[str, bool] = Field(default_factory=lambda: {
         "account_created": False,
         "program_selected": False,
@@ -1606,6 +1612,104 @@ class UpdateUniversityChecklistRequest(BaseModel):
     university_id: str
     checklist_key: str
     completed: bool
+
+# ==================== STUDY ABROAD COPILOT EXTENDED MODELS ====================
+
+class DegreeCostBreakdownItem(BaseModel):
+    category: str
+    low_inr: float
+    typical_inr: float
+    high_inr: float
+    notes: str
+
+class TotalDegreeCostFundingPlan(BaseModel):
+    university_name: str
+    country: str
+    flag: str
+    currency_code: str
+    exchange_rate_to_inr: float
+    exchange_rate_date: str
+    degree_duration_years: float
+    breakdown_items: List[DegreeCostBreakdownItem]
+    total_low_inr: float
+    total_typical_inr: float
+    total_high_inr: float
+    current_student_savings_inr: float
+    applicable_scholarships_inr: float
+    expected_family_support_inr: float
+    on_campus_job_estimated_inr: float
+    total_secured_funding_inr: float
+    total_funding_gap_inr: float
+    intake_target: str
+    months_remaining_to_intake: int
+    required_monthly_savings_inr: float
+    student_current_monthly_surplus_inr: float
+    monthly_affordability_verdict: str
+    recommended_loan_amount_inr: float
+    loan_estimated_emi_inr: float
+    synergy_with_finance_engine: str
+
+class CalculateFundingPlanRequest(BaseModel):
+    university_name: Optional[str] = None
+    country_code: Optional[str] = "DEU"
+    expected_scholarship_inr: Optional[float] = 0.0
+    family_support_inr: Optional[float] = 0.0
+    include_on_campus_job: Optional[bool] = True
+
+class SopCritiqueRequest(BaseModel):
+    target_university: str
+    target_program: str
+    sop_draft_text: str
+
+class SopCritiqueResponse(BaseModel):
+    overall_score: int  # 0 to 100
+    structure_scores: Dict[str, int]  # e.g. {"hook": 80, "academic_foundation": 85, "projects": 75, "university_fit": 60, "career_vision": 80}
+    strengths: List[str]
+    missing_evidence_red_flags: List[str]
+    university_fit_analysis: str
+    authenticity_audit: str
+    actionable_recommendations: List[str]
+    improved_excerpt: str
+
+class StudyAbroadApplicationRecord(BaseModel):
+    id: str
+    university_name: str
+    program_name: str
+    country: str
+    tier: str  # AMBITIOUS, TARGET, SAFE
+    status: str  # Researching, Drafting Docs, Submitted, Under Review, Interview, Offer Received, Rejected
+    deadline: str
+    portal_url: str
+    checklist: Dict[str, bool] = Field(default_factory=dict)
+    notes: Optional[str] = ""
+    offer_letter_url: Optional[str] = None
+
+class CreateStudyAbroadApplicationRequest(BaseModel):
+    university_name: str
+    program_name: str
+    country: str
+    tier: Optional[str] = "TARGET"
+    deadline: Optional[str] = "Jan 15, 2027"
+    portal_url: Optional[str] = "https://admissions.univ.edu"
+
+class UpdateStudyAbroadApplicationRequest(BaseModel):
+    status: Optional[str] = None
+    deadline: Optional[str] = None
+    checklist: Optional[Dict[str, bool]] = None
+    notes: Optional[str] = None
+
+class VisaGuidanceInfo(BaseModel):
+    country_code: str
+    country_name: str
+    flag: str
+    visa_subclass: str
+    official_portal_url: str
+    last_verified_date: str
+    disclaimer: str
+    mandatory_steps: List[Dict[str, Any]]
+    financial_proof_requirement: Dict[str, Any]
+    health_insurance_requirement: str
+    pre_departure_checklist: List[str]
 
 # ==================== ADVANCED EXAM PREPARATION ENGINE MODELS ====================
 

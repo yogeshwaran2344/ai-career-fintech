@@ -44,6 +44,9 @@ from models import (
     FinancialSafetyCheckResponse, FinancialHealthSummary,
     StudyAbroadOverviewResponse, UpdateStudyAbroadSelectionRequest, UpdateUniversityChecklistRequest,
     SopLorGenerationRequest, SopLorGenerationResponse,
+    TotalDegreeCostFundingPlan, CalculateFundingPlanRequest, SopCritiqueRequest, SopCritiqueResponse,
+    StudyAbroadApplicationRecord, CreateStudyAbroadApplicationRequest, UpdateStudyAbroadApplicationRequest,
+    VisaGuidanceInfo,
     ExamQuestion, GeneratePracticeSetRequest, PracticeSetResponse, SubmitPracticeSetRequest,
     PracticeSetEvaluationResponse, MockExamBlueprint, StartMockExamRequest, SubmitMockExamRequest,
     MockExamEvaluationResponse, MockScoreHistoryItem, MistakeBankResponse, MistakeBankItem, WritingEvaluationRequest,
@@ -1211,6 +1214,68 @@ def generate_study_abroad_sop_lor(req: SopLorGenerationRequest, current_user: St
         lab_name=req.target_professor_or_lab or "AI & Autonomous Systems Lab",
         student_profile=current_user.dict()
     )
+
+@app.post("/api/study-abroad/cost-funding-plan", response_model=TotalDegreeCostFundingPlan)
+def get_study_abroad_cost_funding_plan(req: CalculateFundingPlanRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return StudyAbroadEngine.calculate_total_degree_cost_funding_plan(
+        university_name=req.university_name,
+        country_code=req.country_code or "DEU",
+        expected_scholarship_inr=req.expected_scholarship_inr or 0.0,
+        family_support_inr=req.family_support_inr or 0.0,
+        include_on_campus_job=req.include_on_campus_job if req.include_on_campus_job is not None else True,
+        student_profile=current_user.dict()
+    )
+
+@app.post("/api/study-abroad/sop-critique", response_model=SopCritiqueResponse)
+def evaluate_study_abroad_sop(req: SopCritiqueRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return StudyAbroadEngine.evaluate_sop_draft(
+        target_university=req.target_university,
+        target_program=req.target_program,
+        sop_draft_text=req.sop_draft_text,
+        student_profile=current_user.dict()
+    )
+
+@app.get("/api/study-abroad/visa-guidance/{country_code}", response_model=VisaGuidanceInfo)
+def get_study_abroad_visa_guidance(country_code: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return StudyAbroadEngine.get_visa_guidance(country_code)
+
+@app.get("/api/study-abroad/applications", response_model=List[StudyAbroadApplicationRecord])
+def list_study_abroad_applications(current_user: StudentProfile = Depends(get_user_from_auth)):
+    apps = DatabaseManager.get_user_study_abroad_applications(current_user.id)
+    return [StudyAbroadApplicationRecord(**a) for a in apps]
+
+@app.post("/api/study-abroad/applications", response_model=StudyAbroadApplicationRecord)
+def create_study_abroad_application(req: CreateStudyAbroadApplicationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    res = DatabaseManager.create_user_study_abroad_application(
+        user_id=current_user.id,
+        university_name=req.university_name,
+        program_name=req.program_name,
+        country=req.country,
+        tier=req.tier or "TARGET",
+        deadline=req.deadline or "Jan 15, 2027",
+        portal_url=req.portal_url or "",
+        notes=""
+    )
+    return StudyAbroadApplicationRecord(**res)
+
+@app.put("/api/study-abroad/applications/{app_id}", response_model=StudyAbroadApplicationRecord)
+def update_study_abroad_application(app_id: str, req: UpdateStudyAbroadApplicationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    res = DatabaseManager.update_user_study_abroad_application(
+        app_id=app_id,
+        user_id=current_user.id,
+        status=req.status,
+        deadline=req.deadline,
+        checklist=req.checklist,
+        notes=req.notes
+    )
+    if not res:
+        raise HTTPException(status_code=404, detail="Study abroad application record not found.")
+    return StudyAbroadApplicationRecord(**res)
+
+@app.delete("/api/study-abroad/applications/{app_id}")
+def delete_study_abroad_application(app_id: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+    success = DatabaseManager.delete_user_study_abroad_application(app_id, current_user.id)
+    return {"success": success}
 
 # ==================== ADVANCED EXAM PREPARATION ENGINE API ====================
 

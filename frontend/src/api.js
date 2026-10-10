@@ -508,6 +508,41 @@ export const api = {
       body: JSON.stringify(payload)
     });
   },
+  getCostFundingPlan: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/cost-funding-plan`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    });
+  },
+  critiqueSopDraft: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/sop-critique`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+  getVisaGuidance: async (countryCode) => {
+    return authFetch(`${API_BASE}/study-abroad/visa-guidance/${encodeURIComponent(countryCode || 'DEU')}`);
+  },
+  getStudyAbroadApplications: async () => {
+    return authFetch(`${API_BASE}/study-abroad/applications`);
+  },
+  createStudyAbroadApplication: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/applications`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+  updateStudyAbroadApplication: async (appId, payload) => {
+    return authFetch(`${API_BASE}/study-abroad/applications/${encodeURIComponent(appId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  },
+  deleteStudyAbroadApplication: async (appId) => {
+    return authFetch(`${API_BASE}/study-abroad/applications/${encodeURIComponent(appId)}`, {
+      method: 'DELETE'
+    });
+  },
 
   // ADVANCED EXAM PREPARATION ENGINE
   generatePracticeSet: async (payload) => {

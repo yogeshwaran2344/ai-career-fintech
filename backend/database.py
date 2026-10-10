@@ -437,6 +437,27 @@ def init_database():
         )
     """)
 
+    # 25. User Study Abroad Applications Command Center Ledger
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_study_abroad_applications (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            university_name TEXT NOT NULL,
+            program_name TEXT NOT NULL,
+            country TEXT NOT NULL,
+            tier TEXT DEFAULT 'TARGET',
+            status TEXT DEFAULT 'Researching',
+            deadline TEXT DEFAULT 'Jan 15, 2027',
+            portal_url TEXT DEFAULT '',
+            checklist_json TEXT DEFAULT '{}',
+            notes TEXT DEFAULT '',
+            offer_letter_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
     # Migration: Add xp_awarded column to daily_tasks if not present
     try:
         cursor.execute("ALTER TABLE daily_tasks ADD COLUMN xp_awarded INTEGER DEFAULT 0")
@@ -1177,6 +1198,221 @@ class DatabaseManager:
         conn.commit()
         conn.close()
         return checklists
+
+    # ==================== APPLICATION COMMAND CENTER METHODS ====================
+    @staticmethod
+    def get_user_study_abroad_applications(user_id: str) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_study_abroad_applications WHERE user_id = ? ORDER BY deadline ASC", (user_id,))
+        rows = cursor.fetchall()
+
+        if not rows:
+            # Seed 3 realistic university applications based on user profile
+            initial_apps = [
+                {
+                    "id": f"msapp_{uuid.uuid4().hex[:8]}",
+                    "user_id": user_id,
+                    "university_name": "Technical University of Munich (TUM)",
+                    "program_name": "M.Sc. Informatics (AI & Robotics)",
+                    "country": "Germany",
+                    "tier": "TARGET",
+                    "status": "Drafting Docs",
+                    "deadline": "Jan 15, 2027",
+                    "portal_url": "https://campus.tum.de",
+                    "checklist_json": json.dumps({
+                        "transcripts_attested": True,
+                        "wes_or_aps_evaluation": True,
+                        "ielts_or_toefl_reported": True,
+                        "gre_score_reported": False,
+                        "sop_draft_tailored": False,
+                        "lor_1_academic": True,
+                        "lor_2_academic": False,
+                        "resume_cv_tailored": True,
+                        "financial_solvency_proof": False,
+                        "application_fee_paid": False
+                    }),
+                    "notes": "APS verification completed. Need to finalize German CV format and tailoring SOP for AI lab."
+                },
+                {
+                    "id": f"msapp_{uuid.uuid4().hex[:8]}",
+                    "user_id": user_id,
+                    "university_name": "Carnegie Mellon University (CMU)",
+                    "program_name": "MS in Artificial Intelligence and Innovation (MSAII)",
+                    "country": "United States",
+                    "tier": "AMBITIOUS",
+                    "status": "Researching",
+                    "deadline": "Dec 15, 2026",
+                    "portal_url": "https://applygrad.cs.cmu.edu",
+                    "checklist_json": json.dumps({
+                        "transcripts_attested": True,
+                        "wes_or_aps_evaluation": False,
+                        "ielts_or_toefl_reported": True,
+                        "gre_score_reported": False,
+                        "sop_draft_tailored": False,
+                        "lor_1_academic": False,
+                        "lor_2_academic": False,
+                        "resume_cv_tailored": True,
+                        "financial_solvency_proof": False,
+                        "application_fee_paid": False
+                    }),
+                    "notes": "Targeting Language Technologies Institute (LTI). GRE Quant target 167+."
+                },
+                {
+                    "id": f"msapp_{uuid.uuid4().hex[:8]}",
+                    "user_id": user_id,
+                    "university_name": "University of Toronto",
+                    "program_name": "Master of Science in Applied Computing (MScAC - AI)",
+                    "country": "Canada",
+                    "tier": "TARGET",
+                    "status": "Drafting Docs",
+                    "deadline": "Dec 01, 2026",
+                    "portal_url": "https://admissions.sgs.utoronto.ca",
+                    "checklist_json": json.dumps({
+                        "transcripts_attested": True,
+                        "wes_or_aps_evaluation": False,
+                        "ielts_or_toefl_reported": True,
+                        "gre_score_reported": False,
+                        "sop_draft_tailored": True,
+                        "lor_1_academic": True,
+                        "lor_2_academic": True,
+                        "resume_cv_tailored": True,
+                        "financial_solvency_proof": False,
+                        "application_fee_paid": False
+                    }),
+                    "notes": "Vector Institute affiliation. Includes 8-month paid industrial applied research internship."
+                }
+            ]
+            for app_item in initial_apps:
+                cursor.execute("""
+                    INSERT INTO user_study_abroad_applications 
+                    (id, user_id, university_name, program_name, country, tier, status, deadline, portal_url, checklist_json, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    app_item["id"], user_id, app_item["university_name"], app_item["program_name"],
+                    app_item["country"], app_item["tier"], app_item["status"], app_item["deadline"],
+                    app_item["portal_url"], app_item["checklist_json"], app_item["notes"]
+                ))
+            conn.commit()
+            cursor.execute("SELECT * FROM user_study_abroad_applications WHERE user_id = ? ORDER BY deadline ASC", (user_id,))
+            rows = cursor.fetchall()
+
+        conn.close()
+        results = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["checklist"] = json.loads(d.get("checklist_json") or "{}")
+            except Exception:
+                d["checklist"] = {}
+            results.append(d)
+        return results
+
+    @staticmethod
+    def create_user_study_abroad_application(
+        user_id: str,
+        university_name: str,
+        program_name: str,
+        country: str,
+        tier: str = "TARGET",
+        deadline: str = "Jan 15, 2027",
+        portal_url: str = "",
+        notes: str = ""
+    ) -> Dict[str, Any]:
+        app_id = f"msapp_{uuid.uuid4().hex[:8]}"
+        default_checklist = {
+            "transcripts_attested": False,
+            "wes_or_aps_evaluation": False,
+            "ielts_or_toefl_reported": False,
+            "gre_score_reported": False,
+            "sop_draft_tailored": False,
+            "lor_1_academic": False,
+            "lor_2_academic": False,
+            "resume_cv_tailored": False,
+            "financial_solvency_proof": False,
+            "application_fee_paid": False
+        }
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO user_study_abroad_applications 
+            (id, user_id, university_name, program_name, country, tier, status, deadline, portal_url, checklist_json, notes)
+            VALUES (?, ?, ?, ?, ?, ?, 'Researching', ?, ?, ?, ?)
+        """, (
+            app_id, user_id, university_name, program_name, country, tier,
+            deadline, portal_url, json.dumps(default_checklist), notes
+        ))
+        conn.commit()
+        cursor.execute("SELECT * FROM user_study_abroad_applications WHERE id = ?", (app_id,))
+        row = cursor.fetchone()
+        conn.close()
+        res = dict(row)
+        res["checklist"] = default_checklist
+        return res
+
+    @staticmethod
+    def update_user_study_abroad_application(
+        app_id: str,
+        user_id: str,
+        status: Optional[str] = None,
+        deadline: Optional[str] = None,
+        checklist: Optional[Dict[str, bool]] = None,
+        notes: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_study_abroad_applications WHERE id = ? AND user_id = ?", (app_id, user_id))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return None
+
+        current_data = dict(row)
+        updates = ["updated_at = CURRENT_TIMESTAMP"]
+        params = []
+
+        if status is not None:
+            updates.append("status = ?")
+            params.append(status)
+        if deadline is not None:
+            updates.append("deadline = ?")
+            params.append(deadline)
+        if notes is not None:
+            updates.append("notes = ?")
+            params.append(notes)
+        if checklist is not None:
+            try:
+                existing_chk = json.loads(current_data.get("checklist_json") or "{}")
+            except Exception:
+                existing_chk = {}
+            existing_chk.update(checklist)
+            updates.append("checklist_json = ?")
+            params.append(json.dumps(existing_chk))
+
+        params.extend([app_id, user_id])
+        cursor.execute(f"UPDATE user_study_abroad_applications SET {', '.join(updates)} WHERE id = ? AND user_id = ?", tuple(params))
+        conn.commit()
+        cursor.execute("SELECT * FROM user_study_abroad_applications WHERE id = ?", (app_id,))
+        updated_row = cursor.fetchone()
+        conn.close()
+        if not updated_row:
+            return None
+        res = dict(updated_row)
+        try:
+            res["checklist"] = json.loads(res.get("checklist_json") or "{}")
+        except Exception:
+            res["checklist"] = {}
+        return res
+
+    @staticmethod
+    def delete_user_study_abroad_application(app_id: str, user_id: str) -> bool:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM user_study_abroad_applications WHERE id = ? AND user_id = ?", (app_id, user_id))
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return deleted
 
     # ==================== EXAM PREPARATION ENGINE METHODS ====================
     @staticmethod
