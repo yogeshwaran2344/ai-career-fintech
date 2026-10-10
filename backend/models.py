@@ -1711,6 +1711,59 @@ class VisaGuidanceInfo(BaseModel):
     health_insurance_requirement: str
     pre_departure_checklist: List[str]
 
+class SaveStudyAbroadProfileRequest(BaseModel):
+    cgpa: Optional[float] = None
+    current_degree: Optional[str] = None
+    target_degree: Optional[str] = None
+    target_intake: Optional[str] = None
+    target_countries: Optional[List[str]] = None
+    max_budget_inr: Optional[float] = None
+    test_scores: Optional[Dict[str, Any]] = None
+    work_experience_months: Optional[int] = None
+    backlogs_count: Optional[int] = None
+
+class StudyAbroadProfileResponse(BaseModel):
+    user_id: str
+    cgpa: float
+    current_degree: str
+    target_degree: str
+    target_intake: str
+    target_countries: List[str]
+    max_budget_inr: float
+    test_scores: Dict[str, Any]
+    work_experience_months: int
+    backlogs_count: int
+
+class SaveVisaProgressRequest(BaseModel):
+    country_code: str
+    current_stage: Optional[str] = None
+    completed_steps: Optional[List[str]] = None
+    checklist: Optional[Dict[str, bool]] = None
+    financial_proof_status: Optional[str] = None
+    blocked_account_provider: Optional[str] = None
+    blocked_account_amount_funded: Optional[float] = None
+    appointment_date: Optional[str] = None
+    appointment_location: Optional[str] = None
+    tracking_number: Optional[str] = None
+    notes: Optional[str] = None
+
+class UserVisaProgressResponse(BaseModel):
+    id: str
+    user_id: str
+    country_code: str
+    target_university: str
+    target_program: str
+    current_stage: str
+    completed_steps: List[str]
+    checklist: Dict[str, bool]
+    financial_proof_status: str
+    blocked_account_provider: str
+    blocked_account_amount_funded: float
+    appointment_date: str
+    appointment_location: str
+    tracking_number: str
+    notes: str
+
 # ==================== ADVANCED EXAM PREPARATION ENGINE MODELS ====================
 
 class ExamQuestion(BaseModel):

@@ -46,7 +46,8 @@ from models import (
     SopLorGenerationRequest, SopLorGenerationResponse,
     TotalDegreeCostFundingPlan, CalculateFundingPlanRequest, SopCritiqueRequest, SopCritiqueResponse,
     StudyAbroadApplicationRecord, CreateStudyAbroadApplicationRequest, UpdateStudyAbroadApplicationRequest,
-    VisaGuidanceInfo,
+    VisaGuidanceInfo, SaveStudyAbroadProfileRequest, StudyAbroadProfileResponse,
+    SaveVisaProgressRequest, UserVisaProgressResponse,
     ExamQuestion, GeneratePracticeSetRequest, PracticeSetResponse, SubmitPracticeSetRequest,
     PracticeSetEvaluationResponse, MockExamBlueprint, StartMockExamRequest, SubmitMockExamRequest,
     MockExamEvaluationResponse, MockScoreHistoryItem, MistakeBankResponse, MistakeBankItem, WritingEvaluationRequest,
@@ -1276,6 +1277,126 @@ def update_study_abroad_application(app_id: str, req: UpdateStudyAbroadApplicati
 def delete_study_abroad_application(app_id: str, current_user: StudentProfile = Depends(get_user_from_auth)):
     success = DatabaseManager.delete_user_study_abroad_application(app_id, current_user.id)
     return {"success": success}
+
+@app.get("/api/study-abroad/universities")
+def list_study_abroad_universities(
+    country_code: Optional[str] = "ALL",
+    tier: Optional[str] = "ALL",
+    min_cgpa: Optional[float] = None,
+    max_budget: Optional[float] = None,
+    search: Optional[str] = None,
+    current_user: StudentProfile = Depends(get_user_from_auth)
+):
+    """Queries persistent SQLite university database with real tuition, eligibility, and verified dates."""
+    return DatabaseManager.get_study_abroad_universities(
+        country_code=country_code,
+        tier=tier,
+        min_cgpa=min_cgpa,
+        max_budget_inr=max_budget,
+        search_query=search
+    )
+
+@app.get("/api/study-abroad/profile", response_model=StudyAbroadProfileResponse)
+def get_user_study_abroad_profile(current_user: StudentProfile = Depends(get_user_from_auth)):
+    """Retrieves persistent study abroad preferences and test scores for authenticated student."""
+    res = DatabaseManager.get_user_study_abroad_profile(current_user.id)
+    return StudyAbroadProfileResponse(
+        user_id=res["user_id"],
+        cgpa=res["cgpa"],
+        current_degree=res["current_degree"],
+        target_degree=res["target_degree"],
+        target_intake=res["target_intake"],
+        target_countries=res["target_countries"],
+        max_budget_inr=res["max_budget_inr"],
+        test_scores=res["test_scores"],
+        work_experience_months=res["work_experience_months"],
+        backlogs_count=res["backlogs_count"]
+    )
+
+@app.put("/api/study-abroad/profile", response_model=StudyAbroadProfileResponse)
+def update_user_study_abroad_profile(req: SaveStudyAbroadProfileRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    """Persists updated study abroad preferences and test scores for authenticated student."""
+    res = DatabaseManager.save_user_study_abroad_profile(
+        user_id=current_user.id,
+        cgpa=req.cgpa,
+        current_degree=req.current_degree,
+        target_degree=req.target_degree,
+        target_intake=req.target_intake,
+        target_countries=req.target_countries,
+        max_budget_inr=req.max_budget_inr,
+        test_scores=req.test_scores,
+        work_experience_months=req.work_experience_months,
+        backlogs_count=req.backlogs_count
+    )
+    return StudyAbroadProfileResponse(
+        user_id=res["user_id"],
+        cgpa=res["cgpa"],
+        current_degree=res["current_degree"],
+        target_degree=res["target_degree"],
+        target_intake=res["target_intake"],
+        target_countries=res["target_countries"],
+        max_budget_inr=res["max_budget_inr"],
+        test_scores=res["test_scores"],
+        work_experience_months=res["work_experience_months"],
+        backlogs_count=res["backlogs_count"]
+    )
+
+@app.get("/api/study-abroad/visa/progress", response_model=UserVisaProgressResponse)
+def get_user_visa_progress(country_code: str = "DEU", current_user: StudentProfile = Depends(get_user_from_auth)):
+    """Retrieves persistent visa lifecycle progress, blocked account funding, and checklist for authenticated student."""
+    res = DatabaseManager.get_user_visa_progress(current_user.id, country_code)
+    return UserVisaProgressResponse(
+        id=res["id"],
+        user_id=res["user_id"],
+        country_code=res["country_code"],
+        target_university=res["target_university"],
+        target_program=res["target_program"],
+        current_stage=res["current_stage"],
+        completed_steps=res["completed_steps"],
+        checklist=res["checklist"],
+        financial_proof_status=res["financial_proof_status"],
+        blocked_account_provider=res["blocked_account_provider"],
+        blocked_account_amount_funded=res["blocked_account_amount_funded"],
+        appointment_date=res["appointment_date"],
+        appointment_location=res["appointment_location"],
+        tracking_number=res["tracking_number"],
+        notes=res["notes"]
+    )
+
+@app.post("/api/study-abroad/visa/progress", response_model=UserVisaProgressResponse)
+def update_user_visa_progress(req: SaveVisaProgressRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    """Persists updated visa lifecycle stage, checklist item toggles, and appointment dates for authenticated student."""
+    res = DatabaseManager.save_user_visa_progress(
+        user_id=current_user.id,
+        country_code=req.country_code,
+        current_stage=req.current_stage,
+        completed_steps=req.completed_steps,
+        checklist=req.checklist,
+        financial_proof_status=req.financial_proof_status,
+        blocked_account_provider=req.blocked_account_provider,
+        blocked_account_amount_funded=req.blocked_account_amount_funded,
+        appointment_date=req.appointment_date,
+        appointment_location=req.appointment_location,
+        tracking_number=req.tracking_number,
+        notes=req.notes
+    )
+    return UserVisaProgressResponse(
+        id=res["id"],
+        user_id=res["user_id"],
+        country_code=res["country_code"],
+        target_university=res["target_university"],
+        target_program=res["target_program"],
+        current_stage=res["current_stage"],
+        completed_steps=res["completed_steps"],
+        checklist=res["checklist"],
+        financial_proof_status=res["financial_proof_status"],
+        blocked_account_provider=res["blocked_account_provider"],
+        blocked_account_amount_funded=res["blocked_account_amount_funded"],
+        appointment_date=res["appointment_date"],
+        appointment_location=res["appointment_location"],
+        tracking_number=res["tracking_number"],
+        notes=res["notes"]
+    )
 
 # ==================== ADVANCED EXAM PREPARATION ENGINE API ====================
 

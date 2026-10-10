@@ -543,6 +543,33 @@ export const api = {
       method: 'DELETE'
     });
   },
+  getPersistentUniversities: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.country_code) params.append('country_code', filters.country_code);
+    if (filters.tier) params.append('tier', filters.tier);
+    if (filters.min_cgpa) params.append('min_cgpa', filters.min_cgpa);
+    if (filters.max_budget) params.append('max_budget', filters.max_budget);
+    if (filters.search) params.append('search', filters.search);
+    return authFetch(`${API_BASE}/study-abroad/universities?${params.toString()}`);
+  },
+  getStudyAbroadProfile: async () => {
+    return authFetch(`${API_BASE}/study-abroad/profile`);
+  },
+  updateStudyAbroadProfile: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/profile`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  },
+  getUserVisaProgress: async (countryCode = 'DEU') => {
+    return authFetch(`${API_BASE}/study-abroad/visa/progress?country_code=${encodeURIComponent(countryCode)}`);
+  },
+  updateUserVisaProgress: async (payload) => {
+    return authFetch(`${API_BASE}/study-abroad/visa/progress`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
 
   // ADVANCED EXAM PREPARATION ENGINE
   generatePracticeSet: async (payload) => {

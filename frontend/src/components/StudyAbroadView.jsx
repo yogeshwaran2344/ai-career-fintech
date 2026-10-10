@@ -134,6 +134,24 @@ export default function StudyAbroadView({ profile, onNavigate }) {
   const [loadingVisa, setLoadingVisa] = useState(false);
   const [checkedPreDepartureItems, setCheckedPreDepartureItems] = useState({});
 
+  // Persistent Student Study Abroad Profile (from SQLite)
+  const [studyAbroadProfile, setStudyAbroadProfile] = useState(null);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [dbUniversities, setDbUniversities] = useState([]);
+  const [loadingDbUnis, setLoadingDbUnis] = useState(false);
+
+  // Persistent Visa Lifecycle & Real Dossier State (from SQLite user_visa_progress)
+  const [userVisaProgress, setUserVisaProgress] = useState(null);
+  const [savingVisaProgress, setSavingVisaProgress] = useState(false);
+  const [visaStageEdit, setVisaStageEdit] = useState('Stage 3: Blocked Account Funding (€11,904)');
+  const [blockedAccountFundedAmount, setBlockedAccountFundedAmount] = useState(8500);
+  const [blockedAccountProvider, setBlockedAccountProvider] = useState('Expatrio');
+  const [appointmentDate, setAppointmentDate] = useState('2026-11-20');
+  const [appointmentLocation, setAppointmentLocation] = useState('VFS Global New Delhi');
+  const [trackingNumber, setTrackingNumber] = useState('DEU-VFS-2026-88129');
+  const [visaNotes, setVisaNotes] = useState('');
+
   // ==================== CENTRAL DATA LOADING ====================
   const loadCentralOverview = async () => {
     try {
@@ -148,6 +166,62 @@ export default function StudyAbroadView({ profile, onNavigate }) {
       setError('Unable to synchronize study abroad parameters. Please ensure the backend is running.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStudyAbroadProfile = async () => {
+    try {
+      const res = await api.getStudyAbroadProfile();
+      if (res) {
+        setStudyAbroadProfile(res);
+        if (res.cgpa) setUserCgpa(res.cgpa);
+        if (res.target_degree) setTargetProgram(res.target_degree);
+        if (res.target_intake) setTargetIntake(res.target_intake);
+        if (res.max_budget_inr) setMaxBudgetLakhs(Math.round(res.max_budget_inr / 100000));
+      }
+    } catch (err) {
+      console.error('Failed to load persistent study abroad profile:', err);
+    }
+  };
+
+  const handleSaveStudyAbroadProfile = async () => {
+    try {
+      setSavingProfile(true);
+      const payload = {
+        cgpa: parseFloat(userCgpa) || 8.0,
+        target_degree: targetProgram,
+        target_intake: targetIntake,
+        max_budget_inr: (parseFloat(maxBudgetLakhs) || 40) * 100000,
+        target_countries: countryFilter !== 'ALL' ? [countryFilter] : ['Germany', 'USA', 'Canada']
+      };
+      const res = await api.updateStudyAbroadProfile(payload);
+      setStudyAbroadProfile(res);
+      setEditingProfile(false);
+      showNotice('Target study abroad profile persisted to database!');
+      loadPersistentUnis();
+    } catch (err) {
+      console.error('Failed to save study abroad profile:', err);
+      showNotice('Failed to persist profile.', 'error');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const loadPersistentUnis = async (cFilter = countryFilter, tFilter = tierFilter, searchQ = uniSearchQuery) => {
+    try {
+      setLoadingDbUnis(true);
+      const res = await api.getPersistentUniversities({
+        country_code: cFilter !== 'ALL' ? cFilter : undefined,
+        tier: tFilter !== 'ALL' ? tFilter : undefined,
+        search: searchQ.trim() || undefined
+      });
+      if (Array.isArray(res) && res.length > 0) {
+        setDbUniversities(res);
+      }
+    } catch (err) {
+      console.error('Failed to load persistent universities:', err);
+    } finally {
+      setLoadingDbUnis(false);
     }
   };
 
@@ -181,15 +255,93 @@ export default function StudyAbroadView({ profile, onNavigate }) {
     }
   };
 
-  const loadVisaGuidance = async (cCode = visaCountry) => {
+  const loadVisaState = async (cCode = visaCountry) => {
     try {
       setLoadingVisa(true);
-      const res = await api.getVisaGuidance(cCode);
-      setVisaData(res);
+      const [guidanceRes, progressRes] = await Promise.all([
+        api.getVisaGuidance(cCode),
+        api.getUserVisaProgress(cCode)
+      ]);
+      setVisaData(guidanceRes);
+      if (progressRes) {
+        setUserVisaProgress(progressRes);
+        setVisaStageEdit(progressRes.current_stage || 'Stage 3: Blocked Account Funding (€11,904)');
+        setBlockedAccountFundedAmount(progressRes.blocked_account_amount_funded ?? (cCode === 'CAN' ? 12000 : cCode === 'USA' ? 25000 : 8500));
+        setBlockedAccountProvider(progressRes.blocked_account_provider || (cCode === 'CAN' ? 'Scotiabank' : cCode === 'USA' ? 'Liquid Bank Proof' : 'Expatrio'));
+        setAppointmentDate(progressRes.appointment_date || '2026-11-20');
+        setAppointmentLocation(progressRes.appointment_location || (cCode === 'CAN' ? 'VFS Global Canada VAC' : cCode === 'USA' ? 'US Embassy New Delhi' : 'VFS Global New Delhi'));
+        setTrackingNumber(progressRes.tracking_number || `${cCode}-VFS-2026-88129`);
+        setVisaNotes(progressRes.notes || '');
+      }
     } catch (err) {
-      console.error('Failed to load visa guidance:', err);
+      console.error('Failed to load visa guidance & progress:', err);
     } finally {
       setLoadingVisa(false);
+    }
+  };
+
+  const handleSaveVisaProgress = async () => {
+    try {
+      setSavingVisaProgress(true);
+      const targetAmount = visaCountry === 'DEU' ? 11904 : visaCountry === 'CAN' ? 20635 : 45000;
+      const payload = {
+        country_code: visaCountry,
+        current_stage: visaStageEdit,
+        completed_steps: userVisaProgress?.completed_steps || [1, 2],
+        checklist: userVisaProgress?.checklist || {},
+        financial_proof_status: (parseFloat(blockedAccountFundedAmount) >= targetAmount) ? 'VERIFIED' : 'IN_PROGRESS',
+        blocked_account_provider: blockedAccountProvider,
+        blocked_account_amount_funded: parseFloat(blockedAccountFundedAmount) || 0,
+        appointment_date: appointmentDate,
+        appointment_location: appointmentLocation,
+        tracking_number: trackingNumber,
+        notes: visaNotes
+      };
+      const res = await api.updateUserVisaProgress(payload);
+      setUserVisaProgress(res);
+      confetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } });
+      showNotice(`Visa Dossier & Solvency for ${visaCountry} persisted to database!`);
+    } catch (err) {
+      console.error('Failed to save visa progress:', err);
+      showNotice('Failed to persist visa dossier.', 'error');
+    } finally {
+      setSavingVisaProgress(false);
+    }
+  };
+
+  const handleToggleVisaChecklist = async (key) => {
+    if (!userVisaProgress) return;
+    const currentVal = Boolean(userVisaProgress.checklist?.[key]);
+    const updatedChecklist = {
+      ...(userVisaProgress.checklist || {}),
+      [key]: !currentVal
+    };
+    // Optimistic UI update
+    setUserVisaProgress(prev => ({
+      ...prev,
+      checklist: updatedChecklist
+    }));
+    try {
+      const targetAmount = visaCountry === 'DEU' ? 11904 : visaCountry === 'CAN' ? 20635 : 45000;
+      const payload = {
+        country_code: visaCountry,
+        current_stage: visaStageEdit,
+        completed_steps: userVisaProgress.completed_steps || [1, 2],
+        checklist: updatedChecklist,
+        financial_proof_status: (parseFloat(blockedAccountFundedAmount) >= targetAmount) ? 'VERIFIED' : 'IN_PROGRESS',
+        blocked_account_provider: blockedAccountProvider,
+        blocked_account_amount_funded: parseFloat(blockedAccountFundedAmount) || 0,
+        appointment_date: appointmentDate,
+        appointment_location: appointmentLocation,
+        tracking_number: trackingNumber,
+        notes: visaNotes
+      };
+      const res = await api.updateUserVisaProgress(payload);
+      setUserVisaProgress(res);
+      showNotice(`Checklist item "${key}" updated.`);
+    } catch (err) {
+      console.error('Failed to update visa checklist:', err);
+      showNotice('Failed to persist checklist state.', 'error');
     }
   };
 
@@ -216,9 +368,11 @@ export default function StudyAbroadView({ profile, onNavigate }) {
 
   useEffect(() => {
     loadCentralOverview();
+    loadStudyAbroadProfile();
+    loadPersistentUnis();
     loadApplications();
     loadFundingPlan('DEU', 'Technical University of Munich (TUM)');
-    loadVisaGuidance('DEU');
+    loadVisaState('DEU');
     loadMistakes('IELTS');
     loadAnalytics('IELTS');
   }, []);
@@ -241,8 +395,15 @@ export default function StudyAbroadView({ profile, onNavigate }) {
     return () => clearInterval(timerId);
   }, [activePracticeSet, testSubmitted, testTimeRemaining]);
 
+  // Update persistent universities on filter change
+  useEffect(() => {
+    loadPersistentUnis(countryFilter, tierFilter, uniSearchQuery);
+  }, [countryFilter, tierFilter, uniSearchQuery]);
+
   // ==================== MATCHER LOGIC ====================
-  const shortlisted_universities = data?.shortlisted_universities || [];
+  const shortlisted_universities = (dbUniversities && dbUniversities.length > 0)
+    ? dbUniversities
+    : (data?.shortlisted_universities || []);
 
   const filteredUnis = useMemo(() => {
     return shortlisted_universities.filter((uni) => {
@@ -483,7 +644,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
     { id: 'cost_funding', label: '3. Total Cost & Funding', sublabel: 'Tuition, Living & Gap', icon: DollarSign },
     { id: 'applications', label: '4. Application Command Center', sublabel: 'Checklists & Deadlines', icon: FileCheck },
     { id: 'sop_docs', label: '5. SOP, LOR & Documents', sublabel: 'Critique & Evidence Audit', icon: FileText },
-    { id: 'visa_prep', label: '6. Visa & Pre-Departure', sublabel: 'Blocked Account & Official Steps', icon: Plane },
+    { id: 'visa_prep', label: '6. Official Visa Process', sublabel: 'Statutory 7 Steps & Proofs', icon: Plane },
     { id: 'roadmap', label: '7. 12-Month Road Map', sublabel: 'Full Phase Timeline', icon: Calendar },
   ];
 
@@ -524,20 +685,98 @@ export default function StudyAbroadView({ profile, onNavigate }) {
               </p>
             </div>
 
-            {/* Quick Profile Snapshot Badges */}
+            {/* Quick Profile Snapshot Badges & Prominent Visa Status Button */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-xs">
-                <span className="text-indigo-300">CGPA:</span> <strong className="text-white">{userCgpa}</strong>
-              </div>
+              <button
+                onClick={() => setEditingProfile(!editingProfile)}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-xs transition cursor-pointer flex items-center gap-1.5"
+                title="Edit Target Profile & Preferences"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-indigo-300" />
+                <span className="text-indigo-200">CGPA:</span> <strong className="text-white">{userCgpa}</strong>
+                <span className="text-indigo-400 ml-1">({editingProfile ? 'Close' : 'Edit'})</span>
+              </button>
+
               <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-xs">
                 <span className="text-indigo-300">Intake:</span> <strong className="text-emerald-300">{targetIntake}</strong>
               </div>
-              <div className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Verified Sources: Oct 2026
-              </div>
+
+              {/* Prominent High-Visibility Official Visa Progress Pill */}
+              <button
+                onClick={() => setActiveTab('visa_prep')}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/25 to-indigo-600/30 hover:from-emerald-500/40 hover:to-indigo-600/40 border border-emerald-400/50 text-emerald-200 text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-sm"
+              >
+                <Plane className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  Visa Tracker: {userVisaProgress?.current_stage ? userVisaProgress.current_stage.split(':')[0] : 'Step 3'} • {visaCountry === 'DEU' ? `€${(userVisaProgress?.blocked_account_amount_funded || 8500).toLocaleString()}/€11.9k` : visaCountry === 'CAN' ? `$${(userVisaProgress?.blocked_account_amount_funded || 12000).toLocaleString()}/$20.6k` : 'I-20 Funds'}
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-emerald-300" />
+              </button>
             </div>
           </div>
+
+          {/* Collapsible Student Study Abroad Preferences Editor */}
+          {editingProfile && (
+            <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-indigo-200">
+                <span>Edit Target Master's Preferences (Saves to SQLite Profile)</span>
+                <button onClick={() => setEditingProfile(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <label className="text-[11px] text-indigo-300 block mb-1">Target Program</label>
+                  <input
+                    type="text"
+                    value={targetProgram}
+                    onChange={(e) => setTargetProgram(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-indigo-700 text-white text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-indigo-300 block mb-1">Target Intake</label>
+                  <input
+                    type="text"
+                    value={targetIntake}
+                    onChange={(e) => setTargetIntake(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-indigo-700 text-white text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-indigo-300 block mb-1">Current CGPA</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="5"
+                    max="10"
+                    value={userCgpa}
+                    onChange={(e) => setUserCgpa(parseFloat(e.target.value) || 8.0)}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-indigo-700 text-white text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-indigo-300 block mb-1">Max Budget (₹ Lakhs)</label>
+                  <input
+                    type="number"
+                    value={maxBudgetLakhs}
+                    onChange={(e) => setMaxBudgetLakhs(parseInt(e.target.value) || 40)}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-indigo-700 text-white text-xs font-bold"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={handleSaveStudyAbroadProfile}
+                  disabled={savingProfile}
+                  className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{savingProfile ? 'Saving...' : 'Save Preferences to Database'}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 6-STAGE JOURNEY TRACKER TABS */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 pt-1">
@@ -1923,157 +2162,546 @@ export default function StudyAbroadView({ profile, onNavigate }) {
       )}
 
       {/* ============================================================== */}
-      {/* STAGE 7: VISA & PRE-DEPARTURE ASSISTANT (P2) */}
+      {/* STAGE 6: OFFICIAL VISA PROCESS & STATUTORY SOLVENCY DOSSIER */}
       {/* ============================================================== */}
       {activeTab === 'visa_prep' && (
         <div className="space-y-6">
+          {/* Main Visa Process Header & Country Selector */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <div className="flex items-center gap-2 text-indigo-600 text-xs font-bold uppercase tracking-wider mb-0.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  Official Embassy & Statutory Immigration Stage
+                </div>
+                <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
                   <Plane className="w-5 h-5 text-indigo-600" />
-                  Visa & Pre-Departure Assistant
+                  Visa Process & Pre-Departure Command Center
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Country-specific mandatory visa protocols, financial solvency proofs (Blocked Account, I-20, GIC), and departure checklists.
+                <p className="text-xs text-slate-500 mt-0.5">
+                  End-to-end statutory visa workflows, verified solvency proofs (Blocked Account €11,904, GIC CAD $20,635, I-20 Funds), appointment dossier, and persistent checklist.
                 </p>
               </div>
 
               {/* Country Selector */}
-              <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
+              <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl">
                 {[
-                  { code: 'DEU', label: 'Germany 🇩🇪' },
-                  { code: 'USA', label: 'USA 🇺🇸' },
-                  { code: 'CAN', label: 'Canada 🇨🇦' }
+                  { code: 'DEU', label: 'Germany 🇩🇪', law: '§ 16b AufenthG' },
+                  { code: 'USA', label: 'USA 🇺🇸', law: 'F-1 / SEVIS' },
+                  { code: 'CAN', label: 'Canada 🇨🇦', law: 'Study Permit / PAL' }
                 ].map((c) => (
                   <button
                     key={c.code}
                     onClick={() => {
                       setVisaCountry(c.code);
-                      loadVisaGuidance(c.code);
+                      loadVisaState(c.code);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                      visaCountry === c.code ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex flex-col items-center ${
+                      visaCountry === c.code ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    {c.label}
+                    <span>{c.label}</span>
+                    <span className={`text-[10px] font-normal ${visaCountry === c.code ? 'text-indigo-200' : 'text-slate-400'}`}>
+                      {c.law}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Verified Date & Legal Disclaimer Banner */}
-            {visaData && (
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-1">
-                <div className="flex items-center justify-between font-bold text-slate-800">
-                  <span>Visa Subclass: {visaData.visa_subclass}</span>
-                  <span className="text-emerald-700">Verified: {visaData.last_verified_date}</span>
+            {/* Live Dossier Status & Statutory Legal Reference Bar */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+              <div className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-100 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">Current Visa Stage</span>
+                  <strong className="text-xs font-extrabold text-indigo-950">
+                    {userVisaProgress?.current_stage || visaStageEdit}
+                  </strong>
                 </div>
-                <p className="text-slate-500 text-[11px] leading-relaxed">
-                  ⚠️ {visaData.disclaimer}
-                </p>
+                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                  {visaCountry === 'DEU' ? '🇩🇪' : visaCountry === 'USA' ? '🇺🇸' : '🇨🇦'}
+                </div>
               </div>
-            )}
+
+              <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Financial Solvency Proof</span>
+                  <strong className="text-xs font-extrabold text-emerald-950">
+                    {visaCountry === 'DEU'
+                      ? `€${(userVisaProgress?.blocked_account_amount_funded || blockedAccountFundedAmount).toLocaleString()} / €11,904`
+                      : visaCountry === 'CAN'
+                      ? `CAD $${(userVisaProgress?.blocked_account_amount_funded || blockedAccountFundedAmount).toLocaleString()} / $20,635`
+                      : `$${(userVisaProgress?.blocked_account_amount_funded || blockedAccountFundedAmount).toLocaleString()} / $45,000`}
+                  </strong>
+                </div>
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                  ((parseFloat(blockedAccountFundedAmount) || 0) >= (visaCountry === 'DEU' ? 11904 : visaCountry === 'CAN' ? 20635 : 45000))
+                    ? 'bg-emerald-200 text-emerald-900'
+                    : 'bg-amber-200 text-amber-900'
+                }`}>
+                  {((parseFloat(blockedAccountFundedAmount) || 0) >= (visaCountry === 'DEU' ? 11904 : visaCountry === 'CAN' ? 20635 : 45000)) ? 'Ready' : 'In Progress'}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Consular Appointment</span>
+                  <strong className="text-xs font-bold text-slate-900">
+                    {userVisaProgress?.appointment_date || appointmentDate} ({userVisaProgress?.appointment_location || appointmentLocation})
+                  </strong>
+                </div>
+                <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
+              </div>
+            </div>
           </div>
 
-          {/* Visa Step-by-Step Workflow */}
-          {visaData && (
-            <div className="space-y-6">
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-                <h4 className="text-sm font-bold text-slate-900">
-                  Mandatory Step-by-Step Visa Procedure ({visaData.country_name})
+          {/* 7-STEP OFFICIAL STATUTORY LIFECYCLE TRACKER */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Official 7-Step Visa Progression Tracker ({visaCountry === 'DEU' ? 'Germany § 16b' : visaCountry === 'USA' ? 'USA F-1 Visa' : 'Canada Study Permit'})
                 </h4>
-
-                <div className="space-y-3">
-                  {(visaData.mandatory_steps || []).map((st) => (
-                    <div key={st.step} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-4">
-                      <span className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
-                        {st.step}
-                      </span>
-                      <div className="space-y-0.5">
-                        <strong className="text-xs font-bold text-slate-900 block">{st.title}</strong>
-                        <p className="text-xs text-slate-600 leading-relaxed">{st.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-2 flex justify-end">
-                  <a
-                    href={visaData.official_portal_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                  >
-                    <span>Official Embassy Portal</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Select your current milestone to update your live immigration profile in the database.
+                </p>
               </div>
 
-              {/* Financial Solvency & Health Insurance */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                    <Landmark className="w-4 h-4 text-emerald-600" />
-                    Financial Proof Requirements
-                  </h4>
-                  <div className="text-xs text-slate-700 space-y-2">
+              {/* Stage Selector Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-bold whitespace-nowrap">Active Stage:</span>
+                <select
+                  value={visaStageEdit}
+                  onChange={(e) => setVisaStageEdit(e.target.value)}
+                  className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-indigo-600"
+                >
+                  <option value="Stage 1: University Offer Acceptance">Step 1: Offer Acceptance</option>
+                  <option value={visaCountry === 'DEU' ? 'Stage 2: APS Certificate Verification' : visaCountry === 'USA' ? 'Stage 2: Form I-20 Issuance' : 'Stage 2: Provincial Attestation Letter (PAL)'}>
+                    Step 2: {visaCountry === 'DEU' ? 'APS Certificate' : visaCountry === 'USA' ? 'Form I-20' : 'PAL Attestation'}
+                  </option>
+                  <option value={visaCountry === 'DEU' ? 'Stage 3: Blocked Account Funding (€11,904)' : visaCountry === 'CAN' ? 'Stage 3: GIC Account Funding (CAD $20,635)' : 'Stage 3: Liquid Proof of Funds'}>
+                    Step 3: {visaCountry === 'DEU' ? 'Blocked Account (€11,904)' : visaCountry === 'CAN' ? 'GIC (CAD $20,635)' : 'I-20 Liquid Proof'}
+                  </option>
+                  <option value="Stage 4: Statutory Health Insurance">Step 4: Statutory Health Insurance</option>
+                  <option value={visaCountry === 'DEU' ? 'Stage 5: VIDEX Application Online' : visaCountry === 'USA' ? 'Stage 5: DS-160 & SEVIS I-901' : 'Stage 5: IRCC Online Application'}>
+                    Step 5: {visaCountry === 'DEU' ? 'VIDEX Application' : visaCountry === 'USA' ? 'DS-160 & SEVIS' : 'IRCC Online Application'}
+                  </option>
+                  <option value="Stage 6: Consular / VFS Appointment & Biometrics">Step 6: Consular / VFS Appointment</option>
+                  <option value="Stage 7: Consular Interview & Stamped Visa">Step 7: Interview & Stamped Visa</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Visual Step Progress Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2.5">
+              {[
+                {
+                  step: 1,
+                  title: 'Offer Admit',
+                  desc: 'Unconditional admission letter received & accepted',
+                  stageKey: 'Stage 1: University Offer Acceptance'
+                },
+                {
+                  step: 2,
+                  title: visaCountry === 'DEU' ? 'APS Cert' : visaCountry === 'USA' ? 'I-20 Form' : 'PAL Letter',
+                  desc: visaCountry === 'DEU' ? 'Mandatory Indian qualification verification' : visaCountry === 'USA' ? 'DSO signed Form I-20' : 'Provincial Attestation Letter',
+                  stageKey: visaCountry === 'DEU' ? 'Stage 2: APS Certificate Verification' : visaCountry === 'USA' ? 'Stage 2: Form I-20 Issuance' : 'Stage 2: Provincial Attestation Letter (PAL)'
+                },
+                {
+                  step: 3,
+                  title: visaCountry === 'DEU' ? 'Blocked €11.9k' : visaCountry === 'CAN' ? 'GIC $20.6k' : 'Liquid Funds',
+                  desc: visaCountry === 'DEU' ? 'Sperrkonto €11,904 funded' : visaCountry === 'CAN' ? 'CAD $20,635 deposited' : '1st-year funds in liquid accounts',
+                  stageKey: visaCountry === 'DEU' ? 'Stage 3: Blocked Account Funding (€11,904)' : visaCountry === 'CAN' ? 'Stage 3: GIC Account Funding (CAD $20,635)' : 'Stage 3: Liquid Proof of Funds'
+                },
+                {
+                  step: 4,
+                  title: 'Health Policy',
+                  desc: visaCountry === 'DEU' ? 'Statutory public health insurance (TK / Barmer)' : 'Student Health Insurance Plan (SHIP / UHIP)',
+                  stageKey: 'Stage 4: Statutory Health Insurance'
+                },
+                {
+                  step: 5,
+                  title: visaCountry === 'DEU' ? 'VIDEX Form' : visaCountry === 'USA' ? 'DS-160 Form' : 'IRCC Portal',
+                  desc: visaCountry === 'DEU' ? 'National Visa VIDEX online portal' : visaCountry === 'USA' ? 'DS-160 confirmation & $350 SEVIS' : 'GCKey student study permit upload',
+                  stageKey: visaCountry === 'DEU' ? 'Stage 5: VIDEX Application Online' : visaCountry === 'USA' ? 'Stage 5: DS-160 & SEVIS I-901' : 'Stage 5: IRCC Online Application'
+                },
+                {
+                  step: 6,
+                  title: 'VFS Biometrics',
+                  desc: 'Biometrics capture & passport submission booking',
+                  stageKey: 'Stage 6: Consular / VFS Appointment & Biometrics'
+                },
+                {
+                  step: 7,
+                  title: 'Stamped Visa',
+                  desc: 'Consular interview cleared & stamped visa in passport',
+                  stageKey: 'Stage 7: Consular Interview & Stamped Visa'
+                }
+              ].map((st) => {
+                const isCurrent = visaStageEdit === st.stageKey || (userVisaProgress?.current_stage === st.stageKey);
+                return (
+                  <button
+                    key={st.step}
+                    onClick={() => setVisaStageEdit(st.stageKey)}
+                    className={`p-3 rounded-2xl text-left border transition cursor-pointer flex flex-col justify-between ${
+                      isCurrent
+                        ? 'bg-indigo-600 text-white border-indigo-700 shadow-md ring-2 ring-indigo-400'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
+                    }`}
+                  >
                     <div>
-                      <strong>Instrument Type:</strong> {visaData.financial_proof_requirement?.type}
-                    </div>
-                    {visaData.financial_proof_requirement?.min_amount_eur && (
-                      <div className="text-indigo-700 font-bold">
-                        Minimum Requirement: €{visaData.financial_proof_requirement.min_amount_eur?.toLocaleString()} (~₹11.9 Lakhs)
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                          isCurrent ? 'bg-white text-indigo-700' : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {st.step}
+                        </span>
+                        {isCurrent && <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Active</span>}
                       </div>
-                    )}
-                    {visaData.financial_proof_requirement?.min_amount_usd && (
-                      <div className="text-indigo-700 font-bold">
-                        Liquid Balance Required: ${visaData.financial_proof_requirement.min_amount_usd?.toLocaleString()} (~₹46 Lakhs)
+                      <div className="text-xs font-bold leading-tight">{st.title}</div>
+                      <div className={`text-[10px] mt-1 line-clamp-2 ${isCurrent ? 'text-indigo-100' : 'text-slate-500'}`}>
+                        {st.desc}
                       </div>
-                    )}
-                    <div>
-                      <strong className="block text-[11px] text-slate-500 mb-0.5">Acceptable Sources:</strong>
-                      <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
-                        {(visaData.financial_proof_requirement?.acceptable_sources || []).map((src, i) => (
-                          <li key={i}>{src}</li>
-                        ))}
-                      </ul>
                     </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* FINANCIAL SOLVENCY CENTER & CONSULAR DOSSIER */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 1. Real Solvency & Blocked Account Control */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Landmark className="w-4 h-4 text-emerald-600" />
+                  Statutory Solvency & Blocked Account Engine
+                </h4>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  {visaCountry === 'DEU' ? '§ 16b Sperrkonto' : visaCountry === 'CAN' ? 'IRCC GIC Mandate' : 'Form I-20 Liquid Funds'}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {/* Solvency Target Details */}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between font-bold text-slate-800">
+                    <span>Statutory Mandate:</span>
+                    <span className="text-indigo-700 font-extrabold">
+                      {visaCountry === 'DEU' ? '€11,904 / Year (€992 / Month)' : visaCountry === 'CAN' ? 'CAD $20,635 / Year' : '$45,000 – $65,000 Liquid Funds'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    {visaCountry === 'DEU'
+                      ? 'As mandated by the German Federal Foreign Office & BAMF, international students must demonstrate minimum living support of €992/month via a licensed blocked account provider before visa issuance.'
+                      : visaCountry === 'CAN'
+                      ? 'Under revised IRCC regulations, students must purchase a Guaranteed Investment Certificate (GIC) of CAD $20,635 to prove living cost solvency.'
+                      : 'The US Embassy requires proof of immediate liquid funds (savings accounts, fixed deposits, or education loan sanction) covering the 1st full academic year on Form I-20.'}
+                  </p>
+                </div>
+
+                {/* Provider Selector */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    {visaCountry === 'DEU' ? 'Blocked Account Provider' : visaCountry === 'CAN' ? 'Approved GIC Bank' : 'Liquid Financial Instrument'}
+                  </label>
+                  <select
+                    value={blockedAccountProvider}
+                    onChange={(e) => setBlockedAccountProvider(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 bg-white focus:outline-none focus:border-indigo-600"
+                  >
+                    {visaCountry === 'DEU' && (
+                      <>
+                        <option value="Expatrio">Expatrio (Official BAMF Approved • Includes TK Health Insurance)</option>
+                        <option value="Coracle">Coracle (Prime Package • Fast 24h Sperrkonto Opening)</option>
+                        <option value="Fintiba">Fintiba Plus (Certified German Financial Provider)</option>
+                        <option value="Deutsche Bank">Deutsche Bank (Classic Branch Account)</option>
+                      </>
+                    )}
+                    {visaCountry === 'CAN' && (
+                      <>
+                        <option value="Scotiabank">Scotiabank Student GIC Program</option>
+                        <option value="CIBC">CIBC International Student GIC Program</option>
+                        <option value="ICICI Bank Canada">ICICI Bank Canada Student GIC</option>
+                      </>
+                    )}
+                    {visaCountry === 'USA' && (
+                      <>
+                        <option value="Liquid Bank Proof">Liquid Bank Savings & Fixed Deposits (FD)</option>
+                        <option value="Prodigy Finance">Prodigy Finance Non-Collateral Loan Letter</option>
+                        <option value="HDFC Credila">HDFC Credila / Avanse Education Loan Sanction</option>
+                        <option value="Graduate Assistantship">University RA / TA Full Tuition Remission</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* Amount Funded Input */}
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <label className="font-bold text-slate-700">
+                      Amount Currently Funded ({visaCountry === 'DEU' ? '€ Euros' : visaCountry === 'CAN' ? 'CAD $' : 'USD $'})
+                    </label>
+                    <span className="text-slate-500 font-bold">
+                      Target: {visaCountry === 'DEU' ? '€11,904' : visaCountry === 'CAN' ? '$20,635' : '$45,000'}
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    value={blockedAccountFundedAmount}
+                    onChange={(e) => setBlockedAccountFundedAmount(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-indigo-600"
+                  />
+                </div>
+
+                {/* Progress Bar & Gap Calculation */}
+                {(() => {
+                  const target = visaCountry === 'DEU' ? 11904 : visaCountry === 'CAN' ? 20635 : 45000;
+                  const funded = parseFloat(blockedAccountFundedAmount) || 0;
+                  const pct = Math.min(100, Math.round((funded / target) * 100));
+                  const remaining = Math.max(0, target - funded);
+                  const currSymbol = visaCountry === 'DEU' ? '€' : '$';
+
+                  return (
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex items-center justify-between text-xs font-bold">
+                        <span className="text-slate-600">Solvency Coverage: {pct}%</span>
+                        <span className={remaining === 0 ? 'text-emerald-600' : 'text-amber-600'}>
+                          {remaining === 0 ? 'Fully Funded • Ready for Certificate' : `${currSymbol}${remaining.toLocaleString()} Remaining`}
+                        </span>
+                      </div>
+                      <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            pct >= 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-indigo-600' : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* 2. Official Consular & Biometrics Appointment Dossier */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-indigo-600" />
+                  Consular & Biometrics Appointment Dossier
+                </h4>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  SQLite Persistent
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Appointment Date</label>
+                    <input
+                      type="date"
+                      value={appointmentDate}
+                      onChange={(e) => setAppointmentDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-white focus:outline-none focus:border-indigo-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Consular / VFS Center</label>
+                    <input
+                      type="text"
+                      value={appointmentLocation}
+                      onChange={(e) => setAppointmentLocation(e.target.value)}
+                      placeholder="e.g. VFS Global New Delhi"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-white focus:outline-none focus:border-indigo-600"
+                    />
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                    Mandatory Health Insurance Policy
-                  </h4>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    {visaData.health_insurance_requirement}
-                  </p>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Application / VFS Tracking Reference Number
+                  </label>
+                  <input
+                    type="text"
+                    value={trackingNumber}
+                    onChange={(e) => setTrackingNumber(e.target.value)}
+                    placeholder="e.g. DEU-VFS-2026-88129 or AA00B1C2D3"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-mono text-slate-900 bg-white focus:outline-none focus:border-indigo-600"
+                  />
+                </div>
 
-                  <h5 className="text-xs font-bold text-slate-900 pt-2">Departure Packing & Travel Preparation:</h5>
-                  <div className="space-y-1.5">
-                    {(visaData.pre_departure_checklist || []).map((item, idx) => {
-                      const isChecked = checkedPreDepartureItems[idx];
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => setCheckedPreDepartureItems({ ...checkedPreDepartureItems, [idx]: !isChecked })}
-                          className={`w-full p-2 rounded-xl text-left text-[11px] flex items-center justify-between transition cursor-pointer border ${
-                            isChecked ? 'bg-emerald-50 text-emerald-900 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          <span className="truncate">{item}</span>
-                          {isChecked ? <CheckSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-1" /> : <Square className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Dossier & Consular Interview Remarks
+                  </label>
+                  <input
+                    type="text"
+                    value={visaNotes}
+                    onChange={(e) => setVisaNotes(e.target.value)}
+                    placeholder="Notes on document attestations, biometric fee receipt, or interview prep..."
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-white focus:outline-none focus:border-indigo-600"
+                  />
+                </div>
+
+                {/* Save Dossier Button */}
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={handleSaveVisaProgress}
+                    disabled={savingVisaProgress}
+                    className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer shadow-md flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{savingVisaProgress ? 'Syncing to SQLite...' : 'Save Visa Dossier to Database'}</span>
+                  </button>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* INTERACTIVE MANDATORY STATUTORY CHECKLIST (PERSISTS TO SQLITE) */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-emerald-600" />
+                  Mandatory Statutory Visa Document Checklist ({visaCountry === 'DEU' ? 'Germany' : visaCountry === 'USA' ? 'United States' : 'Canada'})
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Click any document to mark verified. Changes are immediately persisted to your authenticated student record in SQLite.
+                </p>
+              </div>
+
+              {/* Progress counter */}
+              {(() => {
+                const checklistObj = userVisaProgress?.checklist || {};
+                const itemsCount = Object.keys(checklistObj).length || 7;
+                const completedCount = Object.values(checklistObj).filter(Boolean).length;
+                return (
+                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs whitespace-nowrap">
+                    {completedCount} / {itemsCount} Documents Verified
+                  </span>
+                );
+              })()}
+            </div>
+
+            {/* Checklist Items Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(visaCountry === 'DEU' ? [
+                { key: 'offer_letter', title: 'Official University Admission Letter', desc: 'Unconditional Zulassungsbescheid printed on university letterhead' },
+                { key: 'aps_certificate', title: 'Original APS India Certificate', desc: 'Mandatory verification from Akademische Prüfstelle New Delhi (₹18,000 fee)' },
+                { key: 'blocked_account', title: 'Sperrkonto 05 Confirmation Document', desc: 'Proof of €11,904 blocked account with Expatrio, Coracle, or Fintiba' },
+                { key: 'health_insurance', title: 'Statutory Health Insurance Certificate', desc: 'Direct statutory confirmation from Techniker Krankenkasse (TK) or Barmer' },
+                { key: 'videx_form', title: 'VIDEX National Visa Application Form', desc: 'Signed form generated directly from the German Embassy VIDEX online system' },
+                { key: 'vfs_appointment', title: 'VFS Global Appointment Confirmation', desc: 'Official appointment slot letter & VFS service charge payment receipt' },
+                { key: 'passport_photos', title: 'Biometric Photos & Valid Passport', desc: '2 biometric passport photos (35x45mm) & passport valid for at least 12 months' }
+              ] : visaCountry === 'USA' ? [
+                { key: 'offer_letter', title: 'Form I-20 Certificate of Eligibility', desc: 'Signed by DSO & student, specifying Program of Study and 1st-year budget' },
+                { key: 'sevis_fee', title: 'SEVIS I-901 Official Fee Receipt', desc: '$350 mandatory payment confirmation via official fmjfee.com portal' },
+                { key: 'ds160_confirmation', title: 'DS-160 Online Confirmation Page', desc: 'Nonimmigrant Visa Application confirmation barcode page from CEAC' },
+                { key: 'liquid_funds', title: '1st-Year Liquid Solvency Documents', desc: 'Bank balance certificates, FD statements, or sanctioned education loan letters' },
+                { key: 'ofc_appointment', title: 'OFC Biometrics Appointment Letter', desc: 'Appointment letter for biometric fingerprinting & photograph capture' },
+                { key: 'consular_interview', title: 'Consular Visa Interview Letter', desc: 'Scheduled interview confirmation letter at US Embassy or Consulate' },
+                { key: 'academic_transcripts', title: 'Original Academic Transcripts & Degrees', desc: '10th, 12th, Bachelor transcripts, degree certificate & GRE/TOEFL scorecards' }
+              ] : [
+                { key: 'offer_letter', title: 'Official Letter of Acceptance (LOA)', desc: 'Issued by a Designated Learning Institution (DLI) with official DLI number' },
+                { key: 'pal_letter', title: 'Provincial Attestation Letter (PAL)', desc: 'Mandatory provincial quota verification letter under 2024–2026 international caps' },
+                { key: 'gic_certificate', title: 'Guaranteed Investment Certificate (GIC)', desc: 'Official CAD $20,635 confirmation certificate from Scotiabank or CIBC' },
+                { key: 'tuition_receipt', title: '1st-Year Tuition Fee Payment Receipt', desc: 'Direct receipt proving payment of 1st year university tuition' },
+                { key: 'medical_exam', title: 'Upfront Medical Examination (IME)', desc: 'eMedical information sheet from an authorized panel physician' },
+                { key: 'biometrics_letter', title: 'Biometrics Collection Letter (BIL)', desc: 'Official IRCC biometrics instruction notice for Canada VAC center' }
+              ]).map((item) => {
+                const isChecked = Boolean(userVisaProgress?.checklist?.[item.key]);
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => handleToggleVisaChecklist(item.key)}
+                    className={`p-3.5 rounded-2xl text-left border transition cursor-pointer flex items-start gap-3 ${
+                      isChecked
+                        ? 'bg-emerald-50/70 text-emerald-950 border-emerald-300'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
+                    }`}
+                  >
+                    <div className="mt-0.5">
+                      {isChecked ? (
+                        <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                      ) : (
+                        <Square className="w-4 h-4 text-slate-400 shrink-0" />
+                      )}
+                    </div>
+                    <div className="space-y-0.5">
+                      <strong className={`text-xs block ${isChecked ? 'text-emerald-900 line-through' : 'text-slate-900'}`}>
+                        {item.title}
+                      </strong>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        {item.desc}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* OFFICIAL EMBASSY PORTALS & DIRECT STATUTORY LINKS */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <ExternalLink className="w-4 h-4 text-indigo-600" />
+              Direct Official Consular & Government Portals
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {(visaCountry === 'DEU' ? [
+                { name: 'VIDEX National Visa Online', url: 'https://videx-national.diplo.de', desc: 'Fill & generate national student visa PDF' },
+                { name: 'APS India Portal', url: 'https://aps-india.de', desc: 'Academic Evaluation Centre verification' },
+                { name: 'VFS Global Germany', url: 'https://visa.vfsglobal.com/ind/en/deu/', desc: 'Book appointment & track passport submission' },
+                { name: 'Auswärtiges Amt Official', url: 'https://www.auswaertiges-amt.de/en', desc: 'German Federal Foreign Office regulations' }
+              ] : visaCountry === 'USA' ? [
+                { name: 'CEAC DS-160 Form Portal', url: 'https://ceac.state.gov/genniv/', desc: 'Fill official nonimmigrant visa form' },
+                { name: 'SEVIS I-901 Fee Payment', url: 'https://www.fmjfee.com/', desc: 'Pay mandatory $350 student SEVIS fee' },
+                { name: 'US Visa Scheduling India', url: 'https://www.usvisascheduling.com/', desc: 'Book OFC biometrics & consular slots' },
+                { name: 'DHS Study in the States', url: 'https://studyinthestates.dhs.gov/', desc: 'Official US Dept of Homeland Security rules' }
+              ] : [
+                { name: 'IRCC Study Permit Portal', url: 'https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada.html', desc: 'Official Canadian study permit application' },
+                { name: 'VFS Global Canada VAC', url: 'https://visa.vfsglobal.com/ind/en/can/', desc: 'Canada Visa Application Centre India' },
+                { name: 'Designated Learning Inst (DLI)', url: 'https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada/study-permit/prepare/designated-learning-institutions-list.html', desc: 'Check official college DLI accreditation' },
+                { name: 'IRCC PAL Guidance', url: 'https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada/study-permit/get-documents.html#attestation', desc: 'Provincial Attestation Letter mandates' }
+              ]).map((portal, idx) => (
+                <a
+                  key={idx}
+                  href={portal.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-3 rounded-2xl bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 transition cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="space-y-1">
+                    <strong className="text-xs font-bold text-slate-900 block flex items-center justify-between">
+                      <span>{portal.name}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
+                    </strong>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      {portal.desc}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+
+            {/* Statutory Interview Caution */}
+            <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200 flex items-start gap-3 text-xs text-amber-900">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <strong className="font-bold block">Statutory Non-Misrepresentation Warning:</strong>
+                <p className="text-[11px] leading-relaxed text-amber-800">
+                  Consular officers verify financial documents with issuing banking institutions. Providing falsified bank proofs or misrepresenting intentions results in statutory inadmissibility (Section 214(b) INA refusal or Section 55 AufenthG deportation with a multi-year entry ban). Ensure all certificates correspond precisely to your authentic academic and financial records.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

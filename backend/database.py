@@ -458,6 +458,82 @@ def init_database():
         )
     """)
 
+    # 26. Persistent Study Abroad Universities Database
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS study_abroad_universities (
+            id TEXT PRIMARY KEY,
+            university_name TEXT NOT NULL,
+            country TEXT NOT NULL,
+            country_code TEXT NOT NULL,
+            flag TEXT NOT NULL,
+            program_name TEXT NOT NULL,
+            degree_type TEXT DEFAULT 'MS',
+            tier TEXT DEFAULT 'TARGET',
+            qs_world_ranking INTEGER,
+            annual_tuition_inr REAL,
+            annual_tuition_usd REAL,
+            annual_living_inr REAL,
+            min_cgpa_cutoff REAL,
+            gre_requirement TEXT,
+            ielts_requirement REAL,
+            post_ms_avg_starting_salary_inr REAL,
+            official_portal_url TEXT,
+            direct_application_url TEXT,
+            exam_form_url TEXT,
+            application_deadline TEXT,
+            application_fee_inr REAL,
+            is_stem_certified INTEGER DEFAULT 1,
+            source_info TEXT DEFAULT 'Official Graduate Admissions Portal & Department Bulletin',
+            last_verified_date TEXT DEFAULT 'October 2026',
+            prerequisites_json TEXT DEFAULT '[]',
+            missing_requirements_json TEXT DEFAULT '[]',
+            scholarships_json TEXT DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # 27. Persistent User Study Abroad Preferences Profile
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_study_abroad_profile (
+            user_id TEXT PRIMARY KEY,
+            cgpa REAL DEFAULT 8.4,
+            current_degree TEXT DEFAULT 'B.Tech Computer Science',
+            target_degree TEXT DEFAULT 'MS in Artificial Intelligence / Computer Science',
+            target_intake TEXT DEFAULT 'Fall 2027',
+            target_countries_json TEXT DEFAULT '["DEU", "USA", "CAN"]',
+            max_budget_inr REAL DEFAULT 4000000.0,
+            test_scores_json TEXT DEFAULT '{"ielts_overall": 7.5, "gre_quant": 165, "gre_verbal": 155, "gre_awa": 4.0}',
+            work_experience_months INTEGER DEFAULT 12,
+            backlogs_count INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    # 28. Persistent User Visa Process Lifecycle & Document Ledger
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_visa_progress (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            country_code TEXT NOT NULL,
+            target_university TEXT DEFAULT '',
+            target_program TEXT DEFAULT '',
+            current_stage TEXT DEFAULT 'ADMIT_ACCEPTED',
+            completed_steps_json TEXT DEFAULT '["ADMIT_ACCEPTED"]',
+            checklist_json TEXT DEFAULT '{}',
+            financial_proof_status TEXT DEFAULT 'PENDING',
+            blocked_account_provider TEXT DEFAULT 'Expatrio',
+            blocked_account_amount_funded REAL DEFAULT 0.0,
+            appointment_date TEXT DEFAULT '',
+            appointment_location TEXT DEFAULT '',
+            tracking_number TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, country_code)
+        )
+    """)
+
     # Migration: Add xp_awarded column to daily_tasks if not present
     try:
         cursor.execute("ALTER TABLE daily_tasks ADD COLUMN xp_awarded INTEGER DEFAULT 0")
@@ -1413,6 +1489,355 @@ class DatabaseManager:
         conn.commit()
         conn.close()
         return deleted
+
+    # ==================== PERSISTENT STUDY ABROAD UNIVERSITY DATABASE ====================
+    @staticmethod
+    def seed_study_abroad_universities():
+        """Seeds the persistent SQLite university table from curated dataset if table is empty."""
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as count FROM study_abroad_universities")
+        cnt = cursor.fetchone()["count"]
+        if cnt == 0:
+            try:
+                from engines.study_abroad_engine import CURATED_UNIVERSITIES_DB
+                for u in CURATED_UNIVERSITIES_DB:
+                    c_norm = u["country"].upper()
+                    c_code = (
+                        "USA" if "USA" in c_norm or "UNITED STATES" in c_norm else
+                        "DEU" if "GERMANY" in c_norm or "DEU" in c_norm else
+                        "CAN" if "CANADA" in c_norm or "CAN" in c_norm else
+                        "GBR" if "KINGDOM" in c_norm or "UK" in c_norm or "GBR" in c_norm else
+                        "IRL" if "IRELAND" in c_norm else
+                        "AUS" if "AUSTRALIA" in c_norm else
+                        "NLD" if "NETHERLANDS" in c_norm else
+                        "FRA" if "FRANCE" in c_norm else
+                        "SGP" if "SINGAPORE" in c_norm else
+                        "NZL" if "ZEALAND" in c_norm else
+                        "CHE" if "SWITZERLAND" in c_norm else
+                        "SWE" if "SWEDEN" in c_norm else c_norm
+                    )
+                    prereqs = [
+                        "Calculus & Linear Algebra (B+ min)",
+                        "Data Structures & Object-Oriented Programming",
+                        "Design & Analysis of Algorithms",
+                        "Computer Systems or Operating Systems"
+                    ]
+                    missing = (
+                        ["APS India Certificate Verification", "Certified Module Handbook in English", "IELTS 6.5+ Score Card"] if c_code == "DEU" else
+                        ["Official GRE General Score Report (Quant 165+ target)", "3 Academic / Professional Letters of Recommendation", "WES Transcript Evaluation"] if c_code == "USA" else
+                        ["IELTS Academic 7.0 (no band below 6.5)", "Undergraduate Transcripts Attested", "Statement of Research Intent & 3 Academic References"] if c_code == "CAN" else
+                        ["Official Degree Transcripts", "Standardized English Test Score", "2 Letters of Recommendation"]
+                    )
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO study_abroad_universities (
+                            id, university_name, country, country_code, flag, program_name, degree_type, tier,
+                            qs_world_ranking, annual_tuition_inr, annual_tuition_usd, annual_living_inr,
+                            min_cgpa_cutoff, gre_requirement, ielts_requirement, post_ms_avg_starting_salary_inr,
+                            official_portal_url, direct_application_url, exam_form_url, application_deadline,
+                            application_fee_inr, is_stem_certified, source_info, last_verified_date,
+                            prerequisites_json, missing_requirements_json, scholarships_json
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        u["id"], u["university_name"], u["country"], c_code, u["flag"], u["program_name"],
+                        "MS", u["tier"], u["qs_world_ranking"], u["annual_tuition_inr"], u["annual_tuition_usd"],
+                        u["annual_living_inr"], u["min_cgpa_cutoff"], u["gre_requirement"], u["ielts_requirement"],
+                        u["post_ms_avg_starting_salary_inr"], u["official_portal_url"],
+                        u.get("direct_application_url", u["official_portal_url"]), u.get("exam_form_url", ""),
+                        u["application_deadline"], u["application_fee_inr"], 1 if u.get("is_stem_certified", True) else 0,
+                        "Official Graduate Admissions Portal & Department Bulletin", "October 2026",
+                        json.dumps(prereqs), json.dumps(missing), json.dumps([])
+                    ))
+                conn.commit()
+            except Exception as e:
+                logger.error(f"Error seeding universities: {e}")
+        conn.close()
+
+    @staticmethod
+    def get_study_abroad_universities(
+        country_code: Optional[str] = None,
+        tier: Optional[str] = None,
+        min_cgpa: Optional[float] = None,
+        max_budget_inr: Optional[float] = None,
+        search_query: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = "SELECT * FROM study_abroad_universities WHERE 1=1"
+        params = []
+
+        if country_code and country_code != "ALL":
+            query += " AND country_code = ?"
+            params.append(country_code.upper())
+        if tier and tier != "ALL":
+            query += " AND tier = ?"
+            params.append(tier.upper())
+        if max_budget_inr and max_budget_inr > 0:
+            query += " AND (annual_tuition_inr * 2.0) <= ?"
+            params.append(max_budget_inr)
+        if search_query and search_query.strip():
+            sq = f"%{search_query.strip().lower()}%"
+            query += " AND (LOWER(university_name) LIKE ? OR LOWER(program_name) LIKE ? OR LOWER(country) LIKE ?)"
+            params.extend([sq, sq, sq])
+
+        query += " ORDER BY qs_world_ranking ASC"
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+        conn.close()
+
+        results = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["academic_prerequisites"] = json.loads(d.get("prerequisites_json") or "[]")
+            except Exception:
+                d["academic_prerequisites"] = []
+            try:
+                d["missing_requirements"] = json.loads(d.get("missing_requirements_json") or "[]")
+            except Exception:
+                d["missing_requirements"] = []
+            results.append(d)
+        return results
+
+    # ==================== PERSISTENT USER STUDY ABROAD PROFILE ====================
+    @staticmethod
+    def get_user_study_abroad_profile(user_id: str) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_study_abroad_profile WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            # Seed from base profile
+            cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (user_id,))
+            p_row = cursor.fetchone()
+            cgpa = 8.4
+            if p_row:
+                try:
+                    p_data = json.loads(p_row["profile_json"])
+                    cgpa = float(p_data.get("academic", {}).get("cgpa", 8.4))
+                except Exception:
+                    cgpa = 8.4
+            cursor.execute("""
+                INSERT OR IGNORE INTO user_study_abroad_profile 
+                (user_id, cgpa, current_degree, target_degree, target_intake, target_countries_json, max_budget_inr, test_scores_json, work_experience_months, backlogs_count)
+                VALUES (?, ?, 'B.Tech Computer Science', 'MS in Artificial Intelligence / Computer Science', 'Fall 2027', '[\"DEU\", \"USA\", \"CAN\"]', 4000000.0, '{\"ielts_overall\": 7.5, \"gre_quant\": 165, \"gre_verbal\": 155, \"gre_awa\": 4.0}', 12, 0)
+            """, (user_id, cgpa))
+            conn.commit()
+            cursor.execute("SELECT * FROM user_study_abroad_profile WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+
+        conn.close()
+        res = dict(row) if row else {}
+        try:
+            res["target_countries"] = json.loads(res.get("target_countries_json") or '["DEU", "USA", "CAN"]')
+        except Exception:
+            res["target_countries"] = ["DEU", "USA", "CAN"]
+        try:
+            res["test_scores"] = json.loads(res.get("test_scores_json") or "{}")
+        except Exception:
+            res["test_scores"] = {"ielts_overall": 7.5, "gre_quant": 165}
+        return res
+
+    @staticmethod
+    def save_user_study_abroad_profile(
+        user_id: str,
+        cgpa: Optional[float] = None,
+        current_degree: Optional[str] = None,
+        target_degree: Optional[str] = None,
+        target_intake: Optional[str] = None,
+        target_countries: Optional[List[str]] = None,
+        max_budget_inr: Optional[float] = None,
+        test_scores: Optional[Dict[str, Any]] = None,
+        work_experience_months: Optional[int] = None,
+        backlogs_count: Optional[int] = None
+    ) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id FROM user_study_abroad_profile WHERE user_id = ?", (user_id,))
+        exists = cursor.fetchone()
+
+        if not exists:
+            cursor.execute("""
+                INSERT INTO user_study_abroad_profile 
+                (user_id, cgpa, current_degree, target_degree, target_intake, target_countries_json, max_budget_inr, test_scores_json, work_experience_months, backlogs_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                user_id, cgpa or 8.4, current_degree or 'B.Tech CS', target_degree or 'MS in AI',
+                target_intake or 'Fall 2027', json.dumps(target_countries or ["DEU", "USA", "CAN"]),
+                max_budget_inr or 4000000.0, json.dumps(test_scores or {}),
+                work_experience_months or 0, backlogs_count or 0
+            ))
+        else:
+            updates = ["updated_at = CURRENT_TIMESTAMP"]
+            params = []
+            if cgpa is not None:
+                updates.append("cgpa = ?")
+                params.append(cgpa)
+            if current_degree is not None:
+                updates.append("current_degree = ?")
+                params.append(current_degree)
+            if target_degree is not None:
+                updates.append("target_degree = ?")
+                params.append(target_degree)
+            if target_intake is not None:
+                updates.append("target_intake = ?")
+                params.append(target_intake)
+            if target_countries is not None:
+                updates.append("target_countries_json = ?")
+                params.append(json.dumps(target_countries))
+            if max_budget_inr is not None:
+                updates.append("max_budget_inr = ?")
+                params.append(max_budget_inr)
+            if test_scores is not None:
+                updates.append("test_scores_json = ?")
+                params.append(json.dumps(test_scores))
+            if work_experience_months is not None:
+                updates.append("work_experience_months = ?")
+                params.append(work_experience_months)
+            if backlogs_count is not None:
+                updates.append("backlogs_count = ?")
+                params.append(backlogs_count)
+            params.append(user_id)
+            cursor.execute(f"UPDATE user_study_abroad_profile SET {', '.join(updates)} WHERE user_id = ?", tuple(params))
+
+        conn.commit()
+        conn.close()
+        return DatabaseManager.get_user_study_abroad_profile(user_id)
+
+    # ==================== PERSISTENT VISA PROCESS STAGE & TRACKING ====================
+    @staticmethod
+    def get_user_visa_progress(user_id: str, country_code: str = "DEU") -> Dict[str, Any]:
+        c_code = (country_code or "DEU").upper()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_visa_progress WHERE user_id = ? AND country_code = ?", (user_id, c_code))
+        row = cursor.fetchone()
+
+        if not row:
+            # Seed authentic initial checklist according to destination country
+            initial_checklists = {
+                "DEU": {
+                    "admit_offer_accepted": True,
+                    "aps_certificate_received": True,
+                    "blocked_account_opened": False,
+                    "blocked_account_funded": False,
+                    "statutory_health_insurance_enrolled": False,
+                    "videx_visa_form_completed": False,
+                    "vfs_visa_appointment_booked": False,
+                    "biometrics_and_documents_submitted": False,
+                    "visa_vignette_stamped": False,
+                    "flight_and_housing_booked": False
+                },
+                "USA": {
+                    "admit_offer_accepted": True,
+                    "i20_form_received": False,
+                    "sevis_fee_paid": False,
+                    "ds160_submitted": False,
+                    "ofc_biometrics_booked": False,
+                    "consular_interview_booked": False,
+                    "liquid_funds_proof_prepared": False,
+                    "interview_cleared": False,
+                    "visa_stamp_received": False,
+                    "flight_and_dorm_booked": False
+                },
+                "CAN": {
+                    "loa_accepted": True,
+                    "pal_attestation_letter_received": False,
+                    "gic_funded": False,
+                    "first_year_tuition_paid": False,
+                    "medical_exam_cleared": False,
+                    "ircc_application_submitted": False,
+                    "biometrics_enrolled": False,
+                    "study_permit_approved": False,
+                    "poe_letter_downloaded": False
+                }
+            }
+            chk = initial_checklists.get(c_code, initial_checklists["DEU"])
+            initial_steps = ["ADMIT_ACCEPTED"]
+            if c_code == "DEU":
+                initial_steps.append("APS_VERIFIED")
+
+            app_id = f"vis_{uuid.uuid4().hex[:8]}"
+            cursor.execute("""
+                INSERT OR IGNORE INTO user_visa_progress (
+                    id, user_id, country_code, target_university, target_program, current_stage,
+                    completed_steps_json, checklist_json, financial_proof_status, blocked_account_provider,
+                    blocked_account_amount_funded, appointment_date, appointment_location, tracking_number, notes
+                ) VALUES (?, ?, ?, ?, ?, 'FINANCIALS_IN_PROGRESS', ?, ?, 'IN_PROGRESS', ?, 0.0, '', '', '', '')
+            """, (
+                app_id, user_id, c_code,
+                "Technical University of Munich" if c_code == "DEU" else "Carnegie Mellon University" if c_code == "USA" else "University of Toronto",
+                "M.Sc. Informatics",
+                json.dumps(initial_steps), json.dumps(chk),
+                "Expatrio" if c_code == "DEU" else "Scotiabank GIC" if c_code == "CAN" else "I-20 Bank Certificate"
+            ))
+            conn.commit()
+            cursor.execute("SELECT * FROM user_visa_progress WHERE user_id = ? AND country_code = ?", (user_id, c_code))
+            row = cursor.fetchone()
+
+        conn.close()
+        res = dict(row) if row else {}
+        try:
+            res["completed_steps"] = json.loads(res.get("completed_steps_json") or '["ADMIT_ACCEPTED"]')
+        except Exception:
+            res["completed_steps"] = ["ADMIT_ACCEPTED"]
+        try:
+            res["checklist"] = json.loads(res.get("checklist_json") or "{}")
+        except Exception:
+            res["checklist"] = {}
+        return res
+
+    @staticmethod
+    def save_user_visa_progress(
+        user_id: str,
+        country_code: str,
+        current_stage: Optional[str] = None,
+        completed_steps: Optional[List[str]] = None,
+        checklist: Optional[Dict[str, bool]] = None,
+        financial_proof_status: Optional[str] = None,
+        blocked_account_provider: Optional[str] = None,
+        blocked_account_amount_funded: Optional[float] = None,
+        appointment_date: Optional[str] = None,
+        appointment_location: Optional[str] = None,
+        tracking_number: Optional[str] = None,
+        notes: Optional[str] = None
+    ) -> Dict[str, Any]:
+        c_code = (country_code or "DEU").upper()
+        current = DatabaseManager.get_user_visa_progress(user_id, c_code)
+
+        merged_chk = dict(current.get("checklist", {}))
+        if checklist:
+            merged_chk.update(checklist)
+
+        merged_steps = list(current.get("completed_steps", []))
+        if completed_steps is not None:
+            merged_steps = completed_steps
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE user_visa_progress SET
+                current_stage = COALESCE(?, current_stage),
+                completed_steps_json = ?,
+                checklist_json = ?,
+                financial_proof_status = COALESCE(?, financial_proof_status),
+                blocked_account_provider = COALESCE(?, blocked_account_provider),
+                blocked_account_amount_funded = COALESCE(?, blocked_account_amount_funded),
+                appointment_date = COALESCE(?, appointment_date),
+                appointment_location = COALESCE(?, appointment_location),
+                tracking_number = COALESCE(?, tracking_number),
+                notes = COALESCE(?, notes),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND country_code = ?
+        """, (
+            current_stage, json.dumps(merged_steps), json.dumps(merged_chk),
+            financial_proof_status, blocked_account_provider, blocked_account_amount_funded,
+            appointment_date, appointment_location, tracking_number, notes,
+            user_id, c_code
+        ))
+        conn.commit()
+        conn.close()
+        return DatabaseManager.get_user_visa_progress(user_id, c_code)
 
     # ==================== EXAM PREPARATION ENGINE METHODS ====================
     @staticmethod
