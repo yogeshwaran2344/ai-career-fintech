@@ -59,7 +59,8 @@ from models import (
     NextBestActionItem, StudentIntelligenceResponse, CompleteActionRequest,
     UserResumeData, AddProjectToResumeRequest, StockAdvisorResponse,
     ProfileResetRequest, ProfileResetResponse, RecordProjectEvidenceRequest, TargetRoleChangeRequest,
-    ExamNotificationItem, ToggleExamNotificationRequest
+    ExamNotificationItem, ToggleExamNotificationRequest,
+    VideoDoubtRequest, VideoDoubtResponse
 )
 from engines.forex_service import ForexService
 from engines.career_comparator import CareerComparatorEngine
@@ -1127,6 +1128,17 @@ class ChatRequest(BaseModel):
 @app.post("/api/ai/chat")
 async def chat_with_copilot(req: ChatRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return await LLMService.chat_copilot(current_user, req.message)
+
+@app.post("/api/ai/video-doubt", response_model=VideoDoubtResponse)
+async def resolve_video_doubt(req: VideoDoubtRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    return await LLMService.resolve_video_doubt(
+        profile=current_user,
+        topic_name=req.topic_name,
+        timestamp_or_part=req.timestamp_or_part,
+        doubt_question=req.doubt_question,
+        video_url=req.video_url,
+        chat_history=req.chat_history
+    )
 
 # ==================== ENGAGEMENT, GAMIFICATION & NOTIFICATIONS ====================
 

@@ -294,3 +294,265 @@ Always cite actual numbers and profile attributes. Never invent placeholder perc
             "source": "deterministic-knowledge-engine",
             "recommendations": recs
         }
+
+    @classmethod
+    async def resolve_video_doubt(
+        cls,
+        profile: StudentProfile,
+        topic_name: str,
+        timestamp_or_part: str,
+        doubt_question: str,
+        video_url: Optional[str] = None,
+        chat_history: Optional[List[Dict[str, str]]] = None
+    ) -> Dict[str, Any]:
+        """
+        AI Video Learning & Timestamp Doubt Resolver:
+        Explains specific moments/parts of video tutorials grounded in the student's learning profile.
+        """
+        topic = (topic_name or "Computer Science Concept").strip()
+        part = (timestamp_or_part or "the main concept").strip()
+        doubt = (doubt_question or "Could you explain how this works step by step?").strip()
+
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        history_str = ""
+        if chat_history:
+            for turn in chat_history[-4:]:
+                sender = turn.get("role", "student")
+                history_str += f"{sender}: {turn.get('content', '')}\n"
+
+        prompt = f"""
+You are an expert AI Video Tutor and Senior Engineering Mentor explaining a technical video tutorial to {profile.name} (Degree: {profile.academic.degree}, Target Goal: {profile.career_goal}).
+
+TOPIC: {topic}
+SPECIFIC PART / TIMESTAMP THE STUDENT DIDN'T UNDERSTAND: {part}
+STUDENT'S DOUBT: {doubt}
+VIDEO REFERENCE: {video_url or 'Technical Lecture'}
+{f'PREVIOUS CONVERSATION: {history_str}' if history_str else ''}
+
+INSTRUCTIONS:
+1. Directly and kindly explain WHAT is happening at that specific moment/part ({part}) and WHY the instructor wrote or said that.
+2. Provide a simple, intuitive real-world mental model or analogy.
+3. Provide a clear step-by-step trace of the logic / execution.
+4. Provide a small, clean code snippet or ASCII diagram illustrating the concept.
+5. Provide a one-sentence key takeaway / golden rule to remember.
+6. Suggest 2 short follow-up questions the student might want to ask next.
+
+Respond in a clear, encouraging tone. Format response as JSON with keys:
+- "explanation": (detailed explanation of the part/timestamp, 2-3 paragraphs)
+- "mental_model_or_analogy": (1 short vivid analogy)
+- "step_by_step_breakdown": (list of 3-5 strings)
+- "code_or_visual_snippet": (string with code or diagram)
+- "key_takeaway": (1-2 sentence takeaway)
+- "suggested_followups": (list of 2-3 strings)
+"""
+        if api_key:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                payload = {
+                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                    "generationConfig": {"response_mime_type": "application/json"}
+                }
+                async with httpx.AsyncClient(timeout=12.0) as client:
+                    resp = await client.post(url, json=payload)
+                    if resp.status_code == 200:
+                        raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                        data = json.loads(raw)
+                        return {
+                            "topic_name": topic,
+                            "timestamp_or_part": part,
+                            "explanation": data.get("explanation", ""),
+                            "mental_model_or_analogy": data.get("mental_model_or_analogy", ""),
+                            "step_by_step_breakdown": data.get("step_by_step_breakdown", []),
+                            "code_or_visual_snippet": data.get("code_or_visual_snippet", ""),
+                            "key_takeaway": data.get("key_takeaway", ""),
+                            "suggested_followups": data.get("suggested_followups", [
+                                f"How does {topic} perform under edge cases?",
+                                "What is the time and space complexity trade-off?"
+                            ]),
+                            "source": "gemini-ai-video-copilot"
+                        }
+            except Exception:
+                pass
+
+        lower_t = topic.lower()
+        lower_p = part.lower()
+        lower_d = doubt.lower()
+
+        if "tree" in lower_t or "dfs" in lower_t or "traversal" in lower_t or "recursion" in lower_t:
+            explanation = (
+                f"When the instructor reaches **{part}**, what they are demonstrating is the **unwinding of the recursion call stack** in Depth-First Search.\n\n"
+                f"At this exact point, the function pauses the current node, visits the left child, and only resumes to the right child once the left subtree has returned its result. "
+                f"The reason this felt confusing is that the computer's memory keeps track of where to return automatically via the Stack frame, while our human eyes only see the top-level code."
+            )
+            analogy = "Think of exploring a labyrinth with a ball of thread: whenever you hit a dead end (null node), you backtrack along the thread (return statement) until you find the nearest unexplored fork in the road."
+            steps = [
+                "1. Base Condition Check: If root is None, return 0 immediately (prevents infinite recursion).",
+                "2. Left Branch Recurse: dfs(root.left) goes down until it reaches the deepest leaf.",
+                "3. Call Stack Unwinds: Each leaf returns its answer back up to its immediate parent.",
+                "4. Right Branch Recurse: dfs(root.right) calculates the opposite side of the current subtree.",
+                "5. Aggregate: The parent combines left + right results and returns the total up to the original caller."
+            ]
+            code = (
+                "# Clear Recursive DFS Structure\n"
+                "def dfs(node):\n"
+                "    if not node:               # 1. Base case: reached dead end\n"
+                "        return 0\n"
+                "    left_res = dfs(node.left)  # 2. Recurse left\n"
+                "    right_res = dfs(node.right)# 3. Recurse right\n"
+                "    return 1 + max(left_res, right_res) # 4. Combine & return height"
+            )
+            takeaway = "Always trace recursion from the base case upwards, rather than trying to hold 5 layers of function calls in your head at once."
+            followups = [
+                "Why is the time complexity O(N) when every node is visited once?",
+                "How would we rewrite this iteratively using an explicit Stack?",
+                "What happens if the tree is heavily skewed (like a linked list)?"
+            ]
+
+        elif "docker" in lower_t or "container" in lower_t:
+            explanation = (
+                f"In the video at **{part}**, the instructor is explaining the difference between an **Image layer** and a **running Container instance**.\n\n"
+                f"Each command in your Dockerfile (like `COPY . /app` or `RUN pip install`) creates an immutable cached layer. At {part}, Docker checks if the file checksum changed; if not, it uses the cached layer to speed up builds by 10x."
+            )
+            analogy = "A Docker Image is like a printed recipe for a cake, while a Docker Container is the actual physical cake baked and sitting on the table."
+            steps = [
+                "1. Base Image: Pulls minimal Linux kernel + Python runtime (e.g. python:3.11-slim).",
+                "2. Workdir: Defines the isolated working directory inside the container filesystem.",
+                "3. Dependency Caching: Copies requirements.txt first so heavy pip installs are cached.",
+                "4. Port Binding (-p 8000:8000): Forwards your laptop's local port to the isolated container port."
+            ]
+            code = (
+                "# Optimized Production Dockerfile\n"
+                "FROM python:3.11-slim\n"
+                "WORKDIR /app\n"
+                "COPY requirements.txt .\n"
+                "RUN pip install --no-cache-dir -r requirements.txt\n"
+                "COPY . .\n"
+                "CMD [\"uvicorn\", \"main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\"]"
+            )
+            takeaway = "Order your Dockerfile from least frequently changed commands to most frequently changed to maximize layer cache speed."
+            followups = [
+                "What is the difference between CMD and ENTRYPOINT?",
+                "Why should we use .dockerignore to exclude virtual environments?"
+            ]
+
+        elif "fastapi" in lower_t or "api" in lower_t or "backend" in lower_t:
+            explanation = (
+                f"At **{part}**, the instructor is setting up **asynchronous non-blocking request handlers** (`async def`) and **Pydantic model validation**.\n\n"
+                f"FastAPI automatically validates incoming JSON against your schema before your function even runs. If a client sends invalid types, FastAPI automatically rejects it with HTTP 422, saving you dozens of manual if-else validation checks."
+            )
+            analogy = "Pydantic is like a strict airport security scanner: if luggage doesn't match the allowed dimensions and format, it gets turned away before entering the terminal."
+            steps = [
+                "1. Request arrives over HTTP with raw JSON payload.",
+                "2. Pydantic parses and type-casts types (strings to ints, ISO dates to datetime).",
+                "3. Dependency Injection: Verifies Bearer tokens or database sessions via `Depends()`.",
+                "4. Route Handler executes business logic and returns Python dictionary.",
+                "5. FastAPI automatically serializes response to JSON and updates OpenAPI docs (/docs)."
+            ]
+            code = (
+                "from fastapi import FastAPI, Depends, HTTPException\n"
+                "from pydantic import BaseModel\n\n"
+                "class PredictReq(BaseModel):\n"
+                "    features: list[float]\n"
+                "    model_version: str = 'v1.0'\n\n"
+                "@app.post('/predict')\n"
+                "async def predict(req: PredictReq):\n"
+                "    return {'prediction': sum(req.features) * 0.42}"
+            )
+            takeaway = "Use `async def` for I/O bound operations (database calls, external APIs) and standard `def` for heavy CPU-bound numpy/model calculations."
+            followups = [
+                "How does FastAPI Dependency Injection manage database sessions?",
+                "What is the best way to handle global exceptions and custom error schemas?"
+            ]
+
+        elif "machine learning" in lower_t or "pytorch" in lower_t or "deep learning" in lower_t:
+            explanation = (
+                f"At **{part}**, the video highlights the **loss backward calculation and optimizer step** (`loss.backward()` followed by `optimizer.step()`).\n\n"
+                f"When you calculate loss, PyTorch builds a computation graph. `loss.backward()` calculates the partial derivatives (gradients) of the loss with respect to every weight parameter using the Chain Rule. `optimizer.step()` then tweaks each weight slightly in the opposite direction of the gradient to reduce the error on the next iteration."
+            )
+            analogy = "Imagine being blindfolded on a foggy mountain and wanting to reach the lowest valley: you feel the slope beneath your feet (gradient) and take one cautious step downhill (learning rate * gradient)."
+            steps = [
+                "1. Forward Pass: Pass input features X through the model layers to produce predictions y_pred.",
+                "2. Loss Function: Quantify discrepancy between y_pred and true labels y_true.",
+                "3. Zero Gradients: `optimizer.zero_grad()` clears residual gradients from previous batch.",
+                "4. Backward Pass: `loss.backward()` populates `.grad` attribute for all trainable weights.",
+                "5. Optimizer Step: `optimizer.step()` updates parameters: weight = weight - lr * gradient."
+            ]
+            code = (
+                "# Standard PyTorch Training Loop Step\n"
+                "for X_batch, y_batch in dataloader:\n"
+                "    optimizer.zero_grad()       # 1. Clear old gradients\n"
+                "    y_pred = model(X_batch)     # 2. Forward pass\n"
+                "    loss = criterion(y_pred, y_batch) # 3. Compute loss\n"
+                "    loss.backward()             # 4. Compute gradients via Autograd\n"
+                "    optimizer.step()            # 5. Update weights"
+            )
+            takeaway = "Always call `optimizer.zero_grad()` before `loss.backward()`, otherwise gradients accumulate across batches and blow up weight magnitudes."
+            followups = [
+                "Why do we need Learning Rate Schedulers during training?",
+                "What is the difference between L1/L2 regularization and Dropout?"
+            ]
+
+        elif "sql" in lower_t or "query" in lower_t or "database" in lower_t:
+            explanation = (
+                f"In the database lecture at **{part}**, the instructor is explaining **Index Lookups vs Full Table Scans** and **Window Functions (`OVER (PARTITION BY ...)`).\n\n"
+                f"Unlike `GROUP BY` which collapses rows into a single aggregated summary, a Window Function calculates aggregations across a partition while retaining every individual row in the output."
+            )
+            analogy = "GROUP BY is like giving one report card for the entire class, while a Window Function prints each student's individual score alongside the class rank and average."
+            steps = [
+                "1. FROM & JOIN: Identifies base tables and applies join conditions.",
+                "2. WHERE clause: Filters out non-matching rows before aggregation.",
+                "3. PARTITION BY: Groups rows logically for the window computation.",
+                "4. ORDER BY within window: Determines rank and running total sequence.",
+                "5. SELECT output: Appends computed metric column to each individual row."
+            ]
+            code = (
+                "-- Ranking items within each category without collapsing rows\n"
+                "SELECT \n"
+                "    employee_id, department, salary,\n"
+                "    DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) as dept_salary_rank\n"
+                "FROM employees;"
+            )
+            takeaway = "Use Window Functions whenever you need both row-level granularity and group-level aggregates simultaneously."
+            followups = [
+                "What is the performance difference between B-Tree and Hash indexes?",
+                "When should you use CTEs (Common Table Expressions) over subqueries?"
+            ]
+
+        else:
+            explanation = (
+                f"Regarding your doubt on **{topic}** at **{part}**: the core mechanism being demonstrated is how the system handles **state transitions and boundary constraints**.\n\n"
+                f"At this specific point ({part}), the instructor is deliberately handling an edge case. The specific reason `{doubt}` arises is that the code must prevent unintended side-effects or out-of-bounds conditions before continuing to the primary execution branch."
+            )
+            analogy = "Think of it like a checklist before an airplane takeoff: even if the engines work perfectly, you must verify the cabin pressure and doors before accelerating on the runway."
+            steps = [
+                f"1. Input validation and boundary precondition check for {topic}.",
+                f"2. Core transformation at {part}: processing primary payload.",
+                "3. Error handling: catching exceptions gracefully.",
+                "4. Output emission: returning structured response to the caller."
+            ]
+            code = (
+                f"# Core architectural pattern for {topic}\n"
+                "def execute_step(data):\n"
+                "    if not data:        # Boundary check\n"
+                "        return None\n"
+                "    result = transform(data) # Core mechanism\n"
+                "    return result"
+            )
+            takeaway = f"Mastering {topic} requires identifying the boundary condition first before writing the core logic."
+            followups = [
+                f"How would you optimize this implementation for large scale inputs?",
+                f"What are the common pitfalls candidates encounter in {topic} during interviews?"
+            ]
+
+        return {
+            "topic_name": topic,
+            "timestamp_or_part": part,
+            "explanation": explanation,
+            "mental_model_or_analogy": analogy,
+            "step_by_step_breakdown": steps,
+            "code_or_visual_snippet": code,
+            "key_takeaway": takeaway,
+            "suggested_followups": followups,
+            "source": "deterministic-engineering-mentor"
+        }

@@ -2096,6 +2096,10 @@ class NextBestActionItem(BaseModel):
     target_payload: Dict[str, Any] = Field(default_factory=dict)
     cta_label: str
     completed: bool = False
+    video_url: Optional[str] = None
+    video_title: Optional[str] = None
+    video_duration: Optional[str] = None
+    video_platform: Optional[str] = None
 
 class StudentIntelligenceResponse(BaseModel):
     user_id: str
@@ -2110,6 +2114,24 @@ class CompleteActionRequest(BaseModel):
     action_id: str
     action_type: str
     metadata: Optional[Dict[str, Any]] = None
+
+class VideoDoubtRequest(BaseModel):
+    topic_name: str
+    timestamp_or_part: str
+    doubt_question: str
+    video_url: Optional[str] = None
+    chat_history: Optional[List[Dict[str, str]]] = None
+
+class VideoDoubtResponse(BaseModel):
+    topic_name: str
+    timestamp_or_part: str
+    explanation: str
+    mental_model_or_analogy: str
+    step_by_step_breakdown: List[str]
+    code_or_visual_snippet: Optional[str] = None
+    key_takeaway: str
+    suggested_followups: List[str]
+    source: str = "ai-video-copilot"
 
 class ResumeProjectItem(BaseModel):
     title: str

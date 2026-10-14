@@ -90,7 +90,11 @@ class StudentIntelligenceEngine:
             action_type="REVIEW_CONCEPT",
             target_payload={"concept_name": decay_concept_name, "category": top_decay.category if top_decay else "CORE_CS"},
             cta_label="Complete 10-Min Flash Drill",
-            completed=is_concept_reviewed_today
+            completed=is_concept_reviewed_today,
+            video_url="https://www.youtube.com/watch?v=fAAZixBzIAI",
+            video_title=f"{decay_concept_name} Masterclass & Recursion Walkthrough",
+            video_duration="42 mins",
+            video_platform="YouTube / TakeUforward"
         ))
 
         # ACTION 2: ATS Resume Quantified Deliverables
@@ -112,7 +116,11 @@ class StudentIntelligenceEngine:
                 "metrics": "Architected low-latency inference API handling 12,000 req/min with sub-45ms P95 latency; containerized with Docker."
             },
             cta_label="Add Verified Project (+12 ATS)",
-            completed=has_added_project or current_ats >= 88
+            completed=has_added_project or current_ats >= 88,
+            video_url="https://www.youtube.com/watch?v=3c-iBn73dDE",
+            video_title="Containerizing FastAPI & Machine Learning Microservices with Docker",
+            video_duration="1h 15m",
+            video_platform="YouTube / TechWorld with Nana"
         ))
 
         # ACTION 3: Opportunity - Apply to Matching Roles
@@ -129,7 +137,11 @@ class StudentIntelligenceEngine:
             action_type="APPLY_JOB",
             target_payload={"role": profile.career_goal, "company": "Swiggy / Razorpay / Turing", "location": "Bangalore / Remote"},
             cta_label="Submit Application & Track",
-            completed=has_applied
+            completed=has_applied,
+            video_url="https://www.youtube.com/watch?v=by9f5P9uJ7s",
+            video_title=f"Cracking Technical Placement Rounds & Screenings for {profile.career_goal}",
+            video_duration="35 mins",
+            video_platform="YouTube / NeetCode"
         ))
 
         # ACTION 4: Higher Ed & GRE/Aptitude Diagnostics
@@ -146,7 +158,11 @@ class StudentIntelligenceEngine:
             action_type="PREP_EXAM",
             target_payload={"exam": "GRE", "topic": "Quantitative Reasoning: Probability & Permutations", "duration_minutes": 22},
             cta_label="Start Timed Diagnostic Drill",
-            completed=has_prepped_exam
+            completed=has_prepped_exam,
+            video_url="https://www.youtube.com/watch?v=NnF_6Wv_p0Y",
+            video_title="GRE Quantitative Reasoning: Permutations, Combinations & Probability Shortcuts",
+            video_duration="48 mins",
+            video_platform="YouTube / GregMat"
         ))
 
         # ACTION 5: Financial Health Runway & Surplus Allocation
@@ -168,7 +184,11 @@ class StudentIntelligenceEngine:
             action_type="ALLOCATE_SURPLUS",
             target_payload={"amount": 2000.0, "current_buffer": current_buffer, "target_buffer": target_buffer},
             cta_label="Allocate ₹2,000 to Emergency Jar",
-            completed=has_allocated_surplus or current_buffer >= 6000.0
+            completed=has_allocated_surplus or current_buffer >= 6000.0,
+            video_url="https://www.youtube.com/watch?v=5kG-jD5Vn9U",
+            video_title="Student Emergency Funds, Zero-Debt Cash Flow & High-Yield Savings",
+            video_duration="24 mins",
+            video_platform="YouTube / Khan Academy"
         ))
 
         # Pillar Summary Details

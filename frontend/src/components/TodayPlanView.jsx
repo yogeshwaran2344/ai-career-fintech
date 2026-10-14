@@ -29,7 +29,12 @@ import {
   Activity,
   Compass,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  HelpCircle,
+  MessageSquare,
+  Send,
+  X,
+  Copy
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../api';
@@ -136,6 +141,15 @@ export default function TodayPlanView({
   const [quizModalOpen, setQuizModalOpen] = useState(false);
   const [activeQuiz, setActiveQuiz] = useState(null);
 
+  // AI Video Classroom & Doubt Resolution Bot state
+  const [activeVideoModal, setActiveVideoModal] = useState(null);
+  const [doubtTopicName, setDoubtTopicName] = useState('');
+  const [doubtPartTimestamp, setDoubtPartTimestamp] = useState('');
+  const [doubtQuestionText, setDoubtQuestionText] = useState('');
+  const [doubtHistory, setDoubtHistory] = useState([]);
+  const [isResolvingDoubt, setIsResolvingDoubt] = useState(false);
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
+
   // Stopwatch timer state
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(45 * 60);
@@ -230,6 +244,92 @@ export default function TodayPlanView({
     } finally {
       setReviewingConcept(null);
     }
+  };
+
+  // Video URL to YouTube Embed conversion helper
+  const getYouTubeEmbedUrl = (url) => {
+    if (!url) return null;
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+    if (match && match[1]) {
+      return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
+    }
+    return null;
+  };
+
+  // Open interactive AI Video Classroom & Doubt Resolver
+  const handleOpenVideoClassroom = (actionOrItem) => {
+    const topic = actionOrItem.target_payload?.concept_name || actionOrItem.title || 'Technical Concept';
+    const videoUrl = actionOrItem.video_url || 'https://www.youtube.com/watch?v=fAAZixBzIAI';
+    const videoTitle = actionOrItem.video_title || `${topic} Masterclass & Code Implementation`;
+    const duration = actionOrItem.video_duration || '35 mins';
+    const platform = actionOrItem.video_platform || 'YouTube';
+
+    setActiveVideoModal({
+      action: actionOrItem,
+      topic,
+      videoUrl,
+      videoTitle,
+      duration,
+      platform
+    });
+    setDoubtTopicName(topic);
+    setDoubtPartTimestamp('');
+    setDoubtQuestionText('');
+    setDoubtHistory([]);
+  };
+
+  // Submit a specific doubt from any part / timestamp to the AI Bot
+  const handleAskVideoDoubt = async (presetQuestion = null, presetPart = null) => {
+    const topic = doubtTopicName.trim() || activeVideoModal?.topic || 'Core Concept';
+    const part = presetPart || doubtPartTimestamp.trim() || 'the main concept';
+    const question = presetQuestion || doubtQuestionText.trim();
+    if (!question) return;
+
+    try {
+      setIsResolvingDoubt(true);
+      const userMsg = {
+        role: 'user',
+        part,
+        text: question,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setDoubtHistory((prev) => [...prev, userMsg]);
+      setDoubtQuestionText('');
+
+      const res = await api.resolveVideoDoubt(
+        topic,
+        part,
+        question,
+        activeVideoModal?.videoUrl,
+        doubtHistory.map((h) => ({ role: h.role, content: h.text }))
+      );
+
+      const botMsg = {
+        role: 'assistant',
+        text: res.explanation,
+        responseObj: res,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setDoubtHistory((prev) => [...prev, botMsg]);
+    } catch (err) {
+      console.error('Failed to resolve video doubt:', err);
+      const errMsg = {
+        role: 'assistant',
+        text: 'I could not connect to the AI model right now. Here is the key rule: trace execution step-by-step from the base condition and verify boundary inputs.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setDoubtHistory((prev) => [...prev, errMsg]);
+    } finally {
+      setIsResolvingDoubt(false);
+    }
+  };
+
+  // Complete action from inside Video Classroom
+  const handleCompleteActionFromModal = async () => {
+    if (!activeVideoModal?.action) return;
+    const action = activeVideoModal.action;
+    await handleExecuteCascadeAction(action);
+    setActiveVideoModal(null);
   };
 
   // Open interactive retention quiz modal
@@ -669,14 +769,52 @@ export default function TodayPlanView({
                           </p>
                         </div>
                       </div>
+
+                      {/* Video Masterclass Preview Bar */}
+                      {action.video_url && (
+                        <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-indigo-50/90 via-purple-50/70 to-indigo-50/90 border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs shrink-0">
+                              <Video className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-indigo-200/80 text-indigo-900">
+                                  Video Tutorial & AI Doubt Bot
+                                </span>
+                                <span className="text-[10px] text-stone-500 font-semibold">{action.video_duration || '35 mins'} • {action.video_platform || 'YouTube'}</span>
+                              </div>
+                              <div className="text-xs font-bold text-stone-900 truncate mt-0.5">{action.video_title}</div>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => handleOpenVideoClassroom(action)}
+                            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 self-start sm:self-auto"
+                          >
+                            <Play className="w-3 h-3 fill-current" />
+                            <span>Watch & Ask Doubts</span>
+                            <Sparkles className="w-3 h-3 text-amber-300" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Right: Action Button */}
-                    <div className="flex md:flex-col items-center md:items-end justify-between md:justify-start gap-3 flex-shrink-0 pt-2 md:pt-0">
+                    {/* Right: Action Buttons */}
+                    <div className="flex flex-col sm:flex-row md:flex-col items-stretch md:items-end gap-2 flex-shrink-0 pt-2 md:pt-0">
+                      <button
+                        onClick={() => handleOpenVideoClassroom(action)}
+                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        title="Watch video tutorial and resolve doubts with AI Tutor"
+                      >
+                        <Video className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Watch Video</span>
+                      </button>
+
                       <button
                         onClick={() => handleExecuteCascadeAction(action)}
                         disabled={isExecuting || action.completed}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-sm ${
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
                           action.completed
                             ? 'bg-stone-100 text-stone-400 cursor-not-allowed border border-stone-200'
                             : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
@@ -1090,12 +1228,7 @@ export default function TodayPlanView({
                   </p>
 
                   <div className="space-y-2">
-                    <a
-                      href={rec.videoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2.5 rounded-xl bg-white border border-stone-200 hover:border-orange-400 hover:bg-orange-50/50 transition-all flex items-start justify-between group block"
-                    >
+                    <div className="p-2.5 rounded-xl bg-white border border-stone-200 hover:border-orange-400 hover:bg-orange-50/50 transition-all flex items-start justify-between group">
                       <div className="pr-2 space-y-0.5">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-rose-100 text-rose-800">
@@ -1106,9 +1239,33 @@ export default function TodayPlanView({
                         <h4 className="text-xs font-bold text-stone-900 group-hover:text-orange-900 transition-colors">
                           {rec.videoTitle}
                         </h4>
+                        <div className="pt-1.5 flex items-center gap-2">
+                          <button
+                            onClick={() => handleOpenVideoClassroom({
+                              title: rec.skill,
+                              video_url: rec.videoUrl,
+                              video_title: rec.videoTitle,
+                              video_duration: rec.videoDuration,
+                              video_platform: rec.platform
+                            })}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                          >
+                            <Play className="w-3 h-3 fill-current" />
+                            <span>Watch & Ask AI</span>
+                            <Sparkles className="w-3 h-3 text-amber-300" />
+                          </button>
+                          <a
+                            href={rec.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-bold text-stone-500 hover:text-stone-900 flex items-center gap-1"
+                          >
+                            <span>Open URL</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
                       </div>
-                      <ExternalLink className="w-3.5 h-3.5 text-stone-400 group-hover:text-orange-600 flex-shrink-0 mt-1" />
-                    </a>
+                    </div>
 
                     <a
                       href={rec.courseUrl}
@@ -1178,13 +1335,365 @@ export default function TodayPlanView({
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setCascadeModalEvents(null);
+                  if (digitalTwin?.next_best_actions?.[0]) {
+                    handleOpenVideoClassroom(digitalTwin.next_best_actions[0]);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Video className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Watch Video & Ask AI Doubts 🎥</span>
+              </button>
+
               <button
                 onClick={() => setCascadeModalEvents(null)}
                 className="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all cursor-pointer"
               >
                 Done & Return to AI Plan
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* AI VIDEO CLASSROOM & TIMESTAMP DOUBT RESOLVER MODAL */}
+      {/* ============================================================== */}
+      {activeVideoModal && (
+        <div className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-indigo-500/30 max-h-[92vh] overflow-y-auto space-y-5 flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md">
+                  <Video className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 tracking-wider">
+                      Interactive Video Classroom
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-500" /> AI Timestamp Doubt Bot Active
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-stone-900 mt-0.5">
+                    {activeVideoModal.videoTitle || activeVideoModal.topic}
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveVideoModal(null)}
+                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Video Player Card */}
+            <div className="rounded-2xl overflow-hidden border border-stone-200 bg-stone-950 shadow-md">
+              {getYouTubeEmbedUrl(activeVideoModal.videoUrl) ? (
+                <div className="relative w-full aspect-video">
+                  <iframe
+                    src={getYouTubeEmbedUrl(activeVideoModal.videoUrl)}
+                    title={activeVideoModal.videoTitle}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <div className="p-8 text-center text-white space-y-3">
+                  <Video className="w-12 h-12 text-indigo-400 mx-auto" />
+                  <h4 className="text-sm font-bold">{activeVideoModal.videoTitle}</h4>
+                  <p className="text-xs text-stone-400 max-w-md mx-auto">
+                    Click the official link below to open the complete video lecture on {activeVideoModal.platform || 'YouTube'}.
+                  </p>
+                </div>
+              )}
+
+              {/* Video Controls & Direct Link Bar */}
+              <div className="p-3 bg-stone-900 text-white flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3 text-stone-300">
+                  <span>⏱️ Duration: <strong>{activeVideoModal.duration || '35 mins'}</strong></span>
+                  <span>📺 Platform: <strong>{activeVideoModal.platform || 'YouTube'}</strong></span>
+                </div>
+
+                <a
+                  href={activeVideoModal.videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm text-xs"
+                >
+                  <span>Watch on YouTube in New Tab</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+
+            {/* AI Doubt Resolution Engine Section */}
+            <div className="bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white rounded-3xl p-5 border border-indigo-200 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-purple-100 text-purple-700">
+                    <Brain className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-stone-900 flex items-center gap-1.5">
+                      AI Video Doubt Resolver
+                      <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.2 rounded-full">
+                        Powered by Google Gemini / Engineering Mentor
+                      </span>
+                    </h4>
+                    <p className="text-xs text-stone-500">
+                      Didn't understand a part? Enter the topic name & timestamp below and the AI model will explain it!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Input Form */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                      1. Topic Name (Editable):
+                    </label>
+                    <input
+                      type="text"
+                      value={doubtTopicName}
+                      onChange={(e) => setDoubtTopicName(e.target.value)}
+                      placeholder="e.g. Binary Trees & DFS, Machine Learning, Docker"
+                      className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs text-stone-900 bg-white focus:outline-none focus:border-indigo-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                      2. Which Part / Timestamp didn't you understand?
+                    </label>
+                    <input
+                      type="text"
+                      value={doubtPartTimestamp}
+                      onChange={(e) => setDoubtPartTimestamp(e.target.value)}
+                      placeholder="e.g. At 14:20 during backtracking, or Base condition logic"
+                      className="w-full px-3 py-2 border border-stone-200 rounded-xl text-xs text-stone-900 bg-white focus:outline-none focus:border-indigo-600"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    3. What is your specific doubt or question?
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={doubtQuestionText}
+                      onChange={(e) => setDoubtQuestionText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAskVideoDoubt();
+                      }}
+                      placeholder="e.g. Why do we return 1 + max(left, right)? Where does the +1 come from?"
+                      className="flex-1 px-3 py-2 border border-stone-200 rounded-xl text-xs text-stone-900 bg-white focus:outline-none focus:border-indigo-600"
+                    />
+                    <button
+                      onClick={() => handleAskVideoDoubt()}
+                      disabled={isResolvingDoubt || !doubtQuestionText.trim()}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-sm"
+                    >
+                      {isResolvingDoubt ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Explaining...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Ask AI</span>
+                          <Send className="w-3.5 h-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Preset Doubt Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold text-stone-400">Quick Doubts:</span>
+                  {[
+                    { label: "💡 Explain the Base Condition", q: "Why is the base condition needed and what happens if we omit it?", part: "Base condition check" },
+                    { label: "⏱️ What happens at this timestamp?", q: "Can you explain step by step what the instructor is doing at this exact timestamp?", part: doubtPartTimestamp || "10:30" },
+                    { label: "🧠 Give me a simple analogy", q: "Can you give me a simple real-life analogy so I never forget this concept?", part: "Core concept" },
+                    { label: "💻 Show code with line-by-line breakdown", q: "Can you show the clean code implementation with line-by-line comments?", part: "Implementation" },
+                    { label: "⚡ Why is Time Complexity O(N)?", q: "Why is the time complexity and space complexity calculated this way?", part: "Complexity analysis" }
+                  ].map((chip, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleAskVideoDoubt(chip.q, chip.part)}
+                      disabled={isResolvingDoubt}
+                      className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white border border-indigo-200/80 hover:bg-indigo-50 text-indigo-900 transition cursor-pointer"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chat Stream / Explanations History */}
+              {doubtHistory.length > 0 && (
+                <div className="mt-4 space-y-3 pt-3 border-t border-indigo-100">
+                  {doubtHistory.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`p-4 rounded-2xl text-xs transition-all ${
+                        msg.role === 'user'
+                          ? 'bg-stone-900 text-white ml-auto max-w-xl shadow-sm'
+                          : 'bg-white border border-indigo-100 shadow-sm space-y-3'
+                      }`}
+                    >
+                      {msg.role === 'user' ? (
+                        <div>
+                          <div className="text-[10px] text-stone-400 flex items-center justify-between mb-1">
+                            <span>Part: {msg.part}</span>
+                            <span>{msg.timestamp}</span>
+                          </div>
+                          <p className="font-semibold">{msg.text}</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 text-stone-800">
+                          <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                            <div className="flex items-center gap-1.5 text-indigo-700 font-black">
+                              <Sparkles className="w-4 h-4 text-amber-500" />
+                              <span>AI Engineering Mentor Explanation</span>
+                            </div>
+                            <span className="text-[10px] text-stone-400">{msg.timestamp}</span>
+                          </div>
+
+                          {/* Core Explanation */}
+                          <div className="whitespace-pre-line leading-relaxed text-stone-700">
+                            {msg.text}
+                          </div>
+
+                          {/* Response Object Details */}
+                          {msg.responseObj && (
+                            <>
+                              {/* Analogy Box */}
+                              {msg.responseObj.mental_model_or_analogy && (
+                                <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900">
+                                  <strong className="block text-[11px] font-black uppercase text-amber-800 mb-1">
+                                    🧠 Intuitive Analogy:
+                                  </strong>
+                                  <p className="text-xs leading-relaxed">{msg.responseObj.mental_model_or_analogy}</p>
+                                </div>
+                              )}
+
+                              {/* Step-by-Step Breakdown */}
+                              {msg.responseObj.step_by_step_breakdown?.length > 0 && (
+                                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 space-y-1.5">
+                                  <strong className="block text-[11px] font-black uppercase text-stone-700">
+                                    📋 Step-by-Step Execution Trace:
+                                  </strong>
+                                  <ul className="space-y-1 text-[11px] text-stone-700">
+                                    {msg.responseObj.step_by_step_breakdown.map((s, sIdx) => (
+                                      <li key={sIdx} className="flex items-start gap-1.5">
+                                        <span className="text-indigo-600 font-bold">•</span>
+                                        <span>{s}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Code / Visual Snippet */}
+                              {msg.responseObj.code_or_visual_snippet && (
+                                <div className="rounded-xl overflow-hidden border border-stone-800 bg-stone-900 text-stone-100 p-3 font-mono text-[11px]">
+                                  <div className="flex items-center justify-between text-[10px] text-stone-400 mb-1.5 border-b border-stone-800 pb-1">
+                                    <span>Code / Logic Trace</span>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(msg.responseObj.code_or_visual_snippet);
+                                        setCopiedSnippet(true);
+                                        setTimeout(() => setCopiedSnippet(false), 2000);
+                                      }}
+                                      className="flex items-center gap-1 hover:text-white cursor-pointer"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                      <span>{copiedSnippet ? 'Copied!' : 'Copy Code'}</span>
+                                    </button>
+                                  </div>
+                                  <pre className="overflow-x-auto whitespace-pre leading-relaxed">
+                                    {msg.responseObj.code_or_visual_snippet}
+                                  </pre>
+                                </div>
+                              )}
+
+                              {/* Key Takeaway */}
+                              {msg.responseObj.key_takeaway && (
+                                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+                                  <strong className="block text-[11px] font-black uppercase text-emerald-800 mb-0.5">
+                                    ⭐ Golden Takeaway Rule:
+                                  </strong>
+                                  <p className="text-xs font-semibold">{msg.responseObj.key_takeaway}</p>
+                                </div>
+                              )}
+
+                              {/* Follow-up Question Chips */}
+                              {msg.responseObj.suggested_followups?.length > 0 && (
+                                <div className="space-y-1.5 pt-1">
+                                  <span className="text-[10px] font-bold text-stone-400">Ask Next:</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {msg.responseObj.suggested_followups.map((fQ, fIdx) => (
+                                      <button
+                                        key={fIdx}
+                                        onClick={() => handleAskVideoDoubt(fQ, msg.responseObj.timestamp_or_part)}
+                                        className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition cursor-pointer"
+                                      >
+                                        💬 {fQ}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Bottom Actions */}
+            <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-xs text-stone-500">
+                Watching and understanding concepts builds permanent long-term retention.
+              </span>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setActiveVideoModal(null)}
+                  className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition cursor-pointer flex-1 sm:flex-initial"
+                >
+                  Close Video
+                </button>
+
+                {activeVideoModal.action && !activeVideoModal.action.completed && (
+                  <button
+                    onClick={handleCompleteActionFromModal}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md flex-1 sm:flex-initial"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>✓ Understood! Mark Action Completed</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -705,6 +705,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ title, tech_stack: techStack, metrics }),
     });
+  },
+  resolveVideoDoubt: async (topicName, timestampOrPart, doubtQuestion, videoUrl = null, chatHistory = []) => {
+    return authFetch(`${API_BASE}/ai/video-doubt`, {
+      method: 'POST',
+      body: JSON.stringify({
+        topic_name: topicName,
+        timestamp_or_part: timestampOrPart,
+        doubt_question: doubtQuestion,
+        video_url: videoUrl,
+        chat_history: chatHistory
+      }),
+    });
   }
 };
 
