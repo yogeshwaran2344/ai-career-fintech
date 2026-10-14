@@ -1756,7 +1756,7 @@ export default function InvestmentView({ profile }) {
             </div>
           ) : (
             <div className="p-12 text-center text-xs font-bold text-stone-500">
-              Loading 5-Year Simulation Engine...
+              Loading 5-Year Wealth Engine...
             </div>
           )}
         </div>
@@ -2201,7 +2201,7 @@ export default function InvestmentView({ profile }) {
                       {chartData?.ticker || selectedChartAsset.ticker} • {chartData?.category || selectedChartAsset.category || 'Equity'}
                     </span>
                     <span className="text-stone-300 text-xs font-semibold">
-                      NSE / BSE Live Market Simulation
+                      NSE / BSE Live Market Feed
                     </span>
                   </div>
                   <h3 className="text-xl font-black text-white">

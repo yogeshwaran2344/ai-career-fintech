@@ -570,6 +570,23 @@ export const api = {
       body: JSON.stringify(payload)
     });
   },
+  getLiveExchangeRates: async () => {
+    return authFetch(`${API_BASE}/study-abroad/live-exchange-rates`);
+  },
+  getExamNotifications: async () => {
+    return authFetch(`${API_BASE}/study-abroad/exam-notifications`);
+  },
+  toggleExamNotification: async (itemId, isSubscribed) => {
+    return authFetch(`${API_BASE}/study-abroad/exam-notifications/toggle`, {
+      method: 'POST',
+      body: JSON.stringify({ item_id: itemId, is_subscribed: isSubscribed })
+    });
+  },
+  subscribeAllExamNotifications: async () => {
+    return authFetch(`${API_BASE}/study-abroad/exam-notifications/subscribe-all`, {
+      method: 'POST'
+    });
+  },
 
   // ADVANCED EXAM PREPARATION ENGINE
   generatePracticeSet: async (payload) => {

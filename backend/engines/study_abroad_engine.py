@@ -2588,17 +2588,20 @@ Head of Department, Computer Science & Engineering
         flag = target_uni["flag"]
         degree_years = 1.0 if "king" in country_name.lower() or "uk" in country_name.lower() or "gbr" in country_code.lower() else 2.0
 
-        # Currency and exchange rate definitions (Dated October 10, 2026)
-        rates = {
-            "USA": ("USD ($)", 83.85),
-            "DEU": ("EUR (€)", 91.20),
-            "CAN": ("CAD ($)", 61.40),
-            "GBR": ("GBP (£)", 108.50),
-            "AUS": ("AUD ($)", 55.60),
-            "IRL": ("EUR (€)", 91.20),
-            "SGP": ("SGD ($)", 63.80)
+        # Currency and exchange rate definitions (Live Forex Feed)
+        from engines.forex_service import ForexService
+        live_forex = ForexService.get_live_rates()
+        forex_rates = live_forex.get("rates", {})
+        curr_map = {
+            "USA": ("USD ($)", forex_rates.get("USD", {}).get("rate_to_inr", 84.12)),
+            "DEU": ("EUR (€)", forex_rates.get("EUR", {}).get("rate_to_inr", 91.28)),
+            "CAN": ("CAD ($)", forex_rates.get("CAD", {}).get("rate_to_inr", 61.45)),
+            "GBR": ("GBP (£)", forex_rates.get("GBP", {}).get("rate_to_inr", 109.82)),
+            "AUS": ("AUD ($)", forex_rates.get("AUD", {}).get("rate_to_inr", 56.40)),
+            "IRL": ("EUR (€)", forex_rates.get("EUR", {}).get("rate_to_inr", 91.28)),
+            "SGP": ("SGD ($)", forex_rates.get("SGD", {}).get("rate_to_inr", 64.15))
         }
-        curr_code, exchange_rate = rates.get(country_code, ("USD ($)", 83.85))
+        curr_code, exchange_rate = curr_map.get(country_code, ("USD ($)", forex_rates.get("USD", {}).get("rate_to_inr", 84.12)))
 
         annual_tuition = target_uni["annual_tuition_inr"]
         annual_living = target_uni["annual_living_inr"]

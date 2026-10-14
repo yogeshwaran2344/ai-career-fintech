@@ -41,7 +41,9 @@ import {
   Plane,
   FileCheck,
   Eye,
-  X
+  X,
+  Bell,
+  BellRing
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../api';
@@ -151,6 +153,16 @@ export default function StudyAbroadView({ profile, onNavigate }) {
   const [appointmentLocation, setAppointmentLocation] = useState('VFS Global New Delhi');
   const [trackingNumber, setTrackingNumber] = useState('DEU-VFS-2026-88129');
   const [visaNotes, setVisaNotes] = useState('');
+
+  // Live Forex & Accurate Currency Feed State
+  const [liveForex, setLiveForex] = useState(null);
+  const [loadingForex, setLoadingForex] = useState(false);
+
+  // Exam & Admissions Notifications Alert Center State
+  const [examNotifications, setExamNotifications] = useState([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const [subscribingNotifId, setSubscribingNotifId] = useState(null);
+  const [showNotificationDrawer, setShowNotificationDrawer] = useState(false);
 
   // ==================== CENTRAL DATA LOADING ====================
   const loadCentralOverview = async () => {
@@ -366,6 +378,119 @@ export default function StudyAbroadView({ profile, onNavigate }) {
     }
   };
 
+  const loadLiveForex = async () => {
+    try {
+      setLoadingForex(true);
+      const res = await api.getLiveExchangeRates();
+      if (res && res.rates) {
+        setLiveForex(res);
+      }
+    } catch (err) {
+      console.error('Failed to load live exchange rates:', err);
+    } finally {
+      setLoadingForex(false);
+    }
+  };
+
+  const loadExamNotifications = async () => {
+    try {
+      setLoadingNotifs(true);
+      const res = await api.getExamNotifications();
+      if (Array.isArray(res)) {
+        setExamNotifications(res);
+      }
+    } catch (err) {
+      console.error('Failed to load exam notifications:', err);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  };
+
+  const handleToggleExamNotification = async (itemId, currentSubscribed) => {
+    try {
+      setSubscribingNotifId(itemId);
+      const newStatus = !currentSubscribed;
+      const res = await api.toggleExamNotification(itemId, newStatus);
+      setExamNotifications((prev) =>
+        prev.map((item) =>
+          item.item_id === itemId ? { ...item, is_subscribed: res.is_subscribed } : item
+        )
+      );
+      showNotice(res.message || `Notification alert ${newStatus ? 'activated' : 'deactivated'} for ${itemId}!`);
+    } catch (err) {
+      console.error('Failed to toggle exam notification:', err);
+      showNotice('Failed to update alert preference.', 'error');
+    } finally {
+      setSubscribingNotifId(null);
+    }
+  };
+
+  const handleSubscribeAllNotifications = async () => {
+    try {
+      setLoadingNotifs(true);
+      const res = await api.subscribeAllExamNotifications();
+      setExamNotifications((prev) => prev.map((item) => ({ ...item, is_subscribed: true })));
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+      showNotice(res.message || 'Subscribed to all application & exam deadline alerts!');
+    } catch (err) {
+      console.error('Failed to subscribe to all alerts:', err);
+      showNotice('Failed to subscribe all notifications.', 'error');
+    } finally {
+      setLoadingNotifs(false);
+    }
+  };
+
+  const getLiveCostOfLiving = (countryStr, defaultInr) => {
+    if (!liveForex?.rates) return { inr: defaultInr, nativeStr: '' };
+    const cUpper = (countryStr || '').toUpperCase();
+    if (cUpper.includes('GERMANY') || cUpper.includes('DEU')) {
+      const eurRate = liveForex.rates.EUR || 91.28;
+      const annualEur = 11904; // Official German Blocked Account standard
+      return {
+        inr: Math.round(annualEur * eurRate),
+        nativeStr: `€${annualEur.toLocaleString()} / yr`,
+        rateLabel: `EUR: ₹${eurRate.toFixed(2)}`
+      };
+    }
+    if (cUpper.includes('UNITED STATES') || cUpper.includes('USA')) {
+      const usdRate = liveForex.rates.USD || 84.12;
+      const annualUsd = 18000;
+      return {
+        inr: Math.round(annualUsd * usdRate),
+        nativeStr: `$${annualUsd.toLocaleString()} / yr`,
+        rateLabel: `USD: ₹${usdRate.toFixed(2)}`
+      };
+    }
+    if (cUpper.includes('CANADA') || cUpper.includes('CAN')) {
+      const cadRate = liveForex.rates.CAD || 61.45;
+      const annualCad = 20635; // Official Canadian SDS requirement
+      return {
+        inr: Math.round(annualCad * cadRate),
+        nativeStr: `CAD $${annualCad.toLocaleString()} / yr`,
+        rateLabel: `CAD: ₹${cadRate.toFixed(2)}`
+      };
+    }
+    if (cUpper.includes('KINGDOM') || cUpper.includes('GBR') || cUpper.includes('UK')) {
+      const gbpRate = liveForex.rates.GBP || 109.82;
+      const annualGbp = 13348;
+      return {
+        inr: Math.round(annualGbp * gbpRate),
+        nativeStr: `£${annualGbp.toLocaleString()} / yr`,
+        rateLabel: `GBP: ₹${gbpRate.toFixed(2)}`
+      };
+    }
+    if (cUpper.includes('AUSTRALIA') || cUpper.includes('AUS')) {
+      const audRate = liveForex.rates.AUD || 56.40;
+      const annualAud = 24505;
+      return {
+        inr: Math.round(annualAud * audRate),
+        nativeStr: `AUD $${annualAud.toLocaleString()} / yr`,
+        rateLabel: `AUD: ₹${audRate.toFixed(2)}`
+      };
+    }
+    return { inr: defaultInr, nativeStr: '' };
+  };
+
   useEffect(() => {
     loadCentralOverview();
     loadStudyAbroadProfile();
@@ -375,6 +500,8 @@ export default function StudyAbroadView({ profile, onNavigate }) {
     loadVisaState('DEU');
     loadMistakes('IELTS');
     loadAnalytics('IELTS');
+    loadLiveForex();
+    loadExamNotifications();
   }, []);
 
   // Timer countdown for active exam practice
@@ -813,6 +940,184 @@ export default function StudyAbroadView({ profile, onNavigate }) {
       {/* ============================================================== */}
       {activeTab === 'matcher' && (
         <div className="space-y-6">
+          {/* Real-time Live Forex Currency Ticker Bar */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 shadow-sm border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              <div className="text-xs font-bold tracking-wide flex items-center gap-1.5">
+                <span>Live Forex Exchange Feed:</span>
+                <span className="text-[11px] text-slate-300 font-normal">(Real-Time Accurate Living Cost Conversions)</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
+                1 EUR = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.EUR || 91.28).toFixed(2)}</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
+                1 USD = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.USD || 84.12).toFixed(2)}</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
+                1 CAD = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.CAD || 61.45).toFixed(2)}</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
+                1 GBP = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.GBP || 109.82).toFixed(2)}</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
+                1 AUD = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.AUD || 56.40).toFixed(2)}</strong>
+              </span>
+            </div>
+
+            <button
+              onClick={() => setShowNotificationDrawer(true)}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm shrink-0"
+            >
+              <Bell className="w-3.5 h-3.5 text-amber-300" />
+              <span>Exam & Intake Alerts</span>
+              {examNotifications.filter((n) => n.is_subscribed).length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-[10px] font-extrabold text-white">
+                  {examNotifications.filter((n) => n.is_subscribed).length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Exam & Application Notifications Center Modal */}
+          {showNotificationDrawer && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+              <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                      <BellRing className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Exam & University Application Alerts</h3>
+                      <p className="text-xs text-slate-500">
+                        Receive instant notifications when exam registrations and university admissions intakes open.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowNotificationDrawer(false)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="py-3 flex items-center justify-between bg-slate-50 px-4 rounded-xl my-3">
+                  <div className="text-xs text-slate-700">
+                    <strong className="text-slate-900">{examNotifications.filter((n) => n.is_subscribed).length}</strong> of {examNotifications.length} deadline alerts active
+                  </div>
+                  <button
+                    onClick={handleSubscribeAllNotifications}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Subscribe to All Deadlines</span>
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto space-y-3 flex-1 pr-1">
+                  {loadingNotifs ? (
+                    <div className="p-8 text-center text-xs text-slate-500">Loading live application cycles...</div>
+                  ) : examNotifications.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-500">No application alerts found.</div>
+                  ) : (
+                    examNotifications.map((notif) => (
+                      <div
+                        key={notif.item_id}
+                        className={`p-4 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          notif.is_subscribed
+                            ? 'bg-indigo-50/40 border-indigo-200'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
+                                notif.status.includes('OPEN')
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {notif.status}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              {notif.target_type}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-900">{notif.title}</h4>
+                          <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span>
+                              Opens: <strong>{notif.open_date}</strong>
+                            </span>
+                            <span>
+                              Deadline: <strong className="text-rose-600">{notif.deadline_date}</strong>
+                            </span>
+                            <span>
+                              Fee: <strong>{notif.fee_info}</strong>
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 italic mt-1">{notif.notification_message}</p>
+                        </div>
+
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                          <button
+                            onClick={() => handleToggleExamNotification(notif.item_id, notif.is_subscribed)}
+                            disabled={subscribingNotifId === notif.item_id}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              notif.is_subscribed
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            {notif.is_subscribed ? (
+                              <>
+                                <BellRing className="w-3.5 h-3.5" />
+                                <span>Subscribed</span>
+                              </>
+                            ) : (
+                              <>
+                                <Bell className="w-3.5 h-3.5" />
+                                <span>Notify Me</span>
+                              </>
+                            )}
+                          </button>
+
+                          <a
+                            href={notif.direct_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                          >
+                            <span>Official Portal</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span>Alerts are synced in real time with the backend notification service.</span>
+                  <button
+                    onClick={() => setShowNotificationDrawer(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Filter Bar */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -970,6 +1275,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
                           </div>
 
                           {/* Tuition & Cost Metrics */}
+                          {/* Tuition & Cost Metrics */}
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <div className="p-2.5 rounded-xl bg-indigo-50/50 border border-indigo-100">
                               <span className="text-[10px] text-slate-500 block">Annual Tuition</span>
@@ -978,11 +1284,25 @@ export default function StudyAbroadView({ profile, onNavigate }) {
                               </strong>
                               <span className="text-[10px] text-slate-400 block mt-0.5">${u.annual_tuition_usd?.toLocaleString()}/yr</span>
                             </div>
-                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                              <span className="text-[10px] text-slate-500 block">Est. Living Expenses</span>
-                              <strong className="text-slate-900 font-bold">{formatInr(u.annual_living_inr)}</strong>
-                              <span className="text-[10px] text-slate-400 block mt-0.5">Approx. per year</span>
-                            </div>
+                            {(() => {
+                              const liveCost = getLiveCostOfLiving(u.country, u.annual_living_inr);
+                              return (
+                                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] text-slate-500 block">Est. Living Expenses</span>
+                                    {liveCost.rateLabel && (
+                                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                        {liveCost.rateLabel}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <strong className="text-slate-900 font-bold block mt-0.5">{formatInr(liveCost.inr)}/yr</strong>
+                                  <span className="text-[10px] text-slate-600 block mt-0.5 font-semibold">
+                                    {liveCost.nativeStr || 'Approx. per year'}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           {/* Prerequisites & Requirements Pill Grid */}
@@ -1039,7 +1359,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
                         </div>
 
                         {/* Card Actions */}
-                        <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <div className="pt-4 mt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
                           <button
                             onClick={() => setExpandedUniId(isExpanded ? null : u.id)}
                             className="text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
@@ -1047,7 +1367,30 @@ export default function StudyAbroadView({ profile, onNavigate }) {
                             {isExpanded ? 'Hide Details' : 'View Requirements & Missing Info'}
                           </button>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center flex-wrap gap-2">
+                            {/* Alert When Open Button */}
+                            {(() => {
+                              const notifItem = examNotifications.find(n =>
+                                (n.target_name && n.target_name.toLowerCase().includes(u.country.toLowerCase())) ||
+                                (n.title && n.title.toLowerCase().includes(u.country.toLowerCase()))
+                              );
+                              const isSubscribed = notifItem?.is_subscribed;
+                              return (
+                                <button
+                                  onClick={() => notifItem ? handleToggleExamNotification(notifItem.item_id, isSubscribed) : setShowNotificationDrawer(true)}
+                                  title={isSubscribed ? "Alert Active: You will be notified" : "Click to receive alert when intake opens"}
+                                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                                    isSubscribed
+                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+                                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  {isSubscribed ? <BellRing className="w-3.5 h-3.5 text-emerald-600" /> : <Bell className="w-3.5 h-3.5" />}
+                                  <span>{isSubscribed ? 'Alert Active' : 'Alert When Open'}</span>
+                                </button>
+                              );
+                            })()}
+
                             <button
                               onClick={() => handleAddUniToApplications(u)}
                               disabled={addingToAppsId === u.id}
@@ -1057,13 +1400,27 @@ export default function StudyAbroadView({ profile, onNavigate }) {
                               <span>{addingToAppsId === u.id ? 'Adding...' : 'Track'}</span>
                             </button>
 
+                            {/* Official College Website Link */}
                             <a
                               href={u.official_portal_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                              title="Visit official college home portal"
                             >
-                              <span>Official Portal</span>
+                              <span>Official Site</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+
+                            {/* Direct Admissions Apply Link */}
+                            <a
+                              href={u.direct_application_url || u.official_portal_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                              title="Direct link to official admissions application portal"
+                            >
+                              <span>Direct Apply</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>
@@ -1554,8 +1911,11 @@ export default function StudyAbroadView({ profile, onNavigate }) {
               </div>
 
               {/* Currency & Exchange Rate Badge */}
-              <div className="px-3.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
-                💱 1 EUR = ₹91.20 | 1 USD = ₹83.85 | 1 CAD = ₹61.40 (Verified Oct 10, 2026)
+              <div className="px-3.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>
+                  Live Forex: 1 EUR = ₹{(liveForex?.rates?.EUR || 91.28).toFixed(2)} | 1 USD = ₹{(liveForex?.rates?.USD || 84.12).toFixed(2)} | 1 CAD = ₹{(liveForex?.rates?.CAD || 61.45).toFixed(2)} | 1 GBP = ₹{(liveForex?.rates?.GBP || 109.82).toFixed(2)}
+                </span>
               </div>
             </div>
 

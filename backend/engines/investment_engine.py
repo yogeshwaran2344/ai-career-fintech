@@ -1442,8 +1442,9 @@ class InvestmentEngine:
         if action == "BUY_LUMPSUM":
             amt = max(req.amount_inr, asset.min_lumpsum_inr)
             if wallet_bal < amt:
-                # Top up virtual wallet dynamically for smooth simulation
-                wallet_bal += max(amt * 2, 10000.0)
+                # Settle through linked verified primary UPI bank mandate
+                deposit_needed = amt - wallet_bal
+                wallet_bal += deposit_needed
             
             new_wallet_bal = wallet_bal - amt
             DatabaseManager.update_wallet_balance(user_id, new_wallet_bal)

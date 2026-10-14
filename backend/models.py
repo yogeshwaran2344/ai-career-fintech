@@ -1764,6 +1764,25 @@ class UserVisaProgressResponse(BaseModel):
     tracking_number: str
     notes: str
 
+# ==================== EXAM & ADMISSIONS NOTIFICATIONS MODELS ====================
+
+class ExamNotificationItem(BaseModel):
+    id: str
+    item_id: str
+    title: str
+    target_type: str
+    status: str
+    open_date: str
+    deadline_date: str
+    is_subscribed: bool
+    direct_link: str
+    fee_info: str
+    notification_message: str
+
+class ToggleExamNotificationRequest(BaseModel):
+    item_id: str
+    is_subscribed: bool
+
 # ==================== ADVANCED EXAM PREPARATION ENGINE MODELS ====================
 
 class ExamQuestion(BaseModel):

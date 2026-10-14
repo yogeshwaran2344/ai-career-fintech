@@ -534,6 +534,27 @@ def init_database():
         )
     """)
 
+    # 29. User Exam & Admissions Application Notifications Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_exam_notifications (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            target_type TEXT NOT NULL,
+            status TEXT NOT NULL,
+            open_date TEXT NOT NULL,
+            deadline_date TEXT NOT NULL,
+            is_subscribed INTEGER DEFAULT 0,
+            direct_link TEXT NOT NULL,
+            fee_info TEXT NOT NULL,
+            notification_message TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, item_id)
+        )
+    """)
+
     # Migration: Add xp_awarded column to daily_tasks if not present
     try:
         cursor.execute("ALTER TABLE daily_tasks ADD COLUMN xp_awarded INTEGER DEFAULT 0")
@@ -1838,6 +1859,191 @@ class DatabaseManager:
         conn.commit()
         conn.close()
         return DatabaseManager.get_user_visa_progress(user_id, c_code)
+
+    # ==================== EXAM & ADMISSIONS NOTIFICATION SYSTEM ====================
+    DEFAULT_EXAM_NOTIFICATIONS = [
+        {
+            "item_id": "GRE",
+            "title": "GRE General Test Registration (ETS)",
+            "target_type": "STANDARDIZED_EXAM",
+            "status": "OPEN_NOW",
+            "open_date": "Open Year-Round (Daily Testing)",
+            "deadline_date": "Book at least 3 weeks before university priority deadline",
+            "direct_link": "https://ereg.ets.org/",
+            "fee_info": "$220 (~₹18,500)",
+            "notification_message": "GRE test appointments and home edition testing slots are actively open. Target test date: Nov 2026 for Fall 2027 admissions."
+        },
+        {
+            "item_id": "IELTS",
+            "title": "IELTS Academic Test Booking (IDP / Cambridge)",
+            "target_type": "LANGUAGE_EXAM",
+            "status": "OPEN_NOW",
+            "open_date": "Weekly Slots (Computer & Pen-Paper)",
+            "deadline_date": "Rolling slot availability across 82 Indian test centers",
+            "direct_link": "https://ielts.idp.com/book-now",
+            "fee_info": "₹17,000",
+            "notification_message": "IELTS Academic test slots are open. Results released in 3–5 days (Computer-delivered)."
+        },
+        {
+            "item_id": "TOEFL",
+            "title": "TOEFL iBT Test Registration (ETS)",
+            "target_type": "LANGUAGE_EXAM",
+            "status": "OPEN_NOW",
+            "open_date": "Open Year-Round (Weekend Slots)",
+            "deadline_date": "Book 14 days in advance",
+            "direct_link": "https://www.ets.org/toefl/test-takers/ibt/schedule.html",
+            "fee_info": "₹16,900",
+            "notification_message": "TOEFL iBT test dates open nationwide. Accepted across 100% of US, UK, and German graduate schools."
+        },
+        {
+            "item_id": "DEU_WINTER",
+            "title": "German Public Universities Winter Intake (2027/28)",
+            "target_type": "UNIVERSITY_ADMISSIONS",
+            "status": "OPENS_SOON",
+            "open_date": "April 15, 2027",
+            "deadline_date": "July 15, 2027 (Strict Cutoff)",
+            "direct_link": "https://my.uni-assist.de/",
+            "fee_info": "€75 (Uni-Assist) / Free (Direct Portals)",
+            "notification_message": "TUM, RWTH Aachen, KIT, and TU Berlin open winter applications on April 15. Ensure APS Certificate is verified prior to portal opening."
+        },
+        {
+            "item_id": "DEU_SUMMER",
+            "title": "German Universities Summer Intake (2027)",
+            "target_type": "UNIVERSITY_ADMISSIONS",
+            "status": "OPEN_NOW",
+            "open_date": "October 15, 2026",
+            "deadline_date": "January 15, 2027",
+            "direct_link": "https://www.daad.de/en/studying-in-germany/universities/all-degree-programmes/",
+            "fee_info": "€75 (Uni-Assist)",
+            "notification_message": "Summer semester application portal is open. Key universities accepting: University of Stuttgart, FAU Erlangen, TU Darmstadt."
+        },
+        {
+            "item_id": "USA_FALL",
+            "title": "US Universities Fall 2027 Priority Application Window",
+            "target_type": "UNIVERSITY_ADMISSIONS",
+            "status": "OPEN_NOW",
+            "open_date": "August 15, 2026",
+            "deadline_date": "December 01 / December 15, 2026",
+            "direct_link": "https://www.commonapp.org/",
+            "fee_info": "$75 – $140 per institution",
+            "notification_message": "CMU, Stanford, UC Berkeley, MIT, and Georgia Tech graduate application portals are open for Fall 2027 intake."
+        },
+        {
+            "item_id": "CAN_FALL",
+            "title": "Canadian Universities Fall 2027 Admissions (U of T / UBC / McGill)",
+            "target_type": "UNIVERSITY_ADMISSIONS",
+            "status": "OPEN_NOW",
+            "open_date": "October 01, 2026",
+            "deadline_date": "January 15, 2027",
+            "direct_link": "https://www.ouac.on.ca/",
+            "fee_info": "CAD $125 – $165",
+            "notification_message": "University of Toronto (SGS) and UBC Graduate Studies application portals open. High competition for AI & Computing research tracks."
+        },
+        {
+            "item_id": "APS_INDIA",
+            "title": "APS Certificate India Verification Window (Mandatory for Germany)",
+            "target_type": "DOCUMENT_VERIFICATION",
+            "status": "OPEN_NOW",
+            "open_date": "Open Continuously",
+            "deadline_date": "Apply 3–4 months before university deadline",
+            "direct_link": "https://aps-india.de/",
+            "fee_info": "₹18,000",
+            "notification_message": "Academic Evaluation Centre (APS) New Delhi is processing certificates. Processing takes 4–6 weeks; required before German visa submission."
+        },
+        {
+            "item_id": "GATE",
+            "title": "GATE 2027 (Graduate Aptitude Test in Engineering)",
+            "target_type": "STANDARDIZED_EXAM",
+            "status": "OPENS_SOON",
+            "open_date": "August 24, 2026",
+            "deadline_date": "September 29, 2026",
+            "direct_link": "https://gate2025.iitr.ac.in/",
+            "fee_info": "₹1,800 (General) / ₹900 (Reserved)",
+            "notification_message": "Official GATE registration window for M.Tech admissions across IISc Bangalore, IITs, and recruitment in PSUs."
+        },
+        {
+            "item_id": "CAT",
+            "title": "Common Admission Test (CAT 2026 for IIMs)",
+            "target_type": "STANDARDIZED_EXAM",
+            "status": "OPENS_SOON",
+            "open_date": "August 02, 2026",
+            "deadline_date": "September 13, 2026",
+            "direct_link": "https://iimcat.ac.in/",
+            "fee_info": "₹2,400",
+            "notification_message": "Registration window for 21 IIMs and premier Indian business schools. Exam scheduled for late November 2026."
+        }
+    ]
+
+    @staticmethod
+    def get_user_exam_notifications(user_id: str) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_exam_notifications WHERE user_id = ?", (user_id,))
+        rows = {r["item_id"]: dict(r) for r in cursor.fetchall()}
+
+        # Seed missing items if user doesn't have them
+        results = []
+        for default_item in DatabaseManager.DEFAULT_EXAM_NOTIFICATIONS:
+            item_id = default_item["item_id"]
+            if item_id in rows:
+                results.append(rows[item_id])
+            else:
+                notif_id = str(uuid.uuid4())
+                cursor.execute("""
+                    INSERT OR IGNORE INTO user_exam_notifications 
+                    (id, user_id, item_id, title, target_type, status, open_date, deadline_date, is_subscribed, direct_link, fee_info, notification_message)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+                """, (
+                    notif_id, user_id, item_id, default_item["title"], default_item["target_type"],
+                    default_item["status"], default_item["open_date"], default_item["deadline_date"],
+                    default_item["direct_link"], default_item["fee_info"], default_item["notification_message"]
+                ))
+                new_row = {
+                    "id": notif_id,
+                    "user_id": user_id,
+                    "item_id": item_id,
+                    **default_item,
+                    "is_subscribed": 0
+                }
+                results.append(new_row)
+        conn.commit()
+        conn.close()
+        return results
+
+    @staticmethod
+    def toggle_user_exam_notification(user_id: str, item_id: str, is_subscribed: bool) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        sub_val = 1 if is_subscribed else 0
+        cursor.execute("""
+            UPDATE user_exam_notifications SET is_subscribed = ? WHERE user_id = ? AND item_id = ?
+        """, (sub_val, user_id, item_id))
+        if cursor.rowcount == 0:
+            match = next((item for item in DatabaseManager.DEFAULT_EXAM_NOTIFICATIONS if item["item_id"] == item_id), None)
+            if match:
+                notif_id = str(uuid.uuid4())
+                cursor.execute("""
+                    INSERT INTO user_exam_notifications 
+                    (id, user_id, item_id, title, target_type, status, open_date, deadline_date, is_subscribed, direct_link, fee_info, notification_message)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    notif_id, user_id, item_id, match["title"], match["target_type"],
+                    match["status"], match["open_date"], match["deadline_date"],
+                    sub_val, match["direct_link"], match["fee_info"], match["notification_message"]
+                ))
+        conn.commit()
+        conn.close()
+        return {"user_id": user_id, "item_id": item_id, "is_subscribed": bool(sub_val)}
+
+    @staticmethod
+    def subscribe_all_exam_notifications(user_id: str) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        DatabaseManager.get_user_exam_notifications(user_id)
+        cursor.execute("UPDATE user_exam_notifications SET is_subscribed = 1 WHERE user_id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+        return {"user_id": user_id, "all_subscribed": True}
 
     # ==================== EXAM PREPARATION ENGINE METHODS ====================
     @staticmethod

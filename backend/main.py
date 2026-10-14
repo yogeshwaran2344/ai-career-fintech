@@ -58,8 +58,10 @@ from models import (
     ConceptQuizQuestion, ConceptQuizResponse, SubmitConceptQuizRequest, ConceptQuizEvaluationResponse,
     NextBestActionItem, StudentIntelligenceResponse, CompleteActionRequest,
     UserResumeData, AddProjectToResumeRequest, StockAdvisorResponse,
-    ProfileResetRequest, ProfileResetResponse, RecordProjectEvidenceRequest, TargetRoleChangeRequest
+    ProfileResetRequest, ProfileResetResponse, RecordProjectEvidenceRequest, TargetRoleChangeRequest,
+    ExamNotificationItem, ToggleExamNotificationRequest
 )
+from engines.forex_service import ForexService
 from engines.career_comparator import CareerComparatorEngine
 from engines.career_engine import CareerEngine, ROLE_BENCHMARKS
 from engines.finance_engine import FinanceEngine
@@ -1277,6 +1279,45 @@ def update_study_abroad_application(app_id: str, req: UpdateStudyAbroadApplicati
 def delete_study_abroad_application(app_id: str, current_user: StudentProfile = Depends(get_user_from_auth)):
     success = DatabaseManager.delete_user_study_abroad_application(app_id, current_user.id)
     return {"success": success}
+
+# ==================== LIVE FOREX & CURRENCY CONVERSION API ====================
+
+@app.get("/api/study-abroad/live-exchange-rates")
+def get_live_currency_rates():
+    """
+    Returns live, accurate foreign exchange rates (EUR, USD, CAD, GBP, AUD, SGD, CHF to INR)
+    for real-time international cost-of-living calculations.
+    """
+    return ForexService.get_live_rates()
+
+# ==================== EXAM & ADMISSIONS APPLICATION NOTIFICATIONS API ====================
+
+@app.get("/api/study-abroad/exam-notifications", response_model=List[ExamNotificationItem])
+def get_user_exam_notifications(current_user: StudentProfile = Depends(get_user_from_auth)):
+    """
+    Returns all upcoming standardized exam application release dates,
+    intake portal opening schedules, and the authenticated user's notification subscriptions.
+    """
+    raw_notifs = DatabaseManager.get_user_exam_notifications(current_user.id)
+    return [ExamNotificationItem(**n) for n in raw_notifs]
+
+@app.post("/api/study-abroad/exam-notifications/toggle")
+def toggle_user_exam_notification(req: ToggleExamNotificationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+    """
+    Toggles notification alert for a specific exam or intake window with persistent SQLite storage.
+    """
+    return DatabaseManager.toggle_user_exam_notification(
+        user_id=current_user.id,
+        item_id=req.item_id,
+        is_subscribed=req.is_subscribed
+    )
+
+@app.post("/api/study-abroad/exam-notifications/subscribe-all")
+def subscribe_all_exam_notifications(current_user: StudentProfile = Depends(get_user_from_auth)):
+    """
+    One-click subscribe to all upcoming entrance exam and university application deadlines.
+    """
+    return DatabaseManager.subscribe_all_exam_notifications(current_user.id)
 
 @app.get("/api/study-abroad/universities")
 def list_study_abroad_universities(
