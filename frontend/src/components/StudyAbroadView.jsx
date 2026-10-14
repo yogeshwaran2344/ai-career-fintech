@@ -440,11 +440,18 @@ export default function StudyAbroadView({ profile, onNavigate }) {
     }
   };
 
+  const getForexRate = (code, fallback = 1.0) => {
+    if (!liveForex?.rates?.[code]) return fallback;
+    const item = liveForex.rates[code];
+    if (typeof item === 'number') return item;
+    if (typeof item?.rate_to_inr === 'number') return item.rate_to_inr;
+    return fallback;
+  };
+
   const getLiveCostOfLiving = (countryStr, defaultInr) => {
-    if (!liveForex?.rates) return { inr: defaultInr, nativeStr: '' };
     const cUpper = (countryStr || '').toUpperCase();
     if (cUpper.includes('GERMANY') || cUpper.includes('DEU')) {
-      const eurRate = liveForex.rates.EUR || 91.28;
+      const eurRate = getForexRate('EUR', 91.28);
       const annualEur = 11904; // Official German Blocked Account standard
       return {
         inr: Math.round(annualEur * eurRate),
@@ -453,7 +460,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
       };
     }
     if (cUpper.includes('UNITED STATES') || cUpper.includes('USA')) {
-      const usdRate = liveForex.rates.USD || 84.12;
+      const usdRate = getForexRate('USD', 84.12);
       const annualUsd = 18000;
       return {
         inr: Math.round(annualUsd * usdRate),
@@ -462,7 +469,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
       };
     }
     if (cUpper.includes('CANADA') || cUpper.includes('CAN')) {
-      const cadRate = liveForex.rates.CAD || 61.45;
+      const cadRate = getForexRate('CAD', 61.45);
       const annualCad = 20635; // Official Canadian SDS requirement
       return {
         inr: Math.round(annualCad * cadRate),
@@ -471,7 +478,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
       };
     }
     if (cUpper.includes('KINGDOM') || cUpper.includes('GBR') || cUpper.includes('UK')) {
-      const gbpRate = liveForex.rates.GBP || 109.82;
+      const gbpRate = getForexRate('GBP', 109.82);
       const annualGbp = 13348;
       return {
         inr: Math.round(annualGbp * gbpRate),
@@ -480,7 +487,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
       };
     }
     if (cUpper.includes('AUSTRALIA') || cUpper.includes('AUS')) {
-      const audRate = liveForex.rates.AUD || 56.40;
+      const audRate = getForexRate('AUD', 56.40);
       const annualAud = 24505;
       return {
         inr: Math.round(annualAud * audRate),
@@ -955,19 +962,19 @@ export default function StudyAbroadView({ profile, onNavigate }) {
 
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
-                1 EUR = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.EUR || 91.28).toFixed(2)}</strong>
+                1 EUR = <strong className="text-emerald-400 font-mono">₹{getForexRate('EUR', 91.28).toFixed(2)}</strong>
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
-                1 USD = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.USD || 84.12).toFixed(2)}</strong>
+                1 USD = <strong className="text-emerald-400 font-mono">₹{getForexRate('USD', 84.12).toFixed(2)}</strong>
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
-                1 CAD = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.CAD || 61.45).toFixed(2)}</strong>
+                1 CAD = <strong className="text-emerald-400 font-mono">₹{getForexRate('CAD', 61.45).toFixed(2)}</strong>
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
-                1 GBP = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.GBP || 109.82).toFixed(2)}</strong>
+                1 GBP = <strong className="text-emerald-400 font-mono">₹{getForexRate('GBP', 109.82).toFixed(2)}</strong>
               </span>
               <span className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 font-medium">
-                1 AUD = <strong className="text-emerald-400 font-mono">₹{(liveForex?.rates?.AUD || 56.40).toFixed(2)}</strong>
+                1 AUD = <strong className="text-emerald-400 font-mono">₹{getForexRate('AUD', 56.40).toFixed(2)}</strong>
               </span>
             </div>
 
@@ -1914,7 +1921,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
               <div className="px-3.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>
-                  Live Forex: 1 EUR = ₹{(liveForex?.rates?.EUR || 91.28).toFixed(2)} | 1 USD = ₹{(liveForex?.rates?.USD || 84.12).toFixed(2)} | 1 CAD = ₹{(liveForex?.rates?.CAD || 61.45).toFixed(2)} | 1 GBP = ₹{(liveForex?.rates?.GBP || 109.82).toFixed(2)}
+                  Live Forex: 1 EUR = ₹{getForexRate('EUR', 91.28).toFixed(2)} | 1 USD = ₹{getForexRate('USD', 84.12).toFixed(2)} | 1 CAD = ₹{getForexRate('CAD', 61.45).toFixed(2)} | 1 GBP = ₹{getForexRate('GBP', 109.82).toFixed(2)}
                 </span>
               </div>
             </div>
