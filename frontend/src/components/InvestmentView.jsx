@@ -909,7 +909,7 @@ export default function InvestmentView({ profile }) {
                     </div>
                   </div>
 
-                  <div className="bg-white p-4 rounded-2xl border border-stone-200 min-w-[240px]">
+                  <div className="bg-white p-4 rounded-2xl border border-stone-200 w-full sm:w-auto sm:min-w-[240px]">
                     <label className="text-[11px] font-bold text-stone-500 block mb-1">Custom Amount (₹):</label>
                     <div className="relative">
                       <span className="absolute left-3 top-2 text-base font-black text-stone-400">₹</span>
@@ -1513,7 +1513,7 @@ export default function InvestmentView({ profile }) {
                   </div>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-6 text-center min-w-[260px] space-y-3 relative z-10">
+                <div className="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-6 text-center w-full sm:w-auto sm:min-w-[260px] space-y-3 relative z-10">
                   <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-2xl">
                     🌱
                   </div>
@@ -2266,7 +2266,7 @@ export default function InvestmentView({ profile }) {
 
                 {/* Live GMP Card */}
                 {chartData && (
-                  <div className="bg-gradient-to-br from-orange-500/10 via-amber-500/10 to-emerald-500/10 p-3.5 rounded-xl border border-orange-300/60 text-right min-w-[200px]">
+                  <div className="bg-gradient-to-br from-orange-500/10 via-amber-500/10 to-emerald-500/10 p-3.5 rounded-xl border border-orange-300/60 text-right w-full sm:w-auto sm:min-w-[200px]">
                     <div className="flex items-center justify-end gap-1 text-[10px] font-black uppercase text-orange-900 tracking-wider">
                       <span>🔥 LIVE GMP / Premium</span>
                     </div>

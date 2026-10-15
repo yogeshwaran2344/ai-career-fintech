@@ -63,7 +63,7 @@ export default function CareerVsInvestmentTab({ profile }) {
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md p-4 md:p-5 rounded-2xl border border-white/15 min-w-[240px]">
+          <div className="bg-white/10 backdrop-blur-md p-4 md:p-5 rounded-2xl border border-white/15 w-full sm:w-auto sm:min-w-[240px]">
             <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider block">Your Target Role</span>
             <span className="text-lg font-black text-white">{profile?.career_goal || 'AI Engineer'}</span>
             <span className="text-[11px] text-emerald-400 font-bold block mt-1">

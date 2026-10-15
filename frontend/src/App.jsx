@@ -37,7 +37,12 @@ import {
   Check,
   Inbox,
   X,
-  AlertCircle
+  AlertCircle,
+  Menu,
+  Zap,
+  Compass,
+  Globe,
+  TrendingUp
 } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
@@ -98,6 +103,7 @@ export default function App() {
   const [isWeeklyReviewOpen, setIsWeeklyReviewOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Notifications & Signals
   const [notificationsList, setNotificationsList] = useState([]);
@@ -410,33 +416,45 @@ export default function App() {
         onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
         onOpenWeeklyReview={() => setIsWeeklyReviewOpen(true)}
         onLogout={handleLogout}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto max-h-screen relative">
+      <main className="flex-1 p-3 sm:p-5 md:p-8 overflow-y-auto max-h-screen relative w-full min-w-0 pb-20 md:pb-8">
         
         {/* Top User Status Bar */}
         <div className="mb-4 flex flex-wrap items-center justify-between pb-3 border-b border-stone-200/60 text-xs gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-base">{profile?.avatar || '🎓'}</span>
-            <span className="font-bold text-stone-900">
-              Student: <span className="text-orange-600 font-extrabold">{profile?.name || 'User'}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+            {/* Mobile Hamburger Drawer Trigger */}
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-1.5 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 shadow-2xs cursor-pointer flex items-center justify-center shrink-0"
+              title="Open Navigation Menu"
+            >
+              <Menu className="w-4 h-4 text-stone-800" />
+            </button>
+
+            <span className="text-base shrink-0">{profile?.avatar || '🎓'}</span>
+            <span className="font-bold text-stone-900 truncate">
+              <span className="hidden xs:inline">Student: </span><span className="text-orange-600 font-extrabold">{profile?.name || 'User'}</span>
             </span>
-            <span className="text-stone-400">•</span>
-            <span className="text-stone-600 font-medium">
+            <span className="hidden sm:inline text-stone-400">•</span>
+            <span className="hidden md:inline text-stone-600 font-medium truncate">
               {profile?.academic?.degree || 'B.Tech'} ({profile?.academic?.branch || 'General'})
             </span>
             <span className="text-stone-400">•</span>
-            <span className="bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px]">
+            <span className="bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px] truncate max-w-[130px] sm:max-w-none">
               {profile?.career_goal || 'Selected Track'}
             </span>
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-800 border-emerald-300">
+            <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-800 border-emerald-300">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>⚡ LIVE MARKET TELEMETRY & BROKER OMS</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Quick Search Button */}
             <button
               type="button"
@@ -611,27 +629,30 @@ export default function App() {
 
             <button
               onClick={() => setIsPlacementModalOpen(true)}
-              className="flex items-center gap-1 text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-100 border border-stone-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-100 border border-stone-200 px-2 sm:px-2.5 py-1 rounded-lg transition-colors cursor-pointer shrink-0"
+              title="Click to view full placement readiness breakdown"
             >
               <Award className="w-3.5 h-3.5 text-orange-600" />
-              <span>Placement Readiness: {readiness?.readiness_pct ?? 0}%</span>
+              <span className="hidden sm:inline">Placement: </span>
+              <span>{readiness?.readiness_pct ?? 0}%</span>
             </button>
 
             <button
               onClick={() => setIsAuthOpen(true)}
-              className="flex items-center gap-1 text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-100 border border-stone-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+              className="hidden sm:flex items-center gap-1 text-[11px] font-bold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-100 border border-stone-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+              title="Edit Profile & Questionnaire Setup"
             >
               <Settings className="w-3.5 h-3.5 text-stone-600" />
-              <span>Edit Setup</span>
+              <span className="hidden md:inline">Edit Setup</span>
             </button>
 
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1 text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+              className="hidden sm:flex items-center gap-1 text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
               title="Sign Out of Session"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
+              <span className="hidden md:inline">Sign Out</span>
             </button>
           </div>
         </div>
@@ -938,6 +959,42 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Mobile Bottom Quick-Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-[#FCFAF7]/95 backdrop-blur-md border-t border-stone-200/80 px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        {[
+          { id: 'today', label: 'Today', icon: Zap },
+          { id: 'career', label: 'Career', icon: Compass },
+          { id: 'studyabroad', label: 'Abroad', icon: Globe },
+          { id: 'investments', label: 'Wealth', icon: TrendingUp }
+        ].map((item) => {
+          const Icon = item.icon;
+          const active = currentTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setCurrentTab(item.id)}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
+                active ? 'text-orange-600 font-extrabold' : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <div className={`p-1 rounded-lg ${active ? 'bg-orange-100 text-orange-600' : ''}`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] mt-0.5">{item.label}</span>
+            </button>
+          );
+        })}
+        {/* Full Menu Trigger Button */}
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-stone-500 hover:text-stone-800 transition-all cursor-pointer"
+        >
+          <div className="p-1 rounded-lg">
+            <Menu className="w-4 h-4 text-stone-700" />
+          </div>
+          <span className="text-[10px] mt-0.5">All Menu</span>
+        </button>
+      </nav>
     </div>
   );
 }

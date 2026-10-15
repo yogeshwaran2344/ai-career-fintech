@@ -100,7 +100,7 @@ export default function FinancialHealthView({ profile, onNavigate }) {
           </div>
 
           {/* Central Composite Score Pill */}
-          <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/15 min-w-[240px] text-center lg:text-right flex flex-col items-center lg:items-end">
+          <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/15 w-full sm:w-auto sm:min-w-[240px] text-center lg:text-right flex flex-col items-center lg:items-end">
             <span className="text-[10px] text-stone-300 font-bold uppercase tracking-wider">
               Composite Financial Health
             </span>

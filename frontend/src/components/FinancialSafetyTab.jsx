@@ -52,7 +52,7 @@ export default function FinancialSafetyTab({ profile }) {
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 min-w-[240px]">
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 w-full sm:w-auto sm:min-w-[240px]">
             <span className="text-[10px] text-emerald-200 font-bold uppercase block">Investing Clearance Status</span>
             <span className="text-base font-black text-amber-300">
               {safety?.clearance_badge || '🔒 Investment Clearance: Limited'}

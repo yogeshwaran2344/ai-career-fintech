@@ -338,7 +338,7 @@ export default function ExamPrepView({ profile, onNavigate }) {
           </div>
 
           {/* Quick Metrics Bar */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 min-w-[280px] space-y-2.5">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 w-full sm:w-auto sm:min-w-[280px] space-y-2.5">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-300">Questions in Bank</span>
               <span className="font-extrabold text-emerald-400">1,240+ Active Questions</span>
