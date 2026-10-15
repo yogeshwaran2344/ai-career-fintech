@@ -11,6 +11,7 @@ import datetime
 
 from models import (
     StudentProfile, SkillItem, SkillGapItem, CareerMatch,
+    AcademicProfile, FinancialProfile, PreferencesProfile,
     LearningRoadmap, RecommendedProject, CertificationAffordability,
     CourseCard, CompleteCourseRequest, DailyActionPlan, DecisionEvaluationRequest,
     DecisionEvaluationResponse, ProgressUpdatePayload, LLMIntentAnalysis,
@@ -238,7 +239,7 @@ def setup_profile_direct(req: ProfileSetupRequest):
             DatabaseManager.update_password_hash(existing_user["id"], new_hash)
         user_id = existing_user["id"]
         DatabaseManager.save_profile(new_profile)
-        token = DatabaseManager.create_session(user_id, duration_days=90)
+        token = DatabaseManager.create_session(user_id, duration_days=3650)
     else:
         user_id, token = DatabaseManager.create_user(
             name=name_clean,
@@ -322,12 +323,18 @@ def login_user(req: UserLoginRequest, request: Request):
     user_row = DatabaseManager.get_user_by_email(email_clean)
     if not user_row:
         DatabaseManager.record_auth_attempt(rate_key, success=False)
-        raise HTTPException(status_code=401, detail="Invalid email or password.")
+        raise HTTPException(
+            status_code=401, 
+            detail="No account found with this email. Click 'Create New Account' or 'Reset Password' to activate it in 1 second."
+        )
         
     is_valid = verify_password(req.password, user_row["password_hash"])
     if not is_valid:
         DatabaseManager.record_auth_attempt(rate_key, success=False)
-        raise HTTPException(status_code=401, detail="Invalid email or password.")
+        raise HTTPException(
+            status_code=401, 
+            detail="Incorrect password. Click 'Forgot / Reset Password' to set a new password instantly."
+        )
         
     DatabaseManager.record_auth_attempt(rate_key, success=True)
     uid = user_row["id"]
@@ -335,7 +342,7 @@ def login_user(req: UserLoginRequest, request: Request):
     if not profile:
         raise HTTPException(status_code=404, detail="Student profile not found.")
         
-    token = DatabaseManager.create_session(uid, device_info="Web App / Desktop", duration_days=90)
+    token = DatabaseManager.create_session(uid, device_info="Web App / Desktop", duration_days=3650)
     
     return AuthResponse(
         token=token,
@@ -352,19 +359,51 @@ class UserResetPasswordRequest(BaseModel):
 @app.post("/api/auth/reset-password", response_model=AuthResponse)
 def reset_user_password(req: UserResetPasswordRequest):
     email_clean = req.email.strip().lower()
-    user_row = DatabaseManager.get_user_by_email(email_clean)
-    if not user_row:
-        raise HTTPException(status_code=404, detail="No registered account found with this email.")
-        
+    if not email_clean or "@" not in email_clean:
+        raise HTTPException(status_code=400, detail="Please enter a valid email address.")
     if len(req.new_password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+
+    user_row = DatabaseManager.get_user_by_email(email_clean)
+    if not user_row:
+        # Auto-provision account with chosen password if it didn't exist yet!
+        user_name = email_clean.split("@")[0].replace(".", " ").replace("_", " ").title() or "Student"
+        new_profile = StudentProfile(
+            id=f"user-{uuid.uuid4().hex[:8]}",
+            name=user_name,
+            email=email_clean,
+            avatar="🎓",
+            career_goal="Full Stack Developer",
+            academic=AcademicProfile(degree="B.Tech / B.E", branch="Computer Science & Engineering", year="3rd Year", college="University", cgpa=8.2),
+            skills=[
+                SkillItem(name="Python", proficiency=7.5, level="Intermediate", category="Programming"),
+                SkillItem(name="Data Structures & Algorithms", proficiency=7.0, level="Intermediate", category="Computer Science"),
+                SkillItem(name="Web Development", proficiency=7.0, level="Intermediate", category="Engineering")
+            ],
+            financial=FinancialProfile(monthly_income=0, food=3000, travel=1000, entertainment=1000, other=500, available_for_learning=2000, savings=5000, emergency_buffer=5000),
+            preferences=PreferencesProfile(preferred_learning_style="Visual & Project-based", study_hours_per_day=3.0, target_placement_year=2027)
+        )
+        user_id, token = DatabaseManager.create_user(
+            name=user_name,
+            email=email_clean,
+            password_plain=req.new_password,
+            avatar="🎓",
+            profile=new_profile
+        )
+        return AuthResponse(
+            token=token,
+            user_id=user_id,
+            name=user_name,
+            email=email_clean,
+            profile=new_profile
+        )
         
     new_hash = hash_password(req.new_password)
     DatabaseManager.update_password_hash(user_row["id"], new_hash)
     
     uid = user_row["id"]
     profile = DatabaseManager.get_profile_by_user_id(uid)
-    token = DatabaseManager.create_session(uid, device_info="Web App / Password Reset", duration_days=30)
+    token = DatabaseManager.create_session(uid, device_info="Web App / Password Reset", duration_days=3650)
     
     return AuthResponse(
         token=token,

@@ -361,8 +361,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
     }
   };
 
-  // Step 0 of Sign Up: Validate basic identity and move to Questionnaire Step 1
-  const handleSignUpStart = (e) => {
+  // Step 0 of Sign Up: Immediately create and commit the account to the database!
+  const handleSignUpStart = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     if (!formData.name.trim()) {
@@ -378,8 +378,62 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
       return;
     }
 
-    setAuthMode('QUESTIONNAIRE');
-    setStep(1);
+    setIsSubmitting(true);
+    try {
+      const initialSkills = Object.entries(formData.skills).map(([name, prof]) => {
+        let level = 'Beginner';
+        if (prof >= 7.5) level = 'Advanced';
+        else if (prof >= 4.0) level = 'Intermediate';
+        return { name, proficiency: prof, level, category: 'General' };
+      });
+
+      const setupPayload = {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        avatar: formData.avatar || '👩‍💻',
+        career_goal: formData.career_goal || 'Full Stack Developer',
+        academic: {
+          degree: formData.degree || 'B.Tech / B.E',
+          branch: formData.branch || 'Computer Science & Engineering',
+          year: formData.year || '3rd Year',
+          college: formData.college.trim() || 'College / University',
+          cgpa: Number(formData.cgpa) || 8.0
+        },
+        preferences: {
+          preferred_learning_style: formData.preferred_learning_style || 'Hands-on / Projects',
+          study_hours_per_day: Number(formData.study_hours_per_day) || 2.5,
+          target_placement_year: Number(formData.target_placement_year) || 2027,
+          free_text_intent: formData.free_text_intent || ''
+        },
+        financial: {
+          monthly_income: Number(formData.monthly_income) || 0,
+          food: Number(formData.food) || 3000,
+          travel: Number(formData.travel) || 1000,
+          entertainment: Number(formData.entertainment) || 1000,
+          other: Number(formData.other) || 500,
+          available_for_learning: Number(formData.available_for_learning) || 2000,
+          savings: Number(formData.savings) || 5000,
+          emergency_buffer: Number(formData.emergency_buffer) || 5000
+        },
+        skills: initialSkills
+      };
+
+      const res = await api.setupProfile(setupPayload);
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      onAuthSuccess(res.profile);
+      try {
+        localStorage.setItem('advisor_last_email', formData.email.trim().toLowerCase());
+        localStorage.setItem('advisor_saved_email', formData.email.trim().toLowerCase());
+      } catch {}
+      // User is now 100% created and authenticated!
+      setAuthMode('QUESTIONNAIRE');
+      setStep(1);
+    } catch (err) {
+      setErrorMsg(err.message || 'Registration failed. Please check your details.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Complete Onboarding Questionnaire
@@ -553,7 +607,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
           )}
         </div>
 
-        {/* Error Alert Box with 1-click Reset Link */}
+        {/* Error Alert Box with 1-click Reset / Create Link */}
         {errorMsg && (
           <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-rose-800 text-xs">
             <div className="flex items-center gap-2">
@@ -561,17 +615,30 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, isDismissibl
               <span>{errorMsg}</span>
             </div>
             {authMode === 'LOGIN' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('RESET_PASSWORD');
-                  setErrorMsg('');
-                  setResetEmail(loginEmail);
-                }}
-                className="px-2.5 py-1 bg-rose-200 hover:bg-rose-300 text-rose-900 font-bold rounded-lg text-[11px] cursor-pointer self-start sm:self-auto shrink-0 transition"
-              >
-                Reset Password →
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('RESET_PASSWORD');
+                    setErrorMsg('');
+                    setResetEmail(loginEmail);
+                  }}
+                  className="px-2.5 py-1 bg-rose-200 hover:bg-rose-300 text-rose-900 font-bold rounded-lg text-[11px] cursor-pointer transition"
+                >
+                  Reset / Set Password →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('REGISTER');
+                    setErrorMsg('');
+                    setFormData(prev => ({ ...prev, email: loginEmail || prev.email, password: loginPassword || prev.password }));
+                  }}
+                  className="px-2.5 py-1 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg text-[11px] cursor-pointer transition"
+                >
+                  Create Account →
+                </button>
+              </div>
             )}
           </div>
         )}

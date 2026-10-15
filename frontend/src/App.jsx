@@ -188,13 +188,15 @@ export default function App() {
       } catch (err) {
         console.warn('API getMe check:', err.message);
         const errMsg = (err.message || '').toLowerCase();
-        if (errMsg.includes('401') || errMsg.includes('unauthorized') || errMsg.includes('session expired') || errMsg.includes('invalid token')) {
+        if ((errMsg.includes('revoked') || errMsg.includes('logged out')) && !cachedUser) {
           authState.clearToken();
           authState.clearUser();
           setProfile(null);
           setIsAuthOpen(true);
         } else if (cachedUser && cachedUser.name) {
-          // Keep session active with cached profile during network retries
+          // Keep user logged in permanently with cached profile!
+          setProfile(cachedUser);
+          setIsAuthOpen(false);
           await loadEngineData().catch(() => {});
         }
       }

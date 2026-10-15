@@ -16,6 +16,8 @@ export const authState = {
   },
   setUser: (user) => localStorage.setItem('advisor_user', JSON.stringify(user)),
   clearUser: () => localStorage.removeItem('advisor_user'),
+  getSavedEmail: () => localStorage.getItem('advisor_saved_email') || '',
+  setSavedEmail: (email) => localStorage.setItem('advisor_saved_email', email),
 };
 
 const authFetch = async (url, options = {}) => {
@@ -31,15 +33,19 @@ const authFetch = async (url, options = {}) => {
   }
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Request failed' }));
     const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/reset-password') || url.includes('/auth/setup-profile');
     if (res.status === 401 && !isAuthAttempt) {
-      authState.clearToken();
-      authState.clearUser();
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('auth:expired', { detail: { status: 401 } }));
+      const errDetail = (errorData.detail || '').toLowerCase();
+      // Only clear token if session was explicitly revoked by user logout
+      if (errDetail.includes('revoked') || errDetail.includes('logged out') || errDetail.includes('invalid session token')) {
+        authState.clearToken();
+        authState.clearUser();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:expired', { detail: { status: 401 } }));
+        }
       }
     }
-    const errorData = await res.json().catch(() => ({ detail: 'Request failed' }));
     throw new Error(errorData.detail || `HTTP Error ${res.status}`);
   }
   return res.json();
@@ -54,6 +60,7 @@ export const api = {
     });
     authState.setToken(data.token);
     authState.setUser(data.profile);
+    if (email) authState.setSavedEmail(email.trim().toLowerCase());
     return data;
   },
   setupProfile: async (setupPayload) => {
@@ -63,6 +70,7 @@ export const api = {
     });
     authState.setToken(data.token);
     authState.setUser(data.profile);
+    if (setupPayload.email) authState.setSavedEmail(setupPayload.email.trim().toLowerCase());
     return data;
   },
   register: async (registerPayload) => {
@@ -72,6 +80,7 @@ export const api = {
     });
     authState.setToken(data.token);
     authState.setUser(data.profile);
+    if (registerPayload.email) authState.setSavedEmail(registerPayload.email.trim().toLowerCase());
     return data;
   },
   resetPassword: async (email, new_password) => {
@@ -82,6 +91,7 @@ export const api = {
     if (data.token) {
       authState.setToken(data.token);
       authState.setUser(data.profile);
+      if (email) authState.setSavedEmail(email.trim().toLowerCase());
     }
     return data;
   },

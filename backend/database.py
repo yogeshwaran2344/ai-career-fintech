@@ -593,20 +593,9 @@ class DatabaseManager:
             conn.close()
             return None
 
-        # Check expiration
-        expires_at_val = row["expires_at"]
-        if expires_at_val:
-            try:
-                exp_dt = datetime.datetime.fromisoformat(expires_at_val.replace("Z", ""))
-                if datetime.datetime.utcnow() > exp_dt:
-                    conn.close()
-                    return None
-            except Exception:
-                pass
-        
         user_id = row["user_id"]
-        # Slide expiration forward by 90 days on active use so active users never get logged out
-        new_exp = (datetime.datetime.utcnow() + datetime.timedelta(days=90)).isoformat()
+        # Slide expiration forward by 3650 days (10 years) on active use so logged-in users are remembered permanently
+        new_exp = (datetime.datetime.utcnow() + datetime.timedelta(days=3650)).isoformat()
         cursor.execute("UPDATE sessions SET last_active_at = CURRENT_TIMESTAMP, expires_at = ? WHERE token = ?", (new_exp, token))
         conn.commit()
 
@@ -690,7 +679,7 @@ class DatabaseManager:
         profile.avatar = avatar
         pass_hash = hash_password(password_plain)
         token = f"token-{uuid.uuid4().hex}"
-        expires_at = (datetime.datetime.utcnow() + datetime.timedelta(days=30)).isoformat()
+        expires_at = (datetime.datetime.utcnow() + datetime.timedelta(days=3650)).isoformat()
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -719,7 +708,7 @@ class DatabaseManager:
         conn.close()
 
     @staticmethod
-    def create_session(user_id: str, device_info: str = "Desktop Browser", ip_address: str = "127.0.0.1", duration_days: int = 90) -> str:
+    def create_session(user_id: str, device_info: str = "Desktop Browser", ip_address: str = "127.0.0.1", duration_days: int = 3650) -> str:
         token = f"token-{uuid.uuid4().hex}"
         expires_at = (datetime.datetime.utcnow() + datetime.timedelta(days=duration_days)).isoformat()
         conn = get_db_connection()
