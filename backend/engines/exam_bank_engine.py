@@ -1342,12 +1342,28 @@ class ExamBankEngine:
         ]
 
         for y, ex, title, diff, dur, count, secs in year_metadata:
-            # Build sample questions using questions from seed bank or procedural generator
-            p_questions = cls.generate_practice_set(
-                exam=ex,
-                section="QUANTITATIVE" if ex in ["GRE", "GMAT"] else "READING",
-                question_count=count
-            ).questions
+            # Build genuine multi-section question papers spanning Quant, Verbal, Reading, and Data Insights
+            p_questions = []
+            if ex == "GRE":
+                q_cnt = max(3, count // 2)
+                v_cnt = count - q_cnt
+                p_questions.extend(cls.generate_practice_set(exam="GRE", section="QUANTITATIVE", question_count=q_cnt).questions)
+                p_questions.extend(cls.generate_practice_set(exam="GRE", section="VERBAL", question_count=v_cnt).questions)
+            elif ex == "GMAT":
+                q_cnt = max(3, count // 2)
+                d_cnt = count - q_cnt
+                p_questions.extend(cls.generate_practice_set(exam="GMAT", section="QUANTITATIVE", question_count=q_cnt).questions)
+                p_questions.extend(cls.generate_practice_set(exam="GMAT", section="DATA_INSIGHTS", question_count=d_cnt).questions)
+            elif ex == "IELTS":
+                r_cnt = max(3, count // 2)
+                v_cnt = count - r_cnt
+                p_questions.extend(cls.generate_practice_set(exam="IELTS", section="READING", question_count=r_cnt).questions)
+                p_questions.extend(cls.generate_practice_set(exam="IELTS", section="VERBAL", question_count=v_cnt).questions)
+            else:  # TOEFL
+                r_cnt = max(3, count // 2)
+                v_cnt = count - r_cnt
+                p_questions.extend(cls.generate_practice_set(exam="TOEFL", section="READING", question_count=r_cnt).questions)
+                p_questions.extend(cls.generate_practice_set(exam="TOEFL", section="VERBAL", question_count=v_cnt).questions)
 
             papers.append(
                 PreviousYearPaper(

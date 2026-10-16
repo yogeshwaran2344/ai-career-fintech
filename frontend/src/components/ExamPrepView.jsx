@@ -38,9 +38,11 @@ export default function ExamPrepView({ profile, onNavigate }) {
   const [loadingPyp, setLoadingPyp] = useState(true);
   const [pypExamFilter, setPypExamFilter] = useState('ALL');
   const [pypYearFilter, setPypYearFilter] = useState('ALL');
+  const [pypSectionFilter, setPypSectionFilter] = useState('ALL');
 
   // Interactive Solving for Previous Paper
   const [activeSolvingPaper, setActiveSolvingPaper] = useState(null);
+  const [activeSolvingSection, setActiveSolvingSection] = useState('ALL');
   const [paperAnswers, setPaperAnswers] = useState({});
   const [paperTimer, setPaperTimer] = useState(1800);
   const [paperSubmitted, setPaperSubmitted] = useState(false);
@@ -309,6 +311,12 @@ export default function ExamPrepView({ profile, onNavigate }) {
   const filteredPapers = pypData?.papers?.filter((p) => {
     if (pypExamFilter !== 'ALL' && p.exam.toUpperCase() !== pypExamFilter.toUpperCase()) return false;
     if (pypYearFilter !== 'ALL' && p.year !== Number(pypYearFilter)) return false;
+    if (pypSectionFilter !== 'ALL') {
+      const target = pypSectionFilter.toLowerCase();
+      const matchSummary = (p.sections_summary || []).some(s => s.toLowerCase().includes(target));
+      const matchQuestions = (p.questions || []).some(q => (q.section || '').toLowerCase().includes(target) || (q.topic || '').toLowerCase().includes(target));
+      if (!matchSummary && !matchQuestions) return false;
+    }
     return true;
   }) || [];
 
@@ -413,7 +421,7 @@ export default function ExamPrepView({ profile, onNavigate }) {
               </div>
 
               {/* Filters */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <div>
                   <select
                     value={pypExamFilter}
@@ -440,7 +448,57 @@ export default function ExamPrepView({ profile, onNavigate }) {
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <select
+                    value={pypSectionFilter}
+                    onChange={(e) => setPypSectionFilter(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+                  >
+                    <option value="ALL">All Paper Sections</option>
+                    <option value="Quantitative">Quantitative Reasoning</option>
+                    <option value="Verbal">Verbal Reasoning</option>
+                    <option value="Reading">Reading Comprehension</option>
+                    <option value="Data Insights">Data Insights & Logic</option>
+                  </select>
+                </div>
               </div>
+            </div>
+
+            {/* Quick Section Filter Chips */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">QP Sections:</span>
+              {[
+                { id: 'ALL', label: 'All Sections' },
+                { id: 'Quantitative', label: '📐 Quantitative Reasoning' },
+                { id: 'Verbal', label: '📖 Verbal Reasoning' },
+                { id: 'Reading', label: '📑 Reading Comprehension' },
+                { id: 'Data Insights', label: '📊 Data Insights' },
+              ].map(sec => (
+                <button
+                  key={sec.id}
+                  onClick={() => setPypSectionFilter(sec.id)}
+                  className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer text-xs ${
+                    pypSectionFilter.toLowerCase() === sec.id.toLowerCase()
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {sec.label}
+                </button>
+              ))}
+              {(pypExamFilter !== 'ALL' || pypYearFilter !== 'ALL' || pypSectionFilter !== 'ALL') && (
+                <button
+                  onClick={() => {
+                    setPypExamFilter('ALL');
+                    setPypYearFilter('ALL');
+                    setPypSectionFilter('ALL');
+                  }}
+                  className="text-indigo-600 hover:underline font-bold text-xs ml-auto cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              )}
             </div>
           </div>
 
@@ -485,9 +543,42 @@ export default function ExamPrepView({ profile, onNavigate }) {
                 </div>
               </div>
 
+              {/* Section Tabs inside Interactive Paper Runner */}
+              {(() => {
+                const distinctSections = ['ALL', ...Array.from(new Set(activeSolvingPaper.questions.map(q => q.section || 'General')))];
+                return (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-100">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">Solve Section:</span>
+                    {distinctSections.map(sec => {
+                      const count = sec === 'ALL'
+                        ? activeSolvingPaper.questions.length
+                        : activeSolvingPaper.questions.filter(q => (q.section || 'General') === sec).length;
+                      return (
+                        <button
+                          key={sec}
+                          onClick={() => setActiveSolvingSection(sec)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                            activeSolvingSection === sec
+                              ? 'bg-indigo-600 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          }`}
+                        >
+                          <span>{sec === 'ALL' ? 'All Sections' : sec}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${activeSolvingSection === sec ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                            {count} Qs
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
               {/* Questions in Paper */}
               <div className="space-y-6">
-                {activeSolvingPaper.questions.map((q, idx) => {
+                {activeSolvingPaper.questions
+                  .filter(q => activeSolvingSection === 'ALL' || (q.section || 'General') === activeSolvingSection)
+                  .map((q, idx) => {
                   const userChoice = paperAnswers[q.id];
                   const hasAnswered = userChoice !== undefined;
                   const isCorrect = userChoice === q.correct_option;
@@ -504,7 +595,7 @@ export default function ExamPrepView({ profile, onNavigate }) {
                       }`}
                     >
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold text-indigo-700">Question {idx + 1} • {q.topic}</span>
+                        <span className="text-xs font-bold text-indigo-700">Question {idx + 1} • {q.section ? `Section: ${q.section} • ` : ''}{q.topic}</span>
                         {paperSubmitted && (
                           <span className={`px-2 py-0.5 rounded text-xs font-bold ${isCorrect ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
                             {isCorrect ? 'Correct (+1)' : 'Incorrect'}
@@ -558,91 +649,134 @@ export default function ExamPrepView({ profile, onNavigate }) {
           )}
 
           {/* Paper Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredPapers.map((paper) => {
-              const isViewingSolution = viewingSolutionPaperId === paper.id;
+          {loadingPyp ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
+              <div className="animate-spin w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+              <p className="text-slate-600 font-medium text-sm">Loading authentic past year question papers...</p>
+            </div>
+          ) : filteredPapers.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-4">
+              <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-xl">📄</div>
+              <div>
+                <h4 className="font-bold text-slate-800 text-sm">No question papers found</h4>
+                <p className="text-slate-500 text-xs mt-1">No past papers match your active filter combination.</p>
+              </div>
+              <button
+                onClick={() => {
+                  setPypExamFilter('ALL');
+                  setPypYearFilter('ALL');
+                  setPypSectionFilter('ALL');
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredPapers.map((paper) => {
+                const isViewingSolution = viewingSolutionPaperId === paper.id;
 
-              return (
-                <div key={paper.id} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4 hover:shadow-md transition">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-full">
-                          {paper.exam}
-                        </span>
-                        <span className="px-2 py-0.5 bg-amber-50 text-amber-800 text-xs font-bold rounded-md border border-amber-200">
-                          {paper.year} Paper
-                        </span>
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded font-medium">
-                          {paper.difficulty}
-                        </span>
-                      </div>
-                      <h4 className="font-bold text-slate-900 text-sm mt-1">{paper.title}</h4>
-                    </div>
-
-                    <span className="text-xs text-slate-500 font-medium">
-                      ⏱ {paper.duration_minutes} mins
-                    </span>
-                  </div>
-
-                  {/* Sections Breakdown */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Sections Tested</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {paper.sections_summary.map((sec, idx) => (
-                        <span key={idx} className="px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-700">
-                          {sec}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                    <button
-                      onClick={() => {
-                        setActiveSolvingPaper(paper);
-                        setPaperAnswers({});
-                        setPaperTimer(paper.duration_minutes * 60);
-                        setPaperSubmitted(false);
-                      }}
-                      className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-                    >
-                      <Play className="w-3.5 h-3.5" /> Solve Timed Paper
-                    </button>
-
-                    <button
-                      onClick={() => setViewingSolutionPaperId(isViewingSolution ? null : paper.id)}
-                      className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1"
-                    >
-                      <span>{isViewingSolution ? 'Hide Solutions' : 'Answer Key'}</span>
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isViewingSolution ? 'rotate-180' : ''}`} />
-                    </button>
-                  </div>
-
-                  {/* Solution Key Expansion */}
-                  {isViewingSolution && (
-                    <div className="mt-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4 max-h-[400px] overflow-y-auto">
-                      <strong className="text-xs font-bold text-slate-800 block border-b border-slate-200 pb-2">
-                        Official Solutions & Explanations ({paper.questions.length} Questions)
-                      </strong>
-                      {paper.questions.map((q, qidx) => (
-                        <div key={q.id} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-1.5">
-                          <div className="font-semibold text-slate-900">
-                            Q{qidx + 1}: {q.question}
-                          </div>
-                          <div className="text-emerald-700 font-bold">
-                            Correct: Option {String.fromCharCode(65 + q.correct_option)} ({q.options[q.correct_option]})
-                          </div>
-                          <p className="text-slate-600 leading-relaxed text-[11px]">{q.explanation}</p>
+                return (
+                  <div key={paper.id} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4 hover:shadow-md transition">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-full">
+                            {paper.exam}
+                          </span>
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-800 text-xs font-bold rounded-md border border-amber-200">
+                            {paper.year} Paper
+                          </span>
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded font-medium">
+                            {paper.difficulty}
+                          </span>
                         </div>
-                      ))}
+                        <h4 className="font-bold text-slate-900 text-sm mt-1">{paper.title}</h4>
+                      </div>
+
+                      <span className="text-xs text-slate-500 font-medium">
+                        ⏱ {paper.duration_minutes} mins
+                      </span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+
+                    {/* Sections Breakdown */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Sections Tested (Click to Filter)</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {paper.sections_summary.map((sec, idx) => {
+                          const isSecSelected = pypSectionFilter.toLowerCase() === sec.toLowerCase();
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setPypSectionFilter(isSecSelected ? 'ALL' : sec)}
+                              className={`px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                                isSecSelected
+                                  ? 'bg-indigo-600 text-white border border-indigo-600 shadow-xs'
+                                  : 'bg-slate-50 hover:bg-indigo-50 border border-slate-200 text-slate-700 hover:text-indigo-700 hover:border-indigo-200'
+                              }`}
+                              title={`Filter papers by ${sec}`}
+                            >
+                              {sec}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        onClick={() => {
+                          setActiveSolvingPaper(paper);
+                          setActiveSolvingSection('ALL');
+                          setPaperAnswers({});
+                          setPaperTimer(paper.duration_minutes * 60);
+                          setPaperSubmitted(false);
+                        }}
+                        className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <Play className="w-3.5 h-3.5" /> Solve Timed Paper
+                      </button>
+
+                      <button
+                        onClick={() => setViewingSolutionPaperId(isViewingSolution ? null : paper.id)}
+                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1"
+                      >
+                        <span>{isViewingSolution ? 'Hide Solutions' : 'Answer Key'}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isViewingSolution ? 'rotate-180' : ''}`} />
+                      </button>
+                    </div>
+
+                    {/* Solution Key Expansion */}
+                    {isViewingSolution && (
+                      <div className="mt-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4 max-h-[400px] overflow-y-auto">
+                        <strong className="text-xs font-bold text-slate-800 block border-b border-slate-200 pb-2">
+                          Official Solutions & Explanations ({paper.questions.length} Questions)
+                        </strong>
+                        {paper.questions.map((q, qidx) => (
+                          <div key={q.id} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold mb-1">
+                              <span>Q{qidx + 1} • {q.section}</span>
+                              <span className="text-slate-400">{q.topic}</span>
+                            </div>
+                            <div className="font-semibold text-slate-900">
+                              {q.question}
+                            </div>
+                            <div className="text-emerald-700 font-bold">
+                              Correct: Option {String.fromCharCode(65 + q.correct_option)} ({q.options[q.correct_option]})
+                            </div>
+                            <p className="text-slate-600 leading-relaxed text-[11px]">{q.explanation}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -1205,9 +1205,14 @@ class MarketOverviewResponse(BaseModel):
     indices: List[LiveMarketQuote]
     top_gainers: List[LiveMarketQuote]
     top_losers: List[LiveMarketQuote]
-    most_active: List[LiveMarketQuote]
-    market_status: str
-    regulatory_notice: str
+    most_active: List[LiveMarketQuote] = []
+    market_status: str = "OPEN"
+    regulatory_notice: str = "Market data provided for educational and simulation purposes in accordance with SEBI guidelines."
+    all_equities: Optional[List[LiveMarketQuote]] = None
+    market_sentiment: Optional[str] = "NEUTRAL"
+    advances_count: Optional[int] = 0
+    declines_count: Optional[int] = 0
+    as_of_time: Optional[str] = None
 
 class BrokerConnectRequest(BaseModel):
     broker_name: str = "Groww"  # "Groww", "Dhan", "Zerodha", "Upstox", "Angel One", "Kotak Neo", "ICICI Direct", "HDFC Sky"

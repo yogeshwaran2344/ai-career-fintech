@@ -141,6 +141,17 @@ def get_user_from_auth(
         )
     return profile
 
+def get_user_from_auth_optional(
+    authorization: Optional[str] = Header(None)
+) -> Optional[StudentProfile]:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        token = authorization.split(" ")[1].strip()
+        return DatabaseManager.get_user_by_token(token)
+    except Exception:
+        return None
+
 @app.get("/api/health")
 def health_check():
     return {"status": "healthy", "service": "Elevare Platform", "database": "SQLite Persistent", "version": "3.0.0"}
@@ -992,11 +1003,12 @@ def get_live_market_quote(symbol: str, current_user: StudentProfile = Depends(ge
 
 @app.get("/api/market/chart/{symbol}", response_model=MarketChartResponse)
 def get_live_market_chart(symbol: str, interval: str = Query("5m"), current_user: StudentProfile = Depends(get_user_from_auth)):
-    return MarketDataService.get_chart_candles(symbol, interval)
+    return MarketDataService.get_chart_data(symbol, interval)
 
 @app.get("/api/market/search")
-def search_market_symbols(query: str = Query(...), current_user: StudentProfile = Depends(get_user_from_auth)):
-    return MarketDataService.search_symbols(query)
+def search_market_symbols(query: Optional[str] = Query(None), q: Optional[str] = Query(None), current_user: StudentProfile = Depends(get_user_from_auth)):
+    search_term = query or q or ""
+    return MarketDataService.search_symbols(search_term)
 
 @app.websocket("/api/ws/market")
 async def websocket_market_feed(websocket: WebSocket):
@@ -1093,7 +1105,7 @@ def audit_real_portfolio(current_user: StudentProfile = Depends(get_user_from_au
 
 @app.post("/api/decision/evaluate", response_model=DecisionEvaluationResponse)
 def evaluate_decision(req: DecisionEvaluationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
-    return DecisionEngine.evaluate_decision(current_user, req)
+    return DecisionEngine.evaluate_scenario(current_user, req)
 
 @app.get("/api/career/weekly-review", response_model=WeeklyReviewData)
 def get_weekly_review(current_user: StudentProfile = Depends(get_user_from_auth)):
@@ -1502,7 +1514,7 @@ def update_user_visa_progress(req: SaveVisaProgressRequest, current_user: Studen
 # ==================== ADVANCED EXAM PREPARATION ENGINE API ====================
 
 @app.post("/api/study-abroad/exam/generate-set", response_model=PracticeSetResponse)
-def generate_exam_practice_set(req: GeneratePracticeSetRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+def generate_exam_practice_set(req: GeneratePracticeSetRequest, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     return ExamBankEngine.generate_practice_set(
         exam=req.exam,
         section=req.section,
@@ -1513,7 +1525,7 @@ def generate_exam_practice_set(req: GeneratePracticeSetRequest, current_user: St
     )
 
 @app.post("/api/study-abroad/exam/submit-set", response_model=PracticeSetEvaluationResponse)
-def submit_exam_practice_set(req: SubmitPracticeSetRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+def submit_exam_practice_set(req: SubmitPracticeSetRequest, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     # Retrieve question definitions from seed bank and procedural templates
     questions: List[ExamQuestion] = []
     for qid in req.answers.keys():
@@ -1541,47 +1553,48 @@ def submit_exam_practice_set(req: SubmitPracticeSetRequest, current_user: Studen
         time_spent_seconds=req.time_spent_seconds
     )
 
-    # Persist attempts and mistake bank
-    for res in evaluation.results:
-        DatabaseManager.record_exam_attempt(
-            user_id=current_user.id,
-            set_or_mock_id=req.set_id,
-            question_id=res.question_id,
-            exam=req.exam,
-            section=req.section,
-            topic=res.topic,
-            difficulty=res.difficulty,
-            user_choice=res.user_choice,
-            correct_choice=res.correct_choice,
-            is_correct=res.is_correct,
-            time_spent_seconds=int(req.time_spent_seconds / max(len(evaluation.results), 1))
-        )
-        if not res.is_correct:
-            q_dict = {
-                "id": res.question_id,
-                "exam": req.exam,
-                "section": req.section,
-                "topic": res.topic,
-                "difficulty": res.difficulty,
-                "question": res.question,
-                "options": res.options,
-                "correct_option": res.correct_choice,
-                "explanation": res.explanation,
-                "concept_tested": res.concept_tested
-            }
-            DatabaseManager.add_to_mistake_bank(current_user.id, q_dict, res.user_choice)
+    # Persist attempts and mistake bank if logged in
+    if current_user:
+        for res in evaluation.results:
+            DatabaseManager.record_exam_attempt(
+                user_id=current_user.id,
+                set_or_mock_id=req.set_id,
+                question_id=res.question_id,
+                exam=req.exam,
+                section=req.section,
+                topic=res.topic,
+                difficulty=res.difficulty,
+                user_choice=res.user_choice,
+                correct_choice=res.correct_choice,
+                is_correct=res.is_correct,
+                time_spent_seconds=int(req.time_spent_seconds / max(len(evaluation.results), 1))
+            )
+            if not res.is_correct:
+                q_dict = {
+                    "id": res.question_id,
+                    "exam": req.exam,
+                    "section": req.section,
+                    "topic": res.topic,
+                    "difficulty": res.difficulty,
+                    "question": res.question,
+                    "options": res.options,
+                    "correct_option": res.correct_choice,
+                    "explanation": res.explanation,
+                    "concept_tested": res.concept_tested
+                }
+                DatabaseManager.add_to_mistake_bank(current_user.id, q_dict, res.user_choice)
 
     return evaluation
 
 @app.post("/api/study-abroad/exam/mock/start", response_model=MockExamBlueprint)
-def start_exam_mock_test(req: StartMockExamRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+def start_exam_mock_test(req: StartMockExamRequest, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     return ExamBankEngine.create_full_mock_blueprint(
         exam=req.exam,
         mode=req.mock_mode
     )
 
 @app.post("/api/study-abroad/exam/mock/submit", response_model=MockExamEvaluationResponse)
-def submit_exam_mock_test(req: SubmitMockExamRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+def submit_exam_mock_test(req: SubmitMockExamRequest, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     # Retrieve the full set of questions for this mock exam
     questions: List[ExamQuestion] = []
     if req.questions and len(req.questions) > 0:
@@ -1604,52 +1617,57 @@ def submit_exam_mock_test(req: SubmitMockExamRequest, current_user: StudentProfi
         time_spent_seconds=req.time_spent_seconds
     )
 
-    # Record all attempted questions in database
-    for q in questions:
-        if q.id in req.answers:
-            user_pick = req.answers[q.id]
-            is_corr = (user_pick == q.correct_option)
-            DatabaseManager.record_exam_attempt(
-                user_id=current_user.id,
-                set_or_mock_id=req.mock_id,
-                question_id=q.id,
-                exam=req.exam,
-                section=q.section,
-                topic=q.topic,
-                difficulty=q.difficulty,
-                user_choice=user_pick,
-                correct_choice=q.correct_option,
-                is_correct=is_corr,
-                time_spent_seconds=30
-            )
-            if not is_corr:
-                DatabaseManager.add_to_mistake_bank(current_user.id, q.dict(), user_pick)
+    # Record all attempted questions in database if logged in
+    if current_user:
+        for q in questions:
+            if q.id in req.answers:
+                user_pick = req.answers[q.id]
+                is_corr = (user_pick == q.correct_option)
+                DatabaseManager.record_exam_attempt(
+                    user_id=current_user.id,
+                    set_or_mock_id=req.mock_id,
+                    question_id=q.id,
+                    exam=req.exam,
+                    section=q.section,
+                    topic=q.topic,
+                    difficulty=q.difficulty,
+                    user_choice=user_pick,
+                    correct_choice=q.correct_option,
+                    is_correct=is_corr,
+                    time_spent_seconds=30
+                )
+                if not is_corr:
+                    DatabaseManager.add_to_mistake_bank(current_user.id, q.dict(), user_pick)
 
-    # Record Mock History in DB
-    existing_mocks = DatabaseManager.get_user_mock_history(current_user.id, req.exam)
-    DatabaseManager.record_mock_history(
-        user_id=current_user.id,
-        mock_title=f"{req.exam} Diagnostic Mock #{len(existing_mocks) + 1}",
-        exam=req.exam,
-        quant_score=evaluation.quant_scaled_score,
-        verbal_score=evaluation.verbal_scaled_score,
-        total_score=evaluation.total_scaled_score,
-        accuracy_pct=evaluation.overall_accuracy_pct,
-        raw_data={
-            "weakest": evaluation.weakest_topics,
-            "strongest": evaluation.strongest_topics,
-            "attempted": evaluation.attempted_count,
-            "unanswered": evaluation.unanswered_count,
-            "total_questions": evaluation.total_questions
-        }
-    )
+        # Record Mock History in DB
+        existing_mocks = DatabaseManager.get_user_mock_history(current_user.id, req.exam)
+        DatabaseManager.record_mock_history(
+            user_id=current_user.id,
+            mock_title=f"{req.exam} Diagnostic Mock #{len(existing_mocks) + 1}",
+            exam=req.exam,
+            quant_score=evaluation.quant_scaled_score,
+            verbal_score=evaluation.verbal_scaled_score,
+            total_score=evaluation.total_scaled_score,
+            accuracy_pct=evaluation.overall_accuracy_pct,
+            raw_data={
+                "weakest": evaluation.weakest_topics,
+                "strongest": evaluation.strongest_topics,
+                "attempted": evaluation.attempted_count,
+                "unanswered": evaluation.unanswered_count,
+                "total_questions": evaluation.total_questions
+            }
+        )
 
     return evaluation
 
 @app.get("/api/study-abroad/exam/analytics", response_model=ExamAnalyticsSummary)
-def get_exam_analytics(exam: str = "GRE", current_user: StudentProfile = Depends(get_user_from_auth)):
-    stats = DatabaseManager.get_exam_analytics_stats(current_user.id, exam)
-    history_rows = DatabaseManager.get_user_mock_history(current_user.id, exam)
+def get_exam_analytics(exam: str = "GRE", current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
+    if current_user:
+        stats = DatabaseManager.get_exam_analytics_stats(current_user.id, exam)
+        history_rows = DatabaseManager.get_user_mock_history(current_user.id, exam)
+    else:
+        stats = {"total_attempts": 0, "total_correct": 0, "unresolved_mistakes": 0, "topic_stats": []}
+        history_rows = []
 
     mock_history = [
         MockScoreHistoryItem(
@@ -1719,7 +1737,10 @@ def get_exam_analytics(exam: str = "GRE", current_user: StudentProfile = Depends
     )
 
 @app.get("/api/study-abroad/exam/mistake-bank", response_model=MistakeBankResponse)
-def get_user_mistake_bank(exam: Optional[str] = "GRE", topic: Optional[str] = None, current_user: StudentProfile = Depends(get_user_from_auth)):
+def get_user_mistake_bank(exam: Optional[str] = "GRE", topic: Optional[str] = None, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
+    if not current_user:
+        return MistakeBankResponse(total_unresolved=0, topic_counts={}, items=[])
+
     rows = DatabaseManager.get_user_mistake_bank(current_user.id, exam=exam, topic=topic)
     
     items: List[MistakeBankItem] = []
@@ -1756,12 +1777,13 @@ def get_user_mistake_bank(exam: Optional[str] = "GRE", topic: Optional[str] = No
     )
 
 @app.post("/api/study-abroad/exam/resolve-mistake/{question_id}")
-def resolve_exam_mistake(question_id: str, current_user: StudentProfile = Depends(get_user_from_auth)):
-    DatabaseManager.resolve_mistake(current_user.id, question_id)
+def resolve_exam_mistake(question_id: str, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
+    if current_user:
+        DatabaseManager.resolve_mistake(current_user.id, question_id)
     return {"success": True, "resolved_question_id": question_id}
 
 @app.post("/api/study-abroad/exam/evaluate-writing", response_model=WritingEvaluationResponse)
-def evaluate_exam_writing(req: WritingEvaluationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+def evaluate_exam_writing(req: WritingEvaluationRequest, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     return ExamBankEngine.evaluate_writing_essay(
         exam=req.exam,
         topic_prompt=req.topic_prompt,
@@ -1769,7 +1791,7 @@ def evaluate_exam_writing(req: WritingEvaluationRequest, current_user: StudentPr
     )
 
 @app.post("/api/study-abroad/exam/evaluate-speaking", response_model=SpeakingEvaluationResponse)
-def evaluate_exam_speaking(req: SpeakingEvaluationRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
+def evaluate_exam_speaking(req: SpeakingEvaluationRequest, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     return ExamBankEngine.evaluate_speaking_response(
         cue_card_topic=req.cue_card_topic,
         transcript_text=req.transcript_text,
@@ -1777,30 +1799,35 @@ def evaluate_exam_speaking(req: SpeakingEvaluationRequest, current_user: Student
     )
 
 @app.get("/api/study-abroad/exam/readiness-score", response_model=MastersOverallReadiness)
-def get_masters_readiness_score(current_user: StudentProfile = Depends(get_user_from_auth)):
-    stats = DatabaseManager.get_exam_analytics_stats(current_user.id, "GRE")
+def get_masters_readiness_score(current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
+    if current_user:
+        stats = DatabaseManager.get_exam_analytics_stats(current_user.id, "GRE")
+        profile_dict = current_user.dict()
+    else:
+        stats = {}
+        profile_dict = {}
     return ExamBankEngine.calculate_masters_readiness_score(
-        student_profile=current_user.dict(),
+        student_profile=profile_dict,
         exam_stats=stats
     )
 
 @app.get("/api/study-abroad/exam/prep-budget", response_model=StudyAbroadPrepBudget)
-def get_study_abroad_prep_budget(current_user: StudentProfile = Depends(get_user_from_auth)):
+def get_study_abroad_prep_budget(current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     return ExamBankEngine.get_prep_budget()
 
 @app.get("/api/study-abroad/exam/previous-papers", response_model=PreviousYearPapersListResponse)
-def list_previous_year_papers(exam: Optional[str] = None, year: Optional[int] = None, current_user: StudentProfile = Depends(get_user_from_auth)):
+def list_previous_year_papers(exam: Optional[str] = None, year: Optional[int] = None, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     return ExamBankEngine.get_previous_year_papers(exam=exam, year=year)
 
 @app.get("/api/study-abroad/exam/previous-papers/{paper_id}", response_model=PreviousYearPaper)
-def get_previous_year_paper(paper_id: str, current_user: StudentProfile = Depends(get_user_from_auth)):
+def get_previous_year_paper(paper_id: str, current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     paper = ExamBankEngine.get_previous_paper_by_id(paper_id)
     if not paper:
         raise HTTPException(status_code=404, detail="Previous year paper not found.")
     return paper
 
 @app.get("/api/study-abroad/exam/question-bank-stats")
-def get_question_bank_statistics(current_user: StudentProfile = Depends(get_user_from_auth)):
+def get_question_bank_statistics(current_user: Optional[StudentProfile] = Depends(get_user_from_auth_optional)):
     return ExamBankEngine.get_question_bank_statistics()
 
 # ==================== STUDENT INTELLIGENCE & LEARNING DECAY ====================

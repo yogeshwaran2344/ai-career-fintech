@@ -185,10 +185,17 @@ class MarketDataService:
         top_gainers = sorted_by_pct[:5]
         top_losers = sorted_by_pct[-5:]
 
+        # Most active by volume
+        sorted_by_vol = sorted(all_equities, key=lambda x: x.volume, reverse=True)
+        most_active = sorted_by_vol[:5]
+
         return MarketOverviewResponse(
             indices=indices,
             top_gainers=top_gainers,
             top_losers=top_losers,
+            most_active=most_active,
+            market_status="OPEN (Live Trading Session)",
+            regulatory_notice="Real-time benchmark feeds provided for academic and simulated career-wealth portfolio tracking.",
             all_equities=all_equities,
             market_sentiment="BULLISH" if indices[0].change_pct > 0 else "CAUTIOUS",
             advances_count=sum(1 for e in all_equities if e.change_pct >= 0),
@@ -219,7 +226,7 @@ class MarketDataService:
             c_vol = int(random.randint(15000, 185000))
             
             candles.append(MarketCandle(
-                timestamp=c_time,
+                time=c_time,
                 open=c_open,
                 high=c_high,
                 low=c_low,
@@ -236,5 +243,23 @@ class MarketDataService:
         return MarketChartResponse(
             symbol=symbol.upper(),
             interval=interval,
-            candles=candles
+            candles=candles,
+            last_price=quote.last_price,
+            change=quote.change,
+            change_pct=quote.change_pct
         )
+
+    @classmethod
+    def search_symbols(cls, query: str = "") -> List[LiveMarketQuote]:
+        q = (query or "").strip().lower()
+        if not q:
+            popular = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "TATAMOTORS", "ZOMATO", "SUZLON", "IDEA"]
+            return [cls.get_quote(s) for s in popular if s in EQUITIES_MASTER]
+        
+        matches = []
+        for sym, info in EQUITIES_MASTER.items():
+            if q in sym.lower() or q in info["name"].lower() or q in info.get("sector", "").lower():
+                matches.append(sym)
+                if len(matches) >= 15:
+                    break
+        return [cls.get_quote(s) for s in matches]
