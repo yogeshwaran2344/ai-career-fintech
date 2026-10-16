@@ -87,6 +87,10 @@ export default function StockAdvisorTab({ onOpenOrderModal, brokerStatus, cleara
     let matchesCategory = true;
     if (selectedCategory === 'TOP_PICKS') {
       matchesCategory = stock.is_top_pick || (data?.top_student_picks || []).some(tp => tp.symbol === stock.symbol);
+    } else if (selectedCategory === 'UNDER_100') {
+      matchesCategory = (stock.current_price || 0) <= 100;
+    } else if (selectedCategory === 'UNDER_500') {
+      matchesCategory = (stock.current_price || 0) <= 500;
     } else if (selectedCategory === 'HIGH_GROWTH') {
       matchesCategory = (data?.high_growth_picks || []).some(hg => hg.symbol === stock.symbol) || stock.risk_level === 'HIGH GROWTH' || (stock.potential_upside_pct || 0) >= 20;
     } else if (selectedCategory === 'DEFENSIVE') {
@@ -249,7 +253,7 @@ export default function StockAdvisorTab({ onOpenOrderModal, brokerStatus, cleara
             <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
             <input
               type="text"
-              placeholder="Search all companies by ticker (e.g., TCS, INFY, TATAMOTORS, ZOMATO, HDFCBANK)..."
+              placeholder="Search all companies by ticker (e.g. Suzlon, Tata Steel, Zomato, IRFC, TCS, BEL, Reliance)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full text-xs font-semibold pl-10 pr-9 py-2.5 bg-stone-100 border border-stone-200 rounded-xl focus:outline-indigo-500 text-stone-900"
@@ -269,6 +273,8 @@ export default function StockAdvisorTab({ onOpenOrderModal, brokerStatus, cleara
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             {[
               { id: 'ALL', label: `All Companies (${allRecommendations.length})` },
+              { id: 'UNDER_100', label: '🪙 Under ₹100' },
+              { id: 'UNDER_500', label: '⚡ Under ₹500' },
               { id: 'TOP_PICKS', label: '🌟 Top Picks' },
               { id: 'HIGH_GROWTH', label: '🚀 High Growth (>20%)' },
               { id: 'DEFENSIVE', label: '🛡️ Defensive Compounders' }

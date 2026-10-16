@@ -173,7 +173,7 @@ export default function DecisionCopilotView({ profile, readiness }) {
   const [messages, setMessages] = useState([
     {
       sender: 'copilot',
-      text: `Hello ${profile?.name || 'Student'}! I'm your AI Career + Finance Decision Copilot. I analyze both your technical readiness (${readiness?.readiness_pct ?? 0}%) for **${profile?.career_goal || 'your target role'}** and your **₹${(profile?.financial?.available_for_learning ?? 0).toLocaleString()}/month** financial budget simultaneously. Ask me about trade-offs, certifications, or how to allocate your next ₹X!`
+      text: `Hello ${profile?.name || 'Student'}! I'm your Career & Finance Strategy Advisor. I analyze both your technical readiness (${readiness?.readiness_pct ?? 0}%) for **${profile?.career_goal || 'your target role'}** and your **₹${(profile?.financial?.available_for_learning ?? 0).toLocaleString()}/month** budget simultaneously. Ask me about trade-offs, certifications, or how to allocate your funds!`
     }
   ]);
   const [inputQuery, setInputQuery] = useState('');
@@ -836,7 +836,7 @@ export default function DecisionCopilotView({ profile, readiness }) {
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-stone-900">AI Career & Finance Advisor</h3>
+                  <h3 className="text-xs font-bold text-stone-900">Career & Finance Strategy Advisor</h3>
                   <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online • Co-optimizing for {profile?.name || 'Student'}
                   </span>
@@ -877,7 +877,7 @@ export default function DecisionCopilotView({ profile, readiness }) {
                 <div className="flex justify-start">
                   <div className="bg-stone-100 p-3 rounded-2xl text-xs text-stone-500 flex items-center gap-1.5 animate-pulse">
                     <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                    <span>AI Copilot is analyzing career & financial constraints...</span>
+                    <span>Advisor is analyzing career & financial roadmap...</span>
                   </div>
                 </div>
               )}

@@ -134,7 +134,7 @@ export default function CareerVsInvestmentTab({ profile }) {
                     : 'bg-emerald-600 text-white'
                 }`}>
                   <Sparkles className="w-3 h-3" />
-                  <span>AI Copilot Recommendation: {data.ai_verdict.replace(/_/g, ' ')}</span>
+                  <span>Strategy Recommendation: {data.ai_verdict.replace(/_/g, ' ')}</span>
                 </span>
                 <h3 className="text-lg font-black text-stone-900 mt-2">
                   {data.strategic_rationale}

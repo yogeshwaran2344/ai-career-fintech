@@ -5,6 +5,7 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ArrowRight,
+  ArrowLeft,
   TrendingUp,
   TrendingDown,
   Building
@@ -81,17 +82,41 @@ export default function BrokerOrderModal({
     onClose();
   };
 
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in text-stone-800">
-      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 overflow-hidden">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in text-stone-800 cursor-pointer"
+    >
+      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 overflow-hidden cursor-default">
         {/* Header */}
         <div className={`p-6 text-white relative ${transactionType === 'BUY' ? 'bg-gradient-to-r from-emerald-800 to-teal-900' : 'bg-gradient-to-r from-rose-800 to-red-900'}`}>
-          <button 
-            onClick={handleClose}
-            className="absolute top-5 right-5 text-white/70 hover:text-white transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center justify-between mb-3">
+            <button
+              type="button"
+              onClick={step === 'CONFIRM' ? () => setStep('TICKET') : handleClose}
+              className="flex items-center gap-1.5 text-xs font-bold text-white bg-white/15 hover:bg-white/25 active:scale-95 px-3 py-1.5 rounded-xl transition cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{step === 'CONFIRM' ? '← Back to Ticket' : '← Back'}</span>
+            </button>
+            <button 
+              type="button"
+              onClick={handleClose}
+              className="text-white/80 hover:text-white p-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition cursor-pointer"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/80">
             <Building className="w-4 h-4" />
             <span>Broker OMS • Live NSE Execution • {step === 'CONFIRM' ? 'Step 2/2 Review' : 'Step 1/2 Ticket'}</span>

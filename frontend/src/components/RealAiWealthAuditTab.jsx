@@ -63,7 +63,7 @@ export default function RealAiWealthAuditTab({ profile, onNavigateToCareer }) {
             <Sparkles className="w-4 h-4 text-emerald-400" />
             <span className="text-xs font-black tracking-wider uppercase text-emerald-400">Contextual Wealth Intelligence</span>
           </div>
-          <h2 className="text-xl font-black mt-1">Real AI Wealth Copilot Audit</h2>
+          <h2 className="text-xl font-black mt-1">Portfolio & Wealth Audit</h2>
           <p className="text-xs text-stone-300 mt-0.5 max-w-xl">
             Correlates your live broker portfolio holdings with your student cash flow, emergency reserves, and target career path ({profile?.career_goal || 'AI Engineer'}).
           </p>
@@ -201,7 +201,7 @@ export default function RealAiWealthAuditTab({ profile, onNavigateToCareer }) {
             </div>
 
             <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200/80 space-y-2">
-              <span className="text-xs font-black text-emerald-950 uppercase tracking-wider block">AI Copilot Recommendation</span>
+              <span className="text-xs font-black text-emerald-950 uppercase tracking-wider block">Strategic Allocation Advice</span>
               <p className="text-xs text-emerald-900 leading-relaxed font-medium">
                 {auditData?.student_cash_flow_advice}
               </p>

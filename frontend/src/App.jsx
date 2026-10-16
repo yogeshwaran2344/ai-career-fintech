@@ -926,9 +926,9 @@ export default function App() {
                 { id: 'finance', title: 'Finance & Budget', desc: 'Expense tracking, discretionary income, budgeting rules', category: 'Wealth' },
                 { id: 'investments', title: 'Investments & Orders', desc: 'Live broker simulation, stock research, SIP calculator', category: 'Fintech' },
                 { id: 'studyabroad', title: 'Study Abroad & MS', desc: 'Top 3 countries comparison, university finder, costs & ROI', category: 'Global' },
-                { id: 'examprep', title: 'Exam Prep & 10-Yr Papers', desc: '1,000+ questions, GRE, IELTS, GATE, TOEFL mock tests', category: 'Exams' },
-                { id: 'safety', title: '5-Gate Financial Safety', desc: 'Emergency floor clearance, impulse lock, safety checks', category: 'Safety' },
-                { id: 'copilot', title: 'Career Strategy & Decision Advisor', desc: 'Strategic roadmaps, career decisions & learning guidance', category: 'Advisor' },
+                { id: 'examprep', title: 'Exam Prep & Past Papers', desc: 'Comprehensive questions, GRE, IELTS, GATE, TOEFL mock tests', category: 'Exams' },
+                { id: 'safety', title: 'Financial Safety Center', desc: 'Emergency reserve clearance, impulse lock, safety checks', category: 'Safety' },
+                { id: 'copilot', title: 'Career & Finance Advisor', desc: 'Strategic roadmaps, career decisions & learning guidance', category: 'Advisor' },
                 { id: 'profile', title: 'Profile & Setup', desc: 'Academic details, financial settings, export my data', category: 'Account' },
                 // Skills & Concepts
                 { id: 'skillgraph', title: 'PyTorch & Deep Learning Systems', desc: 'Neural network training, tensor broadcasting, autograd', category: 'Skill' },
@@ -938,11 +938,13 @@ export default function App() {
                 // Global study & exams
                 { id: 'studyabroad', title: 'Germany MS (TUM, RWTH Aachen)', desc: 'Zero tuition, APS certificate, blocked account €11,208', category: 'Study Abroad' },
                 { id: 'studyabroad', title: 'United States MS (CMU, Stanford, UT Austin)', desc: 'STEM OPT 3-year extension, top tech hiring hub', category: 'Study Abroad' },
-                { id: 'examprep', title: 'GRE Practice & 10-Yr Papers', desc: '10-year previous questions, Verbal & Quant drills', category: 'Exam Prep' },
+                { id: 'examprep', title: 'GRE Practice & Past Papers', desc: 'Previous questions, Verbal & Quant drills', category: 'Exam Prep' },
                 { id: 'examprep', title: 'IELTS / TOEFL Mock Tests', desc: 'Reading, Listening, Writing, Speaking practice papers', category: 'Exam Prep' },
                 // Listed Companies & Investment Options
-                { id: 'investments', title: 'TCS & Infosys (IT Bluechips)', desc: 'Direct equity, dividend track record, cloud transformation', category: 'Companies' },
-                { id: 'investments', title: 'Tata Motors & Tata Elxsi (EV & High-Tech)', desc: 'Automotive electrification, embedded systems & R&D', category: 'Companies' },
+                { id: 'investments', title: 'Suzlon, Tata Steel & IRFC (Budget Stocks)', desc: 'Micro equities from ₹64, clean energy & railway infrastructure', category: 'Stocks' },
+                { id: 'investments', title: 'Zomato & BEL (Growth Leaders)', desc: 'Quick commerce & defense electronics with high momentum', category: 'Stocks' },
+                { id: 'investments', title: 'TCS & Infosys (IT Bluechips)', desc: 'Direct equity, dividend track record, cloud transformation', category: 'Stocks' },
+                { id: 'investments', title: 'Tata Motors & Reliance (Large Cap)', desc: 'Automotive electrification, telecom & retail powerhouse', category: 'Stocks' },
                 { id: 'investments', title: 'Bharat Electronics (BEL Defense)', desc: 'Indigenous radar, defense electronics & order book', category: 'Companies' },
                 { id: 'investments', title: 'Reliance Industries & HDFC Bank', desc: 'Conglomerate telecom, retail & private banking leader', category: 'Companies' },
                 { id: 'investments', title: 'Nifty 50 BeES & Gold BeES ETFs', desc: 'Passive index compounding and gold inflation hedge', category: 'Companies' }

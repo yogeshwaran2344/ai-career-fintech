@@ -6,6 +6,7 @@ import {
   CheckCircle2, 
   ExternalLink, 
   X, 
+  ArrowLeft,
   AlertCircle,
   Cpu
 } from 'lucide-react';
@@ -113,16 +114,31 @@ export default function BrokerConnectModal({ isOpen, onClose, brokerStatus, onCo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in cursor-pointer"
+    >
+      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden cursor-default">
         {/* Header */}
         <div className="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white p-6 relative">
-          <button 
-            onClick={onClose}
-            className="absolute top-5 right-5 text-stone-400 hover:text-white transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center justify-between mb-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1.5 text-xs font-bold text-white bg-white/15 hover:bg-white/25 active:scale-95 px-3 py-1.5 rounded-xl transition cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4 text-emerald-400" />
+              <span>← Back</span>
+            </button>
+            <button 
+              type="button"
+              onClick={onClose}
+              className="text-stone-400 hover:text-white p-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition cursor-pointer"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
             <Building className="w-4 h-4" />
             <span>Regulated Depository & Broker Gateway</span>

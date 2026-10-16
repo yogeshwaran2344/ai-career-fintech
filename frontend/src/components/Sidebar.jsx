@@ -7,7 +7,7 @@ import {
   FileText, 
   Compass, 
   Wallet, 
-  Bot, 
+  Target, 
   UserCircle, 
   Sparkles, 
   RotateCcw,
@@ -42,41 +42,41 @@ export default function Sidebar({
       title: 'OVERVIEW',
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'today', label: "Daily Action Plan", icon: Zap, badge: 'Daily' },
-        { id: 'financialhealth', label: 'My Financial Health', icon: Activity, badge: 'Health' },
-        { id: 'copilot', label: 'Strategic Advisor', icon: Bot, badge: 'Advisor' }
+        { id: 'today', label: "Daily Action Plan", icon: Zap },
+        { id: 'financialhealth', label: 'Financial Health', icon: Activity },
+        { id: 'copilot', label: 'Career & Finance Advisor', icon: Target }
       ]
     },
     {
       title: 'CAREER',
       items: [
-        { id: 'career', label: 'Career Engine', icon: Compass },
-        { id: 'interview', label: 'Mock Interview Arena', icon: Sparkles, badge: 'STAR Eval' },
-        { id: 'simulation', label: 'What-If Simulator', icon: Sliders, badge: 'Twin' },
-        { id: 'skillgraph', label: 'Skill Graph Tree', icon: GitFork },
+        { id: 'career', label: 'Career Roadmap', icon: Compass },
+        { id: 'interview', label: 'Interview Arena', icon: Sparkles },
+        { id: 'simulation', label: 'What-If Simulator', icon: Sliders },
+        { id: 'skillgraph', label: 'Skill Graph', icon: GitFork },
         { id: 'resume', label: 'Resume & ATS', icon: FileText },
-        { id: 'jobmarket', label: 'Opportunity Radar', icon: TrendingUp, badge: 'Verified' },
-        { id: 'applications', label: 'Application Tracker', icon: Briefcase, badge: 'Funnel' }
+        { id: 'jobmarket', label: 'Opportunity Radar', icon: TrendingUp },
+        { id: 'applications', label: 'Application Tracker', icon: Briefcase }
       ]
     },
     {
       title: 'WEALTH & FINTECH',
       items: [
         { id: 'finance', label: 'Finance & Budget', icon: Wallet },
-        { id: 'investments', label: 'Investments & Orders', icon: TrendingUp, badge: 'Live OMS' }
+        { id: 'investments', label: 'Investments & Orders', icon: TrendingUp }
       ]
     },
     {
       title: 'GLOBAL & HIGHER ED',
       items: [
-        { id: 'studyabroad', label: 'Study Abroad & MS', icon: Globe, badge: 'Admissions' },
-        { id: 'examprep', label: '10-Yr Papers & 1,000+ Qs', icon: BookOpen, badge: '1,000+ Qs' }
+        { id: 'studyabroad', label: 'Study Abroad & MS', icon: Globe },
+        { id: 'examprep', label: 'Exam Papers & Questions', icon: BookOpen }
       ]
     },
     {
       title: 'SAFETY & RESILIENCE',
       items: [
-        { id: 'safety', label: '5-Gate Safety Center', icon: ShieldCheck, badge: '5-Gate' }
+        { id: 'safety', label: 'Safety & Risk Center', icon: ShieldCheck }
       ]
     },
     {
@@ -179,7 +179,7 @@ export default function Sidebar({
               onClick={() => handleAction(onOpenWeeklyReview)}
               className="p-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-left transition-colors cursor-pointer"
             >
-              <span className="text-[9px] font-extrabold uppercase text-amber-800 block">Sunday AI</span>
+              <span className="text-[9px] font-extrabold uppercase text-amber-800 block">Weekly Prep</span>
               <span className="text-xs font-black text-stone-900">Weekly Review</span>
             </button>
           </div>
@@ -208,13 +208,6 @@ export default function Sidebar({
                         <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-stone-500'}`} />
                         <span>{item.label}</span>
                       </div>
-                      {item.badge && (
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
-                          active ? 'bg-orange-600 text-orange-100' : 'bg-orange-100 text-orange-700'
-                        }`}>
-                          {item.badge}
-                        </span>
-                      )}
                     </button>
                   );
                 })}

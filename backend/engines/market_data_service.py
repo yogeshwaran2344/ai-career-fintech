@@ -71,7 +71,27 @@ EQUITIES_MASTER = {
     # New-Age Tech & Fintech
     "ZOMATO": {"name": "Zomato Ltd (Blinkit Quick Commerce)", "exchange": "NSE", "base": 268.40, "is_index": False, "sector": "New-Age Fintech & Tech", "mcap_cr": 236000, "pe": 128.0, "div_yield": 0.0},
     "POLICYBZR": {"name": "PB Fintech Ltd (Policybazaar)", "exchange": "NSE", "base": 1690.00, "is_index": False, "sector": "New-Age Fintech & Tech", "mcap_cr": 77800, "pe": 145.0, "div_yield": 0.0},
-    "BHARTIARTL": {"name": "Bharti Airtel Ltd (5G & Cloud)", "exchange": "NSE", "base": 1642.50, "is_index": False, "sector": "Telecommunications", "mcap_cr": 932000, "pe": 62.4, "div_yield": 0.5}
+    "BHARTIARTL": {"name": "Bharti Airtel Ltd (5G & Cloud)", "exchange": "NSE", "base": 1642.50, "is_index": False, "sector": "Telecommunications", "mcap_cr": 932000, "pe": 62.4, "div_yield": 0.5},
+    "PAYTM": {"name": "One97 Communications Ltd (Paytm)", "exchange": "NSE", "base": 695.00, "is_index": False, "sector": "New-Age Fintech & Tech", "mcap_cr": 44200, "pe": -1.0, "div_yield": 0.0},
+    "PERSISTENT": {"name": "Persistent Systems Ltd", "exchange": "NSE", "base": 5200.00, "is_index": False, "sector": "Technology & AI", "mcap_cr": 80000, "pe": 44.0, "div_yield": 0.8},
+    "KPITTECH": {"name": "KPIT Technologies Ltd", "exchange": "NSE", "base": 1620.00, "is_index": False, "sector": "Technology & AI", "mcap_cr": 44000, "pe": 46.5, "div_yield": 0.5},
+
+    # Most Traded & Student Budget Friendly on Groww (< ₹100 & < ₹500)
+    "IDEA": {"name": "Vodafone Idea Ltd", "exchange": "NSE", "base": 9.40, "is_index": False, "sector": "Telecommunications", "mcap_cr": 65000, "pe": -1.0, "div_yield": 0.0},
+    "YESBANK": {"name": "Yes Bank Ltd", "exchange": "NSE", "base": 21.80, "is_index": False, "sector": "Banking & Finance", "mcap_cr": 68400, "pe": 54.0, "div_yield": 0.0},
+    "ICICITECH": {"name": "ICICI Prudential Nifty IT ETF", "exchange": "NSE", "base": 42.80, "is_index": False, "sector": "ETF & Technology", "mcap_cr": 4500, "pe": 27.0, "div_yield": 0.9},
+    "SUZLON": {"name": "Suzlon Energy Ltd (Wind Energy)", "exchange": "NSE", "base": 64.80, "is_index": False, "sector": "Energy & Power", "mcap_cr": 88000, "pe": 68.2, "div_yield": 0.0},
+    "GOLDBEES": {"name": "Nippon India ETF Gold BeES", "exchange": "NSE", "base": 65.20, "is_index": False, "sector": "ETF & Commodities", "mcap_cr": 14000, "pe": 0.0, "div_yield": 0.0},
+    "NHPC": {"name": "NHPC Limited (Hydro Clean Power)", "exchange": "NSE", "base": 86.40, "is_index": False, "sector": "Energy & Power", "mcap_cr": 86800, "pe": 23.4, "div_yield": 2.1},
+    "SILVERBEES": {"name": "Nippon India ETF Silver BeES", "exchange": "NSE", "base": 92.50, "is_index": False, "sector": "ETF & Commodities", "mcap_cr": 7200, "pe": 0.0, "div_yield": 0.0},
+    "IRFC": {"name": "Indian Railway Finance Corporation", "exchange": "NSE", "base": 154.20, "is_index": False, "sector": "Infrastructure & PSU", "mcap_cr": 201000, "pe": 31.5, "div_yield": 1.0},
+    "IOC": {"name": "Indian Oil Corporation Ltd", "exchange": "NSE", "base": 174.50, "is_index": False, "sector": "Energy & Power", "mcap_cr": 246000, "pe": 6.8, "div_yield": 7.0},
+    "IREDA": {"name": "Indian Renewable Energy Dev Agency", "exchange": "NSE", "base": 218.50, "is_index": False, "sector": "Energy & Power", "mcap_cr": 58700, "pe": 45.2, "div_yield": 0.0},
+    "NIFTYBEES": {"name": "Nippon India ETF Nifty 50 BeES", "exchange": "NSE", "base": 265.40, "is_index": False, "sector": "ETF & Index Funds", "mcap_cr": 32000, "pe": 22.0, "div_yield": 1.2},
+    "BPCL": {"name": "Bharat Petroleum Corporation Ltd", "exchange": "NSE", "base": 348.00, "is_index": False, "sector": "Energy & Power", "mcap_cr": 151000, "pe": 5.9, "div_yield": 6.1},
+    "ADANIENT": {"name": "Adani Enterprises Ltd", "exchange": "NSE", "base": 2980.00, "is_index": False, "sector": "Infrastructure & Conglomerate", "mcap_cr": 339000, "pe": 92.0, "div_yield": 0.1},
+    "ADANIPORTS": {"name": "Adani Ports and SEZ Ltd", "exchange": "NSE", "base": 1420.00, "is_index": False, "sector": "Infrastructure & Logistics", "mcap_cr": 306000, "pe": 34.0, "div_yield": 0.4},
+    "ASIANPAINT": {"name": "Asian Paints Ltd", "exchange": "NSE", "base": 2860.00, "is_index": False, "sector": "FMCG & Consumption", "mcap_cr": 274000, "pe": 51.0, "div_yield": 1.1}
 }
 
 class MarketDataService:

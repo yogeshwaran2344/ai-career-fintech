@@ -36,6 +36,7 @@ import {
   Building,
   Cpu,
   ArrowRight,
+  ArrowLeft,
   Download,
   Lock,
   ShieldAlert,
@@ -725,14 +726,19 @@ export default function InvestmentView({ profile }) {
             const filteredIndividualAssets = allAssets.filter(asset => {
               // Category filter
               let matchesCategory = true;
-              if (individualFilter === 'AI_TECH') {
-                matchesCategory = ['TATAELXSI', 'PERSISTENT', 'KPITTECH'].includes(asset.ticker) || asset.category_label?.includes('AI');
-              } else if (individualFilter === 'IT_SERVICES') {
-                matchesCategory = ['TCS', 'INFY'].includes(asset.ticker);
-              } else if (individualFilter === 'BLUECHIP') {
-                matchesCategory = ['RELIANCE', 'HDFCBANK', 'TATAMOTORS', 'BEL'].includes(asset.ticker);
-              } else if (individualFilter === 'INDEX_GOLD') {
-                matchesCategory = ['NIFTYBEES', 'GOLDBEES'].includes(asset.ticker) || asset.category?.includes('INDEX') || asset.category?.includes('GOLD');
+              const price = asset.current_nav_or_price || asset.current_nav_price_inr || 0;
+              const tags = asset.tags || [];
+
+              if (individualFilter === 'GROWW_TOP') {
+                matchesCategory = tags.includes('Most Bought on Groww') || ['ZOMATO', 'TATASTEEL', 'SUZLON', 'IRFC', 'IREDA', 'JIOFIN', 'TATAMOTORS', 'BEL', 'RELIANCE', 'HDFCBANK', 'YESBANK', 'NHPC'].includes(asset.ticker);
+              } else if (individualFilter === 'UNDER_100') {
+                matchesCategory = price <= 100 || tags.includes('Under ₹100');
+              } else if (individualFilter === 'UNDER_500') {
+                matchesCategory = price <= 500 || tags.includes('Under ₹500');
+              } else if (individualFilter === 'DEFENSE_EV') {
+                matchesCategory = ['TATAMOTORS', 'BEL', 'HAL', 'SUZLON', 'IREDA', 'TATAPOWER', 'KPITTECH', 'ONGC', 'NTPC'].includes(asset.ticker) || asset.category_label?.toLowerCase().includes('defense') || asset.category_label?.toLowerCase().includes('clean') || asset.category_label?.toLowerCase().includes('ev');
+              } else if (individualFilter === 'LARGE_CAP') {
+                matchesCategory = ['RELIANCE', 'TCS', 'HDFCBANK', 'ICICIBANK', 'SBIN', 'LT', 'ITC', 'INFY'].includes(asset.ticker) || asset.market_cap_tier?.includes('Large');
               }
 
               // Search query filter
@@ -759,7 +765,7 @@ export default function InvestmentView({ profile }) {
                       <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
                       <input
                         type="text"
-                        placeholder="Search company or ticker (e.g. TCS, Tata Motors, Reliance, Infosys, BEL, EV, Defense, Gold)..."
+                        placeholder="Search company or ticker (e.g. Suzlon, Tata Steel, Zomato, IRFC, BEL, Yes Bank, Reliance, ETF)..."
                         value={companySearchQuery}
                         onChange={(e) => setCompanySearchQuery(e.target.value)}
                         className="w-full text-xs font-semibold pl-10 pr-9 py-2.5 bg-white border border-stone-200 rounded-xl focus:outline-emerald-500 text-stone-900 shadow-2xs placeholder-stone-400"
@@ -778,7 +784,7 @@ export default function InvestmentView({ profile }) {
 
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-bold text-stone-600 px-3 py-1.5 bg-white border border-stone-200 rounded-xl whitespace-nowrap shadow-2xs">
-                        Showing <strong className="text-stone-900">{filteredIndividualAssets.length}</strong> of {allAssets.length} assets
+                        Showing <strong className="text-stone-900">{filteredIndividualAssets.length}</strong> of {allAssets.length} stocks
                       </span>
                       {(companySearchQuery || individualFilter !== 'ALL') && (
                         <button
@@ -794,22 +800,37 @@ export default function InvestmentView({ profile }) {
 
                   {/* Quick Search Tag Chips */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
-                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mr-1">Quick Picks:</span>
-                    {['TCS', 'Tata', 'Reliance', 'Infosys', 'BEL Defense', 'HDFC', 'EV & Auto', 'Gold BeES'].map((tag) => (
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mr-1">Popular on Groww:</span>
+                    {[
+                      { label: '🪙 Under ₹100', filter: 'UNDER_100' },
+                      { label: 'Suzlon ₹64', query: 'Suzlon' },
+                      { label: 'Tata Steel ₹158', query: 'Tata Steel' },
+                      { label: 'IRFC ₹154', query: 'IRFC' },
+                      { label: 'Zomato ₹268', query: 'Zomato' },
+                      { label: 'BEL ₹292', query: 'BEL' },
+                      { label: 'Tata Motors', query: 'Tata Motors' },
+                      { label: 'Gold BeES', query: 'Gold' },
+                      { label: 'Nifty BeES', query: 'Nifty' },
+                    ].map((item) => (
                       <button
-                        key={tag}
+                        key={item.label}
                         type="button"
                         onClick={() => {
-                          setCompanySearchQuery(tag.split(' ')[0]);
-                          setIndividualFilter('ALL');
+                          if (item.filter) {
+                            setIndividualFilter(item.filter);
+                            setCompanySearchQuery('');
+                          } else {
+                            setCompanySearchQuery(item.query);
+                            setIndividualFilter('ALL');
+                          }
                         }}
                         className={`px-2.5 py-0.5 rounded-lg border font-medium transition cursor-pointer ${
-                          companySearchQuery.toLowerCase() === tag.split(' ')[0].toLowerCase()
+                          (item.query && companySearchQuery.toLowerCase() === item.query.toLowerCase()) || (item.filter && individualFilter === item.filter)
                             ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
                             : 'bg-white hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 border-stone-200 text-stone-600'
                         }`}
                       >
-                        {tag}
+                        {item.label}
                       </button>
                     ))}
                   </div>
@@ -818,11 +839,12 @@ export default function InvestmentView({ profile }) {
                 {/* Category Filter Chips */}
                 <div className="flex flex-wrap items-center gap-2">
                   {[
-                    { id: 'ALL', label: 'All 11 Companies & Funds', icon: '🌐' },
-                    { id: 'AI_TECH', label: '⚡ High-Tech & R&D', icon: '⚡' },
-                    { id: 'IT_SERVICES', label: '💼 IT Services Titans', icon: '💼' },
-                    { id: 'BLUECHIP', label: '🏆 Large Cap Bluechips & Defense', icon: '🏆' },
-                    { id: 'INDEX_GOLD', label: '💎 Nifty Index & Gold Defense', icon: '💎' },
+                    { id: 'ALL', label: `All Stocks (${allAssets.length})` },
+                    { id: 'GROWW_TOP', label: '🔥 Most Bought on Groww' },
+                    { id: 'UNDER_100', label: '🪙 Under ₹100 (Student Micro)' },
+                    { id: 'UNDER_500', label: '⚡ Under ₹500 (Budget Growth)' },
+                    { id: 'DEFENSE_EV', label: '🛡️ Defense & Green Energy' },
+                    { id: 'LARGE_CAP', label: '🏛️ Large Cap Bluechips' },
                   ].map(chip => (
                     <button
                       key={chip.id}
@@ -2300,7 +2322,26 @@ export default function InvestmentView({ profile }) {
           <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-stone-200 overflow-hidden relative my-6 cursor-default">
             
             {/* Modal Top Header */}
-            <div className="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white p-6 border-b border-stone-700/50">
+            <div className="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white p-5 sm:p-6 border-b border-stone-700/50">
+              {/* Back Bar for Mobile and Desktop */}
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setSelectedChartAsset(null)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 active:scale-95 text-stone-200 hover:text-white text-xs font-bold transition cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4 text-emerald-400" />
+                  <span>← Back to Stocks</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedChartAsset(null)}
+                  className="text-stone-400 hover:text-white text-xs font-bold px-2.5 py-1 bg-stone-800/80 rounded-lg hover:bg-stone-700 transition cursor-pointer"
+                >
+                  ✕ Close
+                </button>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -2328,12 +2369,6 @@ export default function InvestmentView({ profile }) {
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => setSelectedChartAsset(null)}
-                    className="text-stone-400 hover:text-white text-base font-bold w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center transition-colors cursor-pointer"
-                  >
-                    ✕
-                  </button>
                 </div>
               </div>
             </div>
