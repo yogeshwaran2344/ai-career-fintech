@@ -286,7 +286,7 @@ export default function InvestmentView({ profile }) {
 
   // Open UPI Gateway for Single Asset
   const handleOpenUpiForAsset = (asset, amt) => {
-    const chosenAmt = amt || assetAmounts[asset.id] || 1000;
+    const chosenAmt = amt !== undefined ? amt : (assetAmounts[asset.id] !== undefined ? assetAmounts[asset.id] : 0);
     setUpiTargetAsset({ ...asset, chosenAmount: chosenAmt });
     setUpiTargetBasket(null);
     setUpiStep('METHOD_SELECT');
@@ -301,12 +301,16 @@ export default function InvestmentView({ profile }) {
       setUpiProcessing(true);
       setUpiStep('PROCESSING');
 
+      const paymentAmount = upiTargetBasket
+        ? (upiTargetBasket.total_basket_cost_inr !== undefined ? upiTargetBasket.total_basket_cost_inr : 0)
+        : (upiTargetAsset?.chosenAmount !== undefined ? upiTargetAsset.chosenAmount : (basketAmount !== undefined ? basketAmount : 0));
+
       const payload = {
         basket_id: upiTargetBasket ? upiTargetBasket.basket_id : null,
         asset_id: upiTargetAsset ? upiTargetAsset.id : null,
         payment_method: upiMethod,
         upi_id: upiIdInput.trim() || `${profile?.name?.toLowerCase()?.replace(/\s+/g, '') || 'student'}@okaxis`,
-        amount_inr: upiTargetBasket ? upiTargetBasket.total_basket_cost_inr : (upiTargetAsset?.chosenAmount || 1000),
+        amount_inr: paymentAmount,
         investment_type: upiTargetBasket ? 'MULTI_COMPANY_BASKET' : 'INDIVIDUAL_ASSET'
       };
 
@@ -422,6 +426,9 @@ export default function InvestmentView({ profile }) {
   const p = hubData?.portfolio;
   const readiness = hubData?.investment_readiness;
   const activeBasket = basketsData?.baskets?.[selectedBasketIndex] || basketsData?.baskets?.[0];
+  const activeModalAmount = upiTargetBasket 
+    ? (upiTargetBasket.total_basket_cost_inr !== undefined ? upiTargetBasket.total_basket_cost_inr : 0) 
+    : (upiTargetAsset?.chosenAmount !== undefined ? upiTargetAsset.chosenAmount : (basketAmount !== undefined ? basketAmount : 0));
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -756,9 +763,9 @@ export default function InvestmentView({ profile }) {
                     return true;
                   })
                   .map(asset => {
-                    const chosenAmt = assetAmounts[asset.id] || 1000;
+                    const chosenAmt = assetAmounts[asset.id] !== undefined ? assetAmounts[asset.id] : 0;
                     const price = asset.current_nav_or_price || asset.current_nav_price_inr || 1000;
-                    const units = (chosenAmt / price).toFixed(2);
+                    const units = chosenAmt > 0 ? (chosenAmt / price).toFixed(4) : '0.001 (Starter Live)';
                     const ret6m = asset.expected_6m_return_pct || 7.5;
                     const ret1y = asset.expected_1yr_return_pct || asset.cagr_3y_pct || 14.0;
                     const gmpInr = asset.gmp_inr || Math.round(price * 0.05);
@@ -832,18 +839,18 @@ export default function InvestmentView({ profile }) {
                               <span className="font-bold text-emerald-700">~{units} Units allotted</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              {[500, 1000, 2000, 5000].map(amt => (
+                              {[0, 500, 1000, 2000, 5000].map(amt => (
                                 <button
                                   key={amt}
                                   type="button"
                                   onClick={() => handleSetAssetAmount(asset.id, amt)}
                                   className={`flex-1 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
                                     chosenAmt === amt
-                                      ? 'bg-emerald-600 text-white'
+                                      ? 'bg-emerald-600 text-white shadow-xs'
                                       : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                                   }`}
                                 >
-                                  ₹{amt}
+                                  {amt === 0 ? '₹0 Live' : `₹${amt}`}
                                 </button>
                               ))}
                             </div>
@@ -865,7 +872,7 @@ export default function InvestmentView({ profile }) {
                             className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
                           >
                             <SmartphoneIcon className="w-3.5 h-3.5" />
-                            <span>Invest ₹{chosenAmt.toLocaleString('en-IN')} via GPay / PhonePe</span>
+                            <span>{chosenAmt > 0 ? `Invest ₹${chosenAmt.toLocaleString('en-IN')} via GPay / PhonePe` : `Invest ₹0 (Live Instant Allotment)`}</span>
                           </button>
                         </div>
                       </div>
@@ -893,7 +900,7 @@ export default function InvestmentView({ profile }) {
                       Our engine automatically computes fractional unit weights across 4 to 5 diversified companies for a <strong className="text-emerald-700">6 Months – 1 Year Horizon</strong>.
                     </p>
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {[500, 1000, 2000, 5000, 10000, 25000].map(amt => (
+                      {[0, 500, 1000, 2000, 5000, 10000, 25000].map(amt => (
                         <button
                           key={amt}
                           onClick={() => handleBasketAmountChange(amt)}
@@ -903,7 +910,7 @@ export default function InvestmentView({ profile }) {
                               : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
                           }`}
                         >
-                          ₹{amt.toLocaleString('en-IN')}
+                          {amt === 0 ? '₹0 (Live Test)' : `₹${amt.toLocaleString('en-IN')}`}
                         </button>
                       ))}
                     </div>
@@ -915,7 +922,7 @@ export default function InvestmentView({ profile }) {
                       <span className="absolute left-3 top-2 text-base font-black text-stone-400">₹</span>
                       <input
                         type="number"
-                        min="100"
+                        min="0"
                         step="100"
                         value={basketAmount}
                         onChange={(e) => handleBasketAmountChange(Number(e.target.value))}
@@ -1522,7 +1529,7 @@ export default function InvestmentView({ profile }) {
                     You have not executed any investment transactions yet. Once you complete a purchase via GPay/PhonePe, your live portfolio, P&L, and verified UTR receipts will instantly appear here.
                   </p>
                   <div className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 py-1.5 px-3 rounded-lg border border-emerald-500/20">
-                    Direct Bluechips & Nifty Index from ₹100
+                    Direct Bluechips & Nifty Index from ₹0 (Live Sandbox Enabled)
                   </div>
                 </div>
               </div>
@@ -1871,7 +1878,7 @@ export default function InvestmentView({ profile }) {
                 )}
               </div>
               <div className="mt-2 text-xs text-emerald-100 flex items-center justify-between">
-                <span>Amount: <strong className="text-white text-sm">₹{(upiTargetBasket?.total_basket_cost_inr || upiTargetAsset?.chosenAmount || basketAmount).toLocaleString('en-IN')}</strong></span>
+                <span>Amount: <strong className="text-white text-sm">{activeModalAmount === 0 ? '₹0 (Live Sandbox Order)' : `₹${activeModalAmount.toLocaleString('en-IN')}`}</strong></span>
                 <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold">NPCI / UPI 2.0</span>
               </div>
             </div>
@@ -1956,7 +1963,7 @@ export default function InvestmentView({ profile }) {
                     onClick={() => setUpiStep('PIN_CONFIRM')}
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>Proceed to PIN (₹{(upiTargetBasket?.total_basket_cost_inr || upiTargetAsset?.chosenAmount || basketAmount).toLocaleString('en-IN')})</span>
+                    <span>{activeModalAmount === 0 ? 'Proceed with ₹0 Live Order' : `Proceed to PIN (₹${activeModalAmount.toLocaleString('en-IN')})`}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -1971,7 +1978,11 @@ export default function InvestmentView({ profile }) {
                 </div>
                 <div>
                   <h4 className="text-sm font-black text-stone-900">Enter 4 or 6-Digit UPI PIN</h4>
-                  <p className="text-xs text-stone-500 mt-0.5">Authorizing debit of ₹{(upiTargetBasket?.total_basket_cost_inr || upiTargetAsset?.chosenAmount || basketAmount).toLocaleString('en-IN')} via {upiMethod}</p>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    {activeModalAmount === 0
+                      ? `Authorizing ₹0 live sandbox allotment via ${upiMethod}`
+                      : `Authorizing debit of ₹${activeModalAmount.toLocaleString('en-IN')} via ${upiMethod}`}
+                  </p>
                 </div>
 
                 <div className="max-w-xs mx-auto">
@@ -2409,7 +2420,7 @@ export default function InvestmentView({ profile }) {
                   onClick={() => {
                     const target = selectedChartAsset;
                     setSelectedChartAsset(null);
-                    handleOpenUpiForAsset(target, assetAmounts[target.id] || 1000);
+                    handleOpenUpiForAsset(target, assetAmounts[target.id] !== undefined ? assetAmounts[target.id] : 0);
                   }}
                   className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >

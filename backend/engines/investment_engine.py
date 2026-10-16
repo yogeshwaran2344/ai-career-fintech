@@ -672,8 +672,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.0,
                 cagr_3y_pct=13.5,
                 current_nav_or_price=3920.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="LOW",
                 risk_badge="💎 Zero Debt Leader",
                 student_fit_reason="India's largest IT exporter with >85% free cash flow conversion, rock-solid quarterly dividend payouts, and zero debt.",
@@ -702,8 +702,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.0,
                 cagr_3y_pct=14.2,
                 current_nav_or_price=1850.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="LOW",
                 risk_badge="🚀 Cloud & Topaz AI",
                 student_fit_reason="Global technology consulting leader with Cobalt cloud suite and Topaz generative AI suite driving resilient double-digit revenue expansion.",
@@ -732,8 +732,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.0,
                 cagr_3y_pct=18.5,
                 current_nav_or_price=7450.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="MODERATE",
                 risk_badge="⚡ AI Software Enabler",
                 student_fit_reason="Pure-play engineering R&D leader building software-driven vehicle (SDV) platforms, medical robotics, and digital twin simulation engines.",
@@ -762,8 +762,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.0,
                 cagr_3y_pct=19.2,
                 current_nav_or_price=5200.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="MODERATE",
                 risk_badge="🌟 Consistent Growth",
                 student_fit_reason="Industry-leading growth with 16 consecutive quarters of expansion in AI product engineering and cloud modernization contracts.",
@@ -792,8 +792,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.0,
                 cagr_3y_pct=18.0,
                 current_nav_or_price=1620.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="MODERATE",
                 risk_badge="🚗 EV & ADAS Specialist",
                 student_fit_reason="Embedded software partner for global automotive OEMs transitioning to electrification and ADAS Level 3 autonomy.",
@@ -822,8 +822,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.0,
                 cagr_3y_pct=15.5,
                 current_nav_or_price=1680.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="LOW",
                 risk_badge="🏦 Financial Backbone",
                 student_fit_reason="India's largest private bank powering 40% of digital transactions and FinTech APIs. Rock-solid compounding with low NPAs.",
@@ -852,8 +852,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.0,
                 cagr_3y_pct=14.8,
                 current_nav_or_price=2940.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="LOW",
                 risk_badge="🌐 Domestic Market Titan",
                 student_fit_reason="Dominant digital ecosystem via Jio 5G, JioCinema, Reliance Retail, and New Green Energy gigafactories.",
@@ -882,8 +882,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.0,
                 cagr_3y_pct=16.0,
                 current_nav_or_price=980.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="MODERATE",
                 risk_badge="⚡ EV Market Leader",
                 student_fit_reason="70%+ market share in Indian passenger Electric Vehicles, paired with JLR's luxury order book and debt-free roadmap.",
@@ -912,8 +912,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.04,
                 cagr_3y_pct=14.0,
                 current_nav_or_price=265.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="LOW",
                 risk_badge="🔵 Broad Market Index",
                 student_fit_reason="Provides instant fractional ownership in India's top 50 bluechip powerhouses with near-zero 0.04% expense ratio.",
@@ -942,8 +942,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.79,
                 cagr_3y_pct=11.0,
                 current_nav_or_price=65.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=65.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="LOW",
                 risk_badge="🪙 Inflation Hedge",
                 student_fit_reason="99.5% purity physical gold stored in SEBI custodian vaults. Essential defensive counter-weight that rises during equity volatility.",
@@ -972,8 +972,8 @@ class InvestmentEngine:
                 expense_ratio_pct=0.0,
                 cagr_3y_pct=16.5,
                 current_nav_or_price=295.0,
-                min_sip_inr=100.0,
-                min_lumpsum_inr=100.0,
+                min_sip_inr=0.0,
+                min_lumpsum_inr=0.0,
                 risk_rating="LOW",
                 risk_badge="🛡️ Defense Monopoly PSU",
                 student_fit_reason="Navratna PSU with record ₹76,000+ Cr order book for indigenous electronic warfare systems, avionics, and radar.",
@@ -1440,7 +1440,7 @@ class InvestmentEngine:
         current_holding = raw_holdings.get(req.asset_id)
 
         if action == "BUY_LUMPSUM":
-            amt = max(req.amount_inr, asset.min_lumpsum_inr)
+            amt = max(0.0, float(req.amount_inr))
             if wallet_bal < amt:
                 # Settle through linked verified primary UPI bank mandate
                 deposit_needed = amt - wallet_bal
@@ -1449,13 +1449,13 @@ class InvestmentEngine:
             new_wallet_bal = wallet_bal - amt
             DatabaseManager.update_wallet_balance(user_id, new_wallet_bal)
 
-            units_to_add = amt / asset.current_nav_or_price
+            units_to_add = (amt / asset.current_nav_or_price) if amt > 0 else 0.001
             if current_holding:
                 prev_units = float(current_holding.get("units", 0.0))
                 prev_inv = float(current_holding.get("total_invested", 0.0))
                 new_units = prev_units + units_to_add
                 new_inv = prev_inv + amt
-                new_avg = new_inv / max(new_units, 0.0001)
+                new_avg = (new_inv / max(new_units, 0.0001)) if new_inv > 0 else asset.current_nav_or_price
                 
                 DatabaseManager.save_or_update_holding(user_id, {
                     "asset_id": asset.id,
@@ -1483,11 +1483,14 @@ class InvestmentEngine:
                     "sip_amount_monthly": 0.0
                 })
 
-            msg = f"🎉 Successfully executed virtual purchase of ₹{int(amt):,} in {asset.name} ({units_to_add:.4f} units added)."
+            if amt > 0:
+                msg = f"🎉 Successfully executed virtual purchase of ₹{int(amt):,} in {asset.name} ({units_to_add:.4f} units added)."
+            else:
+                msg = f"🎉 Successfully executed live zero-cost allotment of {asset.name} ({units_to_add:.4f} starter units added to live portfolio)."
             tx_id = f"TX-BUY-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
         elif action == "START_SIP":
-            sip_amt = max(req.amount_inr, asset.min_sip_inr)
+            sip_amt = max(0.0, float(req.amount_inr))
             if current_holding:
                 DatabaseManager.save_or_update_holding(user_id, {
                     **current_holding,
@@ -1496,19 +1499,23 @@ class InvestmentEngine:
                 })
             else:
                 # Initialize holding with active SIP
+                init_units = (sip_amt / asset.current_nav_or_price) if sip_amt > 0 else 0.001
                 DatabaseManager.save_or_update_holding(user_id, {
                     "asset_id": asset.id,
                     "asset_name": asset.name,
                     "ticker": asset.ticker,
                     "category": asset.category,
-                    "units": sip_amt / asset.current_nav_or_price,
+                    "units": init_units,
                     "avg_buy_price": asset.current_nav_or_price,
                     "total_invested": sip_amt,
                     "current_price": asset.current_nav_or_price,
                     "sip_active": 1,
                     "sip_amount_monthly": sip_amt
                 })
-            msg = f"🔄 Automated Monthly SIP of ₹{int(sip_amt):,}/month activated for {asset.name}."
+            if sip_amt > 0:
+                msg = f"🔄 Automated Monthly SIP of ₹{int(sip_amt):,}/month activated for {asset.name}."
+            else:
+                msg = f"🔄 Zero-Cost Automated SIP active for {asset.name} (live monitoring mode)."
             tx_id = f"TX-SIP-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
         elif action == "CANCEL_SIP":
@@ -1681,7 +1688,7 @@ class InvestmentEngine:
 
     @classmethod
     def generate_multi_company_baskets(cls, profile: StudentProfile, amount_inr: float = 2000.0) -> MultiCompanyBasketResponse:
-        amount = max(100.0, float(amount_inr))
+        amount = max(0.0, float(amount_inr))
         monthly_budget = float(profile.financial.savings or 2000.0)
         career_focus = getattr(profile, "career_goal", None) or "Technology / Engineering"
 
@@ -1940,7 +1947,7 @@ class InvestmentEngine:
             for item in raw_data:
                 wt = item["weight"]
                 alloc_amt = round(amount * (wt / 100.0), 2)
-                units = round(alloc_amt / item["price"], 4)
+                units = round(alloc_amt / item["price"], 4) if alloc_amt > 0 else 0.001
                 m_info = cls.COMPANY_MARKET_DATA.get(item["ticker"], {})
                 allocs.append(MultiCompanyAssetAllocation(
                     ticker=item["ticker"],
@@ -2021,7 +2028,7 @@ class InvestmentEngine:
             risk_prof="BALANCED",
             ret_6m=7.6,
             ret_1yr=14.4,
-            min_amt=500.0,
+            min_amt=0.0,
             raw_data=b1_companies_raw,
             deep_analysis=(
                 f"For your investment of ₹{amount:,.0f} over a 6 Months – 1 Year horizon, this basket splits capital across 5 established market leaders. "
@@ -2039,7 +2046,7 @@ class InvestmentEngine:
             risk_prof="AGGRESSIVE_GROWTH",
             ret_6m=9.4,
             ret_1yr=18.2,
-            min_amt=1000.0,
+            min_amt=0.0,
             raw_data=b2_companies_raw,
             deep_analysis=(
                 f"Deploying ₹{amount:,.0f} into pure-play high-growth tech innovators over a 6 Months – 1 Year horizon. "
@@ -2057,7 +2064,7 @@ class InvestmentEngine:
             risk_prof="BALANCED",
             ret_6m=7.4,
             ret_1yr=14.5,
-            min_amt=500.0,
+            min_amt=0.0,
             raw_data=b3_companies_raw,
             deep_analysis=(
                 f"The ultimate diversified starter portfolio for ₹{amount:,.0f} tailored for 6 Months – 1 Year. "
@@ -2085,7 +2092,7 @@ class InvestmentEngine:
 
     @classmethod
     def execute_upi_investment(cls, user_id: str, profile: StudentProfile, req: UpiPaymentExecuteRequest) -> UpiPaymentExecuteResponse:
-        amount = max(100.0, float(req.amount_inr))
+        amount = max(0.0, float(req.amount_inr))
         method = req.payment_method.upper()
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S IST")
         utr_num = f"UPI/{datetime.now().strftime('%Y%m%d')}/{uuid.uuid4().hex[:10].upper()}"
@@ -2102,7 +2109,7 @@ class InvestmentEngine:
                 asset_id = f"asset-{alloc.ticker.lower()}"
                 exist = raw_existing.get(asset_id)
                 alloc_amt = alloc.allocated_amount_inr
-                units_allot = alloc.units_allotted
+                units_allot = alloc.units_allotted if alloc.units_allotted > 0 else 0.001
                 curr_price = alloc.current_price_inr
 
                 if exist:
@@ -2110,7 +2117,7 @@ class InvestmentEngine:
                     prev_inv = float(exist.get("total_invested", 0.0))
                     new_units = round(prev_units + units_allot, 4)
                     new_inv = round(prev_inv + alloc_amt, 2)
-                    new_avg = round(new_inv / max(new_units, 0.0001), 2)
+                    new_avg = round(new_inv / max(new_units, 0.0001), 2) if new_inv > 0 else curr_price
                     holding_dict = {
                         "asset_id": asset_id,
                         "asset_name": alloc.company_name,
@@ -2157,12 +2164,15 @@ class InvestmentEngine:
                 investment_type="MULTI_COMPANY_BASKET",
                 target_name=selected_basket.basket_name,
                 ticker=f"{len(selected_basket.allocations)} Companies",
-                units=round(sum(a['units_bought'] for a in allocated_summary), 2),
+                units=round(sum(a['units_bought'] for a in allocated_summary), 4),
                 price_per_unit=0.0,
                 status="COMPLETED"
             )
 
-            msg = f"🎉 Payment of ₹{amount:,.0f} via {method} confirmed (UTR: {utr_num})! Acquired diversified units across {len(selected_basket.allocations)} companies in {selected_basket.basket_name}."
+            if amount > 0:
+                msg = f"🎉 Payment of ₹{amount:,.0f} via {method} confirmed (UTR: {utr_num})! Acquired diversified units across {len(selected_basket.allocations)} companies in {selected_basket.basket_name}."
+            else:
+                msg = f"🎉 Live Zero-Cost Sandbox Order confirmed (UTR: {utr_num})! ₹0 paid via {method}. Allocated live starter units across {len(selected_basket.allocations)} companies in {selected_basket.basket_name}."
 
         else:
             # Direct individual asset / single company purchase
@@ -2170,7 +2180,7 @@ class InvestmentEngine:
             curated = cls.get_curated_assets()
             asset = next((a for a in curated if a.id == asset_id or a.ticker.lower() == str(asset_id).lower().replace('asset-', '').replace('-stock', '')), curated[0])
             price = getattr(asset, "current_nav_or_price", 100.0)
-            units = round(amount / price, 4)
+            units = round(amount / price, 4) if amount > 0 else 0.001
 
             exist = raw_existing.get(asset.id)
             if exist:
@@ -2178,7 +2188,7 @@ class InvestmentEngine:
                 prev_inv = float(exist.get("total_invested", 0.0))
                 new_units = round(prev_units + units, 4)
                 new_inv = round(prev_inv + amount, 2)
-                new_avg = round(new_inv / max(new_units, 0.0001), 2)
+                new_avg = round(new_inv / max(new_units, 0.0001), 2) if new_inv > 0 else price
                 holding_dict = {
                     "asset_id": asset.id,
                     "asset_name": asset.name,
@@ -2230,7 +2240,10 @@ class InvestmentEngine:
                 status="COMPLETED"
             )
 
-            msg = f"🎉 Payment of ₹{amount:,.0f} via {method} confirmed (UTR: {utr_num})! {units} units of {asset.name} ({asset.ticker}) credited to your live portfolio."
+            if amount > 0:
+                msg = f"🎉 Payment of ₹{amount:,.0f} via {method} confirmed (UTR: {utr_num})! {units} units of {asset.name} ({asset.ticker}) credited to your live portfolio."
+            else:
+                msg = f"🎉 Live Zero-Cost Sandbox Order confirmed (UTR: {utr_num})! ₹0 paid via {method}. {units} starter live units of {asset.name} ({asset.ticker}) credited to your live portfolio."
 
         updated_portfolio = cls.get_portfolio_summary(user_id)
 

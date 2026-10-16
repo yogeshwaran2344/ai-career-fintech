@@ -916,6 +916,7 @@ def calculate_opportunity_cost(req: OpportunityCostRequest, current_user: Studen
     return InvestmentEngine.evaluate_opportunity_cost(current_user, req.amount_inr, req.candidate_course)
 
 @app.post("/api/wealth/scam-check", response_model=ScamCheckResponse)
+@app.post("/api/wealth/scam-detector", response_model=ScamCheckResponse)
 def check_investment_scam(req: ScamCheckRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return InvestmentEngine.detect_scam_or_high_risk(req)
 
@@ -956,16 +957,24 @@ def toggle_saving_rule(req: ToggleSavingRuleRequest, current_user: StudentProfil
     return {"success": True, "rule_key": req.rule_key, "active": req.active}
 
 @app.get("/api/wealth/baskets", response_model=MultiCompanyBasketResponse)
+@app.get("/api/wealth/multi-company-baskets", response_model=MultiCompanyBasketResponse)
 def get_multi_company_baskets(
     investment_amount: Optional[float] = Query(None),
+    amount_inr: Optional[float] = Query(None),
     current_user: StudentProfile = Depends(get_user_from_auth)
 ):
-    amount = investment_amount or current_user.financial.available_for_learning or 1500.0
+    chosen_amt = investment_amount if investment_amount is not None else amount_inr
+    amount = float(chosen_amt) if chosen_amt is not None else (current_user.financial.available_for_learning or 1500.0)
     return InvestmentEngine.generate_multi_company_baskets(current_user, amount)
 
 @app.post("/api/wealth/upi/execute", response_model=UpiPaymentExecuteResponse)
+@app.post("/api/wealth/upi-pay", response_model=UpiPaymentExecuteResponse)
 def execute_upi_investment(req: UpiPaymentExecuteRequest, current_user: StudentProfile = Depends(get_user_from_auth)):
     return InvestmentEngine.execute_upi_investment(current_user.id, current_user, req)
+
+@app.get("/api/wealth/transactions")
+def get_wealth_transactions(current_user: StudentProfile = Depends(get_user_from_auth)):
+    return DatabaseManager.get_user_transactions(current_user.id)
 
 @app.get("/api/wealth/company-chart/{ticker}", response_model=CompanyChartData)
 def get_company_chart(ticker: str, current_user: StudentProfile = Depends(get_user_from_auth)):
