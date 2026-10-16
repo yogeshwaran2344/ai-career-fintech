@@ -38,7 +38,8 @@ import {
   ArrowRight,
   Download,
   Lock,
-  ShieldAlert
+  ShieldAlert,
+  X
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -88,6 +89,7 @@ export default function InvestmentView({ profile }) {
   const [executionEnvironment, setExecutionEnvironment] = useState('LIVE'); // Live Broker OMS
   const [investMode, setInvestMode] = useState('individual'); // 'individual' (Mode 1) or 'baskets' (Mode 2)
   const [individualFilter, setIndividualFilter] = useState('ALL');
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [assetAmounts, setAssetAmounts] = useState({});
   const [hubData, setHubData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -526,19 +528,19 @@ export default function InvestmentView({ profile }) {
       {/* Sub-Tabs Navigation */}
       <div className="flex flex-wrap gap-1.5 p-1.5 bg-stone-100/80 rounded-2xl border border-stone-200 text-xs font-bold">
         {[
-          { id: 'stockadvisor', label: '🧠 AI Stock Advisor (Which Company & Why)', icon: SparklesIcon },
+          { id: 'stockadvisor', label: '📈 Stock Research (Which Company & Why)', icon: SparklesIcon },
           { id: 'livemarket', label: '📊 Live Markets (NSE/BSE)', icon: BarChart3 },
           { id: 'broker', label: '🏦 Connect Demat & Broker', icon: BuildingIcon },
           { id: 'portfolio', label: '💼 Live Broker Portfolio', icon: WalletIcon },
           { id: 'orders', label: '📋 Order History & Taxes', icon: Clock },
           { id: 'careervsinvest', label: '⚖️ Career ROI vs Investment', icon: SparklesIcon },
           { id: 'safety', label: '🛡️ Financial Safety Center', icon: ShieldCheckIcon },
-          { id: 'realai', label: '🧠 Real AI Wealth Audit', icon: SparklesIcon },
+          { id: 'realai', label: '📊 Portfolio & Wealth Audit', icon: SparklesIcon },
           { id: 'invest', label: '🚀 Curated Baskets & SIPs', icon: SparklesIcon },
           { id: 'goals', label: '🎯 Smart Savings Goals', icon: PiggyBankIcon },
           { id: 'rules', label: '⚡ Auto-Saving Rules', icon: ZapIcon },
-          { id: 'digitaltwin', label: '🔮 Career Digital Twin', icon: LayersIcon },
-          { id: 'scam', label: '🚨 AI Scam Detector', icon: AlertTriangleIcon },
+          { id: 'digitaltwin', label: '🔮 Career & Income Twin', icon: LayersIcon },
+          { id: 'scam', label: '🛡️ Fraud & Scheme Detector', icon: AlertTriangleIcon },
           { id: 'guide', label: '📖 Student Demat Guide', icon: InfoIcon },
         ].map(tab => {
           const Icon = tab.icon;
@@ -665,7 +667,7 @@ export default function InvestmentView({ profile }) {
                   How would you prefer to invest today?
                 </h2>
                 <p className="text-xs text-stone-600 mt-0.5">
-                  Choose between handpicking individual market leaders or letting AI assemble an optimal multi-company basket with instant GPay / PhonePe execution.
+                  Choose between handpicking individual market leaders or selecting a curated multi-company basket with instant GPay / PhonePe execution.
                 </p>
               </div>
 
@@ -705,7 +707,7 @@ export default function InvestmentView({ profile }) {
                 <span>
                   {investMode === 'individual' 
                     ? '🎯 Individual Mode: Invest directly in TCS, Infosys, Tata Elxsi, Persistent, Reliance, HDFC Bank, BEL or Gold with custom allocations.'
-                    : '⚡ Multi-Company Mode: AI automatically balances 4–5 companies based on your exact budget and near-term market catalysts.'}
+                    : '⚡ Multi-Company Mode: Our allocation engine automatically balances 4–5 companies based on your exact budget and near-term market catalysts.'}
                 </span>
               </div>
               <span className="text-[11px] font-bold text-emerald-700 hidden sm:inline-block">
@@ -717,171 +719,265 @@ export default function InvestmentView({ profile }) {
           {/* ======================================================== */}
           {/* OPTION 1: INDIVIDUAL COMPANY INVESTMENT */}
           {/* ======================================================== */}
-          {investMode === 'individual' && (
-            <div className="space-y-6">
-              
-              {/* Category Filter Chips */}
-              <div className="flex flex-wrap items-center gap-2">
-                {[
-                  { id: 'ALL', label: 'All 11 Companies & Funds', icon: '🌐' },
-                  { id: 'AI_TECH', label: '🤖 AI, R&D & High-Tech', icon: '⚡' },
-                  { id: 'IT_SERVICES', label: '🏢 IT Services Titans', icon: '💼' },
-                  { id: 'BLUECHIP', label: '🏛️ Large Cap Bluechips & Defense', icon: '🏆' },
-                  { id: 'INDEX_GOLD', label: '🛡️ Nifty Index & Gold Defense', icon: '💎' },
-                ].map(chip => (
-                  <button
-                    key={chip.id}
-                    onClick={() => setIndividualFilter(chip.id)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      individualFilter === chip.id
-                        ? 'bg-stone-900 text-white shadow-sm'
-                        : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
-                    }`}
-                  >
-                    <span>{chip.label}</span>
-                  </button>
-                ))}
-              </div>
+          {investMode === 'individual' && (() => {
+            const allAssets = hubData?.curated_assets || [];
+            const q = companySearchQuery.trim().toLowerCase();
+            const filteredIndividualAssets = allAssets.filter(asset => {
+              // Category filter
+              let matchesCategory = true;
+              if (individualFilter === 'AI_TECH') {
+                matchesCategory = ['TATAELXSI', 'PERSISTENT', 'KPITTECH'].includes(asset.ticker) || asset.category_label?.includes('AI');
+              } else if (individualFilter === 'IT_SERVICES') {
+                matchesCategory = ['TCS', 'INFY'].includes(asset.ticker);
+              } else if (individualFilter === 'BLUECHIP') {
+                matchesCategory = ['RELIANCE', 'HDFCBANK', 'TATAMOTORS', 'BEL'].includes(asset.ticker);
+              } else if (individualFilter === 'INDEX_GOLD') {
+                matchesCategory = ['NIFTYBEES', 'GOLDBEES'].includes(asset.ticker) || asset.category?.includes('INDEX') || asset.category?.includes('GOLD');
+              }
 
-              {/* Individual Company Grid Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {(hubData?.curated_assets || [])
-                  .filter(asset => {
-                    if (individualFilter === 'ALL') return true;
-                    if (individualFilter === 'AI_TECH') {
-                      return ['TATAELXSI', 'PERSISTENT', 'KPITTECH'].includes(asset.ticker) || asset.category_label?.includes('AI');
-                    }
-                    if (individualFilter === 'IT_SERVICES') {
-                      return ['TCS', 'INFY'].includes(asset.ticker);
-                    }
-                    if (individualFilter === 'BLUECHIP') {
-                      return ['RELIANCE', 'HDFCBANK', 'TATAMOTORS', 'BEL'].includes(asset.ticker);
-                    }
-                    if (individualFilter === 'INDEX_GOLD') {
-                      return ['NIFTYBEES', 'GOLDBEES'].includes(asset.ticker) || asset.category?.includes('INDEX') || asset.category?.includes('GOLD');
-                    }
-                    return true;
-                  })
-                  .map(asset => {
-                    const chosenAmt = assetAmounts[asset.id] !== undefined ? assetAmounts[asset.id] : 0;
-                    const price = asset.current_nav_or_price || asset.current_nav_price_inr || 1000;
-                    const units = chosenAmt > 0 ? (chosenAmt / price).toFixed(4) : '0.001 (Starter Live)';
-                    const ret6m = asset.expected_6m_return_pct || 7.5;
-                    const ret1y = asset.expected_1yr_return_pct || asset.cagr_3y_pct || 14.0;
-                    const gmpInr = asset.gmp_inr || Math.round(price * 0.05);
-                    const gmpPct = asset.gmp_pct || 5.0;
+              // Search query filter
+              const matchesSearch = !q || (
+                (asset.name && asset.name.toLowerCase().includes(q)) ||
+                (asset.ticker && asset.ticker.toLowerCase().includes(q)) ||
+                (asset.category_label && asset.category_label.toLowerCase().includes(q)) ||
+                (asset.category && asset.category.toLowerCase().includes(q)) ||
+                (asset.why_suggested_for_you && asset.why_suggested_for_you.toLowerCase().includes(q)) ||
+                (asset.student_fit_reason && asset.student_fit_reason.toLowerCase().includes(q)) ||
+                (asset.near_term_catalysts && asset.near_term_catalysts.toLowerCase().includes(q))
+              );
 
-                    return (
-                      <div
-                        key={asset.id}
-                        className="advisor-card p-5 flex flex-col justify-between border border-stone-200 hover:border-emerald-400 hover:shadow-lg transition-all relative overflow-hidden"
+              return matchesCategory && matchesSearch;
+            });
+
+            return (
+              <div className="space-y-6">
+                
+                {/* Search Bar for Deciding Which Company to Invest */}
+                <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200/90 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+                      <input
+                        type="text"
+                        placeholder="Search company or ticker (e.g. TCS, Tata Motors, Reliance, Infosys, BEL, EV, Defense, Gold)..."
+                        value={companySearchQuery}
+                        onChange={(e) => setCompanySearchQuery(e.target.value)}
+                        className="w-full text-xs font-semibold pl-10 pr-9 py-2.5 bg-white border border-stone-200 rounded-xl focus:outline-emerald-500 text-stone-900 shadow-2xs placeholder-stone-400"
+                      />
+                      {companySearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setCompanySearchQuery('')}
+                          className="absolute right-3 top-2.5 p-1 text-stone-400 hover:text-stone-700 rounded-md hover:bg-stone-100"
+                          title="Clear search"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-stone-600 px-3 py-1.5 bg-white border border-stone-200 rounded-xl whitespace-nowrap shadow-2xs">
+                        Showing <strong className="text-stone-900">{filteredIndividualAssets.length}</strong> of {allAssets.length} assets
+                      </span>
+                      {(companySearchQuery || individualFilter !== 'ALL') && (
+                        <button
+                          type="button"
+                          onClick={() => { setCompanySearchQuery(''); setIndividualFilter('ALL'); }}
+                          className="text-xs text-emerald-700 hover:text-emerald-800 font-bold px-2 py-1 underline cursor-pointer whitespace-nowrap"
+                        >
+                          Reset Filters
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Search Tag Chips */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mr-1">Quick Picks:</span>
+                    {['TCS', 'Tata', 'Reliance', 'Infosys', 'BEL Defense', 'HDFC', 'EV & Auto', 'Gold BeES'].map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          setCompanySearchQuery(tag.split(' ')[0]);
+                          setIndividualFilter('ALL');
+                        }}
+                        className={`px-2.5 py-0.5 rounded-lg border font-medium transition cursor-pointer ${
+                          companySearchQuery.toLowerCase() === tag.split(' ')[0].toLowerCase()
+                            ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
+                            : 'bg-white hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 border-stone-200 text-stone-600'
+                        }`}
                       >
-                        <div>
-                          {/* Header & Badges */}
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-stone-100 text-stone-700">
-                              {asset.ticker} • {asset.category_label || asset.category}
-                            </span>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
-                              ★ {asset.ai_growth_score || 9.0}/10 Conviction
-                            </span>
-                          </div>
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                          <h4 className="font-black text-base text-stone-900">{asset.name}</h4>
-                          <span className="text-[10px] text-stone-500 font-semibold block mt-0.5">
-                            {asset.market_cap_tier} {asset.pe_ratio > 0 ? `• P/E: ${asset.pe_ratio}` : '• Direct ETF'}
-                          </span>
+                {/* Category Filter Chips */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    { id: 'ALL', label: 'All 11 Companies & Funds', icon: '🌐' },
+                    { id: 'AI_TECH', label: '⚡ High-Tech & R&D', icon: '⚡' },
+                    { id: 'IT_SERVICES', label: '💼 IT Services Titans', icon: '💼' },
+                    { id: 'BLUECHIP', label: '🏆 Large Cap Bluechips & Defense', icon: '🏆' },
+                    { id: 'INDEX_GOLD', label: '💎 Nifty Index & Gold Defense', icon: '💎' },
+                  ].map(chip => (
+                    <button
+                      key={chip.id}
+                      onClick={() => setIndividualFilter(chip.id)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        individualFilter === chip.id
+                          ? 'bg-stone-900 text-white shadow-sm'
+                          : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                      }`}
+                    >
+                      <span>{chip.label}</span>
+                    </button>
+                  ))}
+                </div>
 
-                          {/* Price & Target Returns */}
-                          <div className="my-3 p-3 bg-stone-50 rounded-xl border border-stone-200/70 grid grid-cols-2 gap-2 text-center text-xs">
-                            <div>
-                              <span className="text-[9px] text-stone-500 uppercase font-bold block">Current Price / NAV</span>
-                              <span className="font-black text-stone-900 text-sm">₹{price.toLocaleString('en-IN')}</span>
-                            </div>
-                            <div>
-                              <span className="text-[9px] text-stone-500 uppercase font-bold block">6M / 1-Yr Target</span>
-                              <span className="font-black text-emerald-600 text-xs">+{ret6m}% (6M) • +{ret1y}% (1Y)</span>
-                            </div>
-                          </div>
+                {/* Individual Company Grid Cards or Empty State */}
+                {filteredIndividualAssets.length === 0 ? (
+                  <div className="bg-white p-10 rounded-2xl border border-stone-200 text-center space-y-3">
+                    <Search className="w-8 h-8 text-stone-300 mx-auto" />
+                    <h4 className="text-sm font-black text-stone-800">No companies found matching "{companySearchQuery}"</h4>
+                    <p className="text-xs text-stone-500 max-w-md mx-auto">
+                      Try searching by ticker (e.g. TCS, BEL, INFY), company name (e.g. Tata, Reliance), or sector (e.g. Defense, Gold, Tech).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { setCompanySearchQuery(''); setIndividualFilter('ALL'); }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+                    >
+                      Reset Search & View All Companies
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {filteredIndividualAssets.map(asset => {
+                      const chosenAmt = assetAmounts[asset.id] !== undefined ? assetAmounts[asset.id] : 0;
+                      const price = asset.current_nav_or_price || asset.current_nav_price_inr || 1000;
+                      const units = chosenAmt > 0 ? (chosenAmt / price).toFixed(4) : '0.001 (Starter Live)';
+                      const ret6m = asset.expected_6m_return_pct || 7.5;
+                      const ret1y = asset.expected_1yr_return_pct || asset.cagr_3y_pct || 14.0;
+                      const gmpInr = asset.gmp_inr || Math.round(price * 0.05);
+                      const gmpPct = asset.gmp_pct || 5.0;
 
-                          {/* LIVE GMP (Grey Market / Growth Momentum Premium) Highlight */}
-                          <div className="mb-2.5 p-2.5 bg-gradient-to-r from-orange-50 via-amber-50 to-emerald-50 border border-orange-200/80 rounded-xl text-xs flex items-center justify-between">
-                            <div>
-                              <span className="text-[9px] font-black uppercase tracking-wider text-orange-900 block flex items-center gap-1">
-                                <span>🔥 LIVE GMP / Premium:</span>
+                      return (
+                        <div
+                          key={asset.id}
+                          className="advisor-card p-5 flex flex-col justify-between border border-stone-200 hover:border-emerald-400 hover:shadow-lg transition-all relative overflow-hidden"
+                        >
+                          <div>
+                            {/* Header & Badges */}
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-stone-100 text-stone-700">
+                                {asset.ticker} • {asset.category_label || asset.category}
                               </span>
-                              <span className="text-xs font-black text-emerald-800">
-                                +₹{gmpInr.toLocaleString('en-IN')} (+{gmpPct}%)
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
+                                ★ {asset.ai_growth_score || 9.0}/10 Quality Rating
                               </span>
                             </div>
-                            <span className="text-[10px] font-extrabold text-orange-950 bg-white/80 px-2 py-1 rounded-lg border border-orange-200 shadow-2xs">
-                              {asset.gmp_demand_rating || 'High Demand'}
+
+                            <h4 className="font-black text-base text-stone-900">{asset.name}</h4>
+                            <span className="text-[10px] text-stone-500 font-semibold block mt-0.5">
+                              {asset.market_cap_tier} {asset.pe_ratio > 0 ? `• P/E: ${asset.pe_ratio}` : '• Direct ETF'}
                             </span>
+
+                            {/* Price & Target Returns */}
+                            <div className="my-3 p-3 bg-stone-50 rounded-xl border border-stone-200/70 grid grid-cols-2 gap-2 text-center text-xs">
+                              <div>
+                                <span className="text-[9px] text-stone-500 uppercase font-bold block">Current Price / NAV</span>
+                                <span className="font-black text-stone-900 text-sm">₹{price.toLocaleString('en-IN')}</span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] text-stone-500 uppercase font-bold block">6M / 1-Yr Target</span>
+                                <span className="font-black text-emerald-600 text-xs">+{ret6m}% (6M) • +{ret1y}% (1Y)</span>
+                              </div>
+                            </div>
+
+                            {/* LIVE GMP (Grey Market / Growth Momentum Premium) Highlight */}
+                            <div className="mb-2.5 p-2.5 bg-gradient-to-r from-orange-50 via-amber-50 to-emerald-50 border border-orange-200/80 rounded-xl text-xs flex items-center justify-between">
+                              <div>
+                                <span className="text-[9px] font-black uppercase tracking-wider text-orange-900 block flex items-center gap-1">
+                                  <span>🔥 LIVE GMP / Premium:</span>
+                                </span>
+                                <span className="text-xs font-black text-emerald-800">
+                                  +₹{gmpInr.toLocaleString('en-IN')} (+{gmpPct}%)
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-extrabold text-orange-950 bg-white/80 px-2 py-1 rounded-lg border border-orange-200 shadow-2xs">
+                                {asset.gmp_demand_rating || 'High Demand'}
+                              </span>
+                            </div>
+
+                            {/* Why Suggested to You */}
+                            <div className="p-2.5 bg-amber-50/70 border border-amber-200/70 rounded-xl text-[11px] text-stone-800 font-medium leading-relaxed mb-2.5">
+                              <strong className="text-amber-950 font-bold block mb-0.5">💡 Why Suggested to You (6M – 1Yr):</strong>
+                              {asset.why_suggested_for_you || asset.student_fit_reason}
+                            </div>
+
+                            {/* Near-term Catalysts */}
+                            {asset.near_term_catalysts && (
+                              <div className="p-2 bg-emerald-50/60 border border-emerald-100 rounded-lg text-[10px] text-emerald-950 font-semibold mb-3">
+                                ⚡ <strong className="text-emerald-950">6M Catalyst:</strong> {asset.near_term_catalysts}
+                              </div>
+                            )}
+
+                            {/* Amount Selector for This Stock */}
+                            <div className="space-y-1.5 pt-1 border-t border-stone-100">
+                              <div className="flex items-center justify-between text-[11px] text-stone-600">
+                                <span className="font-bold">Invest Capital:</span>
+                                <span className="font-bold text-emerald-700">~{units} Units allotted</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                {[0, 500, 1000, 2000, 5000].map(amt => (
+                                  <button
+                                    key={amt}
+                                    type="button"
+                                    onClick={() => handleSetAssetAmount(asset.id, amt)}
+                                    className={`flex-1 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                                      chosenAmt === amt
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                                    }`}
+                                  >
+                                    {amt === 0 ? '₹0 Live' : `₹${amt}`}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
 
-                          {/* Why Suggested to You */}
-                          <div className="p-2.5 bg-amber-50/70 border border-amber-200/70 rounded-xl text-[11px] text-stone-800 font-medium leading-relaxed mb-2.5">
-                            <strong className="text-amber-950 font-bold block mb-0.5">💡 Why Suggested to You (6M – 1Yr):</strong>
-                            {asset.why_suggested_for_you || asset.student_fit_reason}
-                          </div>
-
-                          {/* Near-term Catalysts */}
-                          {asset.near_term_catalysts && (
-                            <div className="p-2 bg-emerald-50/60 border border-emerald-100 rounded-lg text-[10px] text-emerald-950 font-semibold mb-3">
-                              ⚡ <strong className="text-emerald-950">6M Catalyst:</strong> {asset.near_term_catalysts}
-                            </div>
-                          )}
-
-                          {/* Amount Selector for This Stock */}
-                          <div className="space-y-1.5 pt-1 border-t border-stone-100">
-                            <div className="flex items-center justify-between text-[11px] text-stone-600">
-                              <span className="font-bold">Invest Capital:</span>
-                              <span className="font-bold text-emerald-700">~{units} Units allotted</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              {[0, 500, 1000, 2000, 5000].map(amt => (
-                                <button
-                                  key={amt}
-                                  type="button"
-                                  onClick={() => handleSetAssetAmount(asset.id, amt)}
-                                  className={`flex-1 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
-                                    chosenAmt === amt
-                                      ? 'bg-emerald-600 text-white shadow-xs'
-                                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                                  }`}
-                                >
-                                  {amt === 0 ? '₹0 Live' : `₹${amt}`}
-                                </button>
-                              ))}
-                            </div>
+                          {/* Interactive Chart + Direct UPI Invest Buttons */}
+                          <div className="mt-4 pt-3 border-t border-stone-100 space-y-2">
+                            <button
+                              type="button"
+                              onClick={() => openCompanyChart(asset, '6M')}
+                              className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-stone-300/70"
+                            >
+                              <BarChart3 className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>📈 View Interactive Chart & GMP (1W–1Y)</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenUpiForAsset(asset, chosenAmt)}
+                              className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
+                            >
+                              <SmartphoneIcon className="w-3.5 h-3.5" />
+                              <span>{chosenAmt > 0 ? `Invest ₹${chosenAmt.toLocaleString('en-IN')} via GPay / PhonePe` : `Invest ₹0 (Live Instant Allotment)`}</span>
+                            </button>
                           </div>
                         </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-                        {/* Interactive Chart + Direct UPI Invest Buttons */}
-                        <div className="mt-4 pt-3 border-t border-stone-100 space-y-2">
-                          <button
-                            type="button"
-                            onClick={() => openCompanyChart(asset, '6M')}
-                            className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-stone-300/70"
-                          >
-                            <BarChart3 className="w-3.5 h-3.5 text-emerald-700" />
-                            <span>📈 View Interactive Chart & GMP (1W–1Y)</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenUpiForAsset(asset, chosenAmt)}
-                            className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
-                          >
-                            <SmartphoneIcon className="w-3.5 h-3.5" />
-                            <span>{chosenAmt > 0 ? `Invest ₹${chosenAmt.toLocaleString('en-IN')} via GPay / PhonePe` : `Invest ₹0 (Live Instant Allotment)`}</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
               </div>
-
-            </div>
-          )}
+            );
+          })()}
 
           {/* ======================================================== */}
           {/* OPTION 2: MULTI-COMPANY BASKET PLANS */}
@@ -932,12 +1028,12 @@ export default function InvestmentView({ profile }) {
                   </div>
                 </div>
 
-                {/* AI Synthesis */}
+                {/* Strategy Synthesis */}
                 {basketsData && (
                   <div className="mt-4 p-3 bg-white rounded-xl border border-emerald-200 text-xs text-stone-700 flex items-start gap-2">
                     <SparklesIcon className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-emerald-950">AI Basket Synthesis (6M – 1Yr Target): </span>
+                      <span className="font-bold text-emerald-950">Basket Allocation Strategy (6M – 1Yr Target): </span>
                       <span>{basketsData.ai_overall_strategy}</span>
                     </div>
                   </div>
@@ -963,7 +1059,7 @@ export default function InvestmentView({ profile }) {
                     >
                       {b.basket_id === basketsData.recommended_basket_id && (
                         <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-xs">
-                          ⭐ AI Top Pick
+                          ⭐ Recommended Pick
                         </div>
                       )}
 
@@ -1050,11 +1146,11 @@ export default function InvestmentView({ profile }) {
                     </button>
                   </div>
 
-                  {/* AI Deep Analysis Narrative */}
+                  {/* Portfolio Strategy Analysis Narrative */}
                   <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs space-y-1.5 leading-relaxed text-stone-800 font-sans">
                     <span className="text-[10px] font-black uppercase text-emerald-900 tracking-wider flex items-center gap-1.5">
                       <SparklesIcon className="w-3.5 h-3.5 text-emerald-600" />
-                      AI Portfolio Architect Analysis (6M – 1Yr Horizon)
+                      Portfolio Strategy & Allocation Analysis (6M – 1Yr Horizon)
                     </span>
                     <p>{activeBasket.ai_deep_analysis}</p>
                   </div>

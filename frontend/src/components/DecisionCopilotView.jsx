@@ -254,10 +254,10 @@ export default function DecisionCopilotView({ profile, readiness }) {
               <span className="text-xs text-stone-300">Career × Finance Co-Optimization</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight mt-1.5 flex items-center gap-2">
-              AI Decision Copilot & Strategic Allocator <Sparkles className="w-5 h-5 text-orange-400" />
+              Strategic Decision Advisor & Capital Allocator <Sparkles className="w-5 h-5 text-orange-400" />
             </h1>
             <p className="text-xs text-stone-300 mt-1 max-w-2xl leading-relaxed">
-              Never choose blindly between career growth, emergency savings, and investments. The Decision Engine analyzes your live readiness ({readiness?.readiness_pct || 44}%) against your cash flow to produce data-driven allocation recommendations. Projections are estimates, not guaranteed returns.
+              Never choose blindly between career growth, emergency savings, and investments. The Strategic Decision Engine analyzes your live readiness ({readiness?.readiness_pct || 44}%) against your cash flow to produce data-driven allocation recommendations. Projections are estimates, not guaranteed returns.
             </p>
           </div>
 
@@ -406,7 +406,7 @@ export default function DecisionCopilotView({ profile, readiness }) {
                   <div className="bg-gradient-to-br from-orange-50 via-amber-50/40 to-white rounded-2xl p-5 border-2 border-orange-300 shadow-sm space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-orange-600 text-white">
-                        AI Recommended Multi-Split
+                        Recommended Multi-Split Strategy
                       </span>
                       <span className="text-xs font-bold text-stone-600">
                         Total: ₹{opportunityData.evaluated_amount_inr?.toLocaleString()}

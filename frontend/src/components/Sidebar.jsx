@@ -42,16 +42,16 @@ export default function Sidebar({
       title: 'OVERVIEW',
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'today', label: "Today's AI Plan & Brain", icon: Zap, badge: 'Intelligence' },
+        { id: 'today', label: "Daily Action Plan", icon: Zap, badge: 'Daily' },
         { id: 'financialhealth', label: 'My Financial Health', icon: Activity, badge: 'Health' },
-        { id: 'copilot', label: 'AI Career Copilot', icon: Bot, badge: 'Advisor' }
+        { id: 'copilot', label: 'Strategic Advisor', icon: Bot, badge: 'Advisor' }
       ]
     },
     {
       title: 'CAREER',
       items: [
         { id: 'career', label: 'Career Engine', icon: Compass },
-        { id: 'interview', label: 'AI Interview Arena', icon: Sparkles, badge: 'STAR Eval' },
+        { id: 'interview', label: 'Mock Interview Arena', icon: Sparkles, badge: 'STAR Eval' },
         { id: 'simulation', label: 'What-If Simulator', icon: Sliders, badge: 'Twin' },
         { id: 'skillgraph', label: 'Skill Graph Tree', icon: GitFork },
         { id: 'resume', label: 'Resume & ATS', icon: FileText },
@@ -69,7 +69,7 @@ export default function Sidebar({
     {
       title: 'GLOBAL & HIGHER ED',
       items: [
-        { id: 'studyabroad', label: 'Study Abroad & MS', icon: Globe, badge: 'Copilot' },
+        { id: 'studyabroad', label: 'Study Abroad & MS', icon: Globe, badge: 'Admissions' },
         { id: 'examprep', label: '10-Yr Papers & 1,000+ Qs', icon: BookOpen, badge: '1,000+ Qs' }
       ]
     },

@@ -809,7 +809,7 @@ export default function StudyAbroadView({ profile, onNavigate }) {
             <div>
               <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-1">
                 <Globe className="w-4 h-4 text-indigo-400" />
-                End-to-End Study Abroad Copilot
+                Study Abroad & Global Admissions Hub
               </div>
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
                 Master's & Global University Journey

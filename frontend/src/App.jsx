@@ -33,6 +33,7 @@ import {
   RotateCcw, 
   Settings, 
   ArrowRight, 
+  ArrowLeft,
   LogOut,
   Check,
   Inbox,
@@ -481,7 +482,7 @@ export default function App() {
                     ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
                     : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200'
                 }`}
-                title="AI & System Notifications"
+                title="Signals & Updates"
               >
                 <Bell className={`w-3.5 h-3.5 ${unreadNotifCount > 0 ? 'text-amber-600 animate-pulse' : 'text-stone-500'}`} />
                 <span>Signals</span>
@@ -502,7 +503,7 @@ export default function App() {
                         <Bell className="w-3.5 h-3.5" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-black tracking-tight">AI Signals & Alerts</h4>
+                        <h4 className="text-xs font-black tracking-tight">Signals & Updates</h4>
                         <p className="text-[10px] text-stone-400">
                           {unreadNotifCount > 0 ? `${unreadNotifCount} unread proactive update${unreadNotifCount > 1 ? 's' : ''}` : 'All caught up'}
                         </p>
@@ -858,18 +859,33 @@ export default function App() {
 
       {/* Global Search Dialog Modal (Cmd/Ctrl + K) */}
       {isSearchOpen && (
-        <div className="fixed inset-0 bg-stone-950/70 backdrop-blur-xs flex items-start justify-center pt-20 p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-stone-200 overflow-hidden space-y-0">
-            {/* Search Input Bar */}
-            <div className="p-4 border-b border-stone-100 flex items-center gap-3">
-              <Search className="w-5 h-5 text-stone-400 flex-shrink-0" />
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setIsSearchOpen(false); }}
+          className="fixed inset-0 bg-stone-950/70 backdrop-blur-xs flex items-start justify-center pt-16 sm:pt-20 p-4 z-50 animate-fadeIn cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-stone-200 overflow-hidden space-y-0 cursor-default"
+          >
+            {/* Search Input Bar with prominent Back & Close Buttons */}
+            <div className="p-3 sm:p-4 border-b border-stone-100 flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition cursor-pointer flex-shrink-0"
+                title="Go Back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+              <Search className="w-4 h-4 sm:w-5 sm:h-5 text-stone-400 flex-shrink-0" />
               <input
                 autoFocus
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search modules, skills, exams, destinations, or roadmaps..."
-                className="w-full text-sm font-semibold text-stone-900 placeholder-stone-400 bg-transparent focus:outline-none"
+                className="w-full text-xs sm:text-sm font-semibold text-stone-900 placeholder-stone-400 bg-transparent focus:outline-none"
               />
               {searchQuery && (
                 <button
@@ -880,19 +896,28 @@ export default function App() {
                   Clear
                 </button>
               )}
-              <kbd className="bg-stone-100 border border-stone-300 text-[10px] px-1.5 py-0.5 rounded font-mono text-stone-500">
-                ESC
-              </kbd>
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-800 font-bold px-2 py-1 rounded-lg hover:bg-stone-100 transition cursor-pointer flex-shrink-0"
+                title="Close search"
+              >
+                <X className="w-4 h-4" />
+                <span className="hidden sm:inline">Close</span>
+                <kbd className="hidden sm:inline-block bg-stone-100 border border-stone-300 text-[10px] px-1.5 py-0.5 rounded font-mono text-stone-500 ml-1">
+                  ESC
+                </kbd>
+              </button>
             </div>
 
             {/* Quick Links / Filtered Results */}
             <div className="max-h-96 overflow-y-auto p-2 space-y-1">
               {[
                 { id: 'dashboard', title: 'Dashboard', desc: 'Overview, career metrics, capital buffer', category: 'Overview' },
-                { id: 'today', title: "Today's AI Plan & Brain", desc: 'Priority engine, focus sprints, spaced retention radar', category: 'Intelligence' },
-                { id: 'interview', title: 'AI Interview Arena', desc: 'Mock technical & STAR behavioural interview simulation', category: 'Career' },
+                { id: 'today', title: "Daily Action Plan", desc: 'Priority checklist, focus sprints, spaced review radar', category: 'Planner' },
+                { id: 'interview', title: 'Mock Interview Arena', desc: 'Mock technical & STAR behavioural interview simulation', category: 'Career' },
                 { id: 'career', title: 'Career Engine', desc: 'Placement readiness, role tracks, and career roadmaps', category: 'Career' },
-                { id: 'simulation', title: 'What-If Career Simulator', desc: 'Skill leaps, digital twin career and salary trajectories', category: 'Simulation' },
+                { id: 'simulation', title: 'Career Trajectory Simulator', desc: 'Skill leaps, career and salary trajectories', category: 'Simulation' },
                 { id: 'skillgraph', title: 'Skill Graph Tree', desc: 'Curated skills tree, prerequisite mapping, dependencies', category: 'Skills' },
                 { id: 'resume', title: 'Resume & ATS Analyzer', desc: 'ATS score, missing metrics, and bullet point enhancements', category: 'Career' },
                 { id: 'jobmarket', title: 'Opportunity Radar', desc: 'Jobs, internships, scholarships, hackathons & certs', category: 'Opportunities' },
@@ -903,7 +928,7 @@ export default function App() {
                 { id: 'studyabroad', title: 'Study Abroad & MS', desc: 'Top 3 countries comparison, university finder, costs & ROI', category: 'Global' },
                 { id: 'examprep', title: 'Exam Prep & 10-Yr Papers', desc: '1,000+ questions, GRE, IELTS, GATE, TOEFL mock tests', category: 'Exams' },
                 { id: 'safety', title: '5-Gate Financial Safety', desc: 'Emergency floor clearance, impulse lock, safety checks', category: 'Safety' },
-                { id: 'copilot', title: 'AI Career Copilot', desc: 'Personalized AI advisor, life decision simulator & guidance', category: 'AI Advisor' },
+                { id: 'copilot', title: 'Career Strategy & Decision Advisor', desc: 'Strategic roadmaps, career decisions & learning guidance', category: 'Advisor' },
                 { id: 'profile', title: 'Profile & Setup', desc: 'Academic details, financial settings, export my data', category: 'Account' },
                 // Skills & Concepts
                 { id: 'skillgraph', title: 'PyTorch & Deep Learning Systems', desc: 'Neural network training, tensor broadcasting, autograd', category: 'Skill' },
@@ -914,7 +939,13 @@ export default function App() {
                 { id: 'studyabroad', title: 'Germany MS (TUM, RWTH Aachen)', desc: 'Zero tuition, APS certificate, blocked account €11,208', category: 'Study Abroad' },
                 { id: 'studyabroad', title: 'United States MS (CMU, Stanford, UT Austin)', desc: 'STEM OPT 3-year extension, top tech hiring hub', category: 'Study Abroad' },
                 { id: 'examprep', title: 'GRE Practice & 10-Yr Papers', desc: '10-year previous questions, Verbal & Quant drills', category: 'Exam Prep' },
-                { id: 'examprep', title: 'IELTS / TOEFL Mock Tests', desc: 'Reading, Listening, Writing, Speaking practice papers', category: 'Exam Prep' }
+                { id: 'examprep', title: 'IELTS / TOEFL Mock Tests', desc: 'Reading, Listening, Writing, Speaking practice papers', category: 'Exam Prep' },
+                // Listed Companies & Investment Options
+                { id: 'investments', title: 'TCS & Infosys (IT Bluechips)', desc: 'Direct equity, dividend track record, cloud transformation', category: 'Companies' },
+                { id: 'investments', title: 'Tata Motors & Tata Elxsi (EV & High-Tech)', desc: 'Automotive electrification, embedded systems & R&D', category: 'Companies' },
+                { id: 'investments', title: 'Bharat Electronics (BEL Defense)', desc: 'Indigenous radar, defense electronics & order book', category: 'Companies' },
+                { id: 'investments', title: 'Reliance Industries & HDFC Bank', desc: 'Conglomerate telecom, retail & private banking leader', category: 'Companies' },
+                { id: 'investments', title: 'Nifty 50 BeES & Gold BeES ETFs', desc: 'Passive index compounding and gold inflation hedge', category: 'Companies' }
               ]
                 .filter(item => {
                   if (!searchQuery.trim()) return true;
@@ -955,8 +986,18 @@ export default function App() {
 
             {/* Search Footer */}
             <div className="p-3 bg-stone-50 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between font-medium">
-              <span>Navigate quickly to any module or practice material</span>
-              <span>Press <strong>ESC</strong> to dismiss</span>
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="flex items-center gap-1.5 text-stone-700 hover:text-stone-900 font-bold px-2 py-1 rounded-lg hover:bg-stone-200/60 transition cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Go Back</span>
+              </button>
+              <div className="flex items-center gap-2 text-stone-500">
+                <span className="hidden sm:inline">Navigate quickly to any module</span>
+                <span>• Click <strong>Back</strong> or press <strong>ESC</strong></span>
+              </div>
             </div>
           </div>
         </div>
